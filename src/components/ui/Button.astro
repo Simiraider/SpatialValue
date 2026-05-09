@@ -1,0 +1,132 @@
+---
+interface Props {
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+  size?: 'sm' | 'md' | 'lg';
+  type?: 'button' | 'submit' | 'reset';
+  href?: string;
+  fullWidth?: boolean;
+  disabled?: boolean;
+}
+
+const {
+  variant = 'primary',
+  size = 'md',
+  type = 'button',
+  href,
+  fullWidth = false,
+  disabled = false,
+} = Astro.props;
+
+const Tag = href ? 'a' : 'button';
+---
+
+{href ? (
+  <a
+    href={href}
+    class:list={[
+      'btn',
+      `btn-${variant}`,
+      `btn-${size}`,
+      { 'btn-full': fullWidth },
+    ]}
+    aria-disabled={disabled}
+  >
+    <slot />
+  </a>
+) : (
+  <button
+    type={type}
+    class:list={[
+      'btn',
+      `btn-${variant}`,
+      `btn-${size}`,
+      { 'btn-full': fullWidth },
+    ]}
+    disabled={disabled}
+  >
+    <slot />
+  </button>
+)}
+
+<style>
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    font-family: var(--font-sans);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    text-decoration: none;
+    line-height: 1;
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Sizes */
+  .btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+
+  .btn-md {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+  }
+
+  .btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.9375rem;
+  }
+
+  /* Variants */
+  .btn-primary {
+    color: white;
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: var(--color-primary-hover);
+  }
+
+  .btn-secondary {
+    color: var(--color-text);
+    background: var(--color-surface);
+    border-color: var(--color-border);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--color-surface-hover);
+  }
+
+  .btn-danger {
+    color: white;
+    background: var(--color-error);
+    border-color: var(--color-error);
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+
+  .btn-ghost {
+    color: var(--color-text-secondary);
+    background: transparent;
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--color-surface-hover);
+    color: var(--color-text);
+  }
+
+  .btn-full {
+    width: 100%;
+  }
+</style>

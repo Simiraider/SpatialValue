@@ -1,102 +1,99 @@
 # Spatial Value
 
-Plataforma de tasación automatizada de propiedades que combina datos de mercado, variables macroeconómicas y análisis de imágenes para generar reportes técnicos más precisos.
+Plataforma de tasacion automatizada de propiedades que combina datos de mercado, variables macroeconomicas y analisis de imagenes para generar reportes tecnicos mas precisos.
 
-## ¿Qué problema resuelve?
+## Problema
 
-En el mercado inmobiliario, la tasación suele depender mucho del factor humano, usa comparables que pueden estar desactualizados y muchas veces no detecta irregularidades en la propiedad o diferencias entre superficie declarada y real.
+En el mercado inmobiliario, la tasacion suele depender mucho del factor humano, usa comparables que pueden estar desactualizados y muchas veces no detecta irregularidades en la propiedad o diferencias entre superficie declarada y real.
 
-Spatial Value busca reducir esa incertidumbre con una herramienta profesional de tasación automatizada.
+Spatial Value busca reducir esa incertidumbre con una herramienta profesional de tasacion automatizada.
 
-## Solución
-
-La plataforma permite:
+## Solucion
 
 - Completar un formulario con datos de la propiedad
 - Generar un reporte preliminar
 - Estimar un rango de precios
-- Visualizar gráficos interactivos
-- Incorporar análisis de imágenes para futuras versiones
+- Visualizar graficos interactivos
+- Incorporar analisis de imagenes para futuras versiones
 - Evolucionar hacia un visor 3D de la propiedad
 
-## MVP
+## Tech Stack
 
-La primera versión del producto incluye:
+| Layer | Technology |
+|-------|-----------|
+| Framework | Astro 6 |
+| UI | React 19 + TypeScript |
+| Styling | Tailwind CSS 4 |
+| 3D | Three.js + React Three Fiber |
+| Backend | Node.js + Express |
+| Database | PostgreSQL + Supabase |
+| AI/Data | Python + Selenium |
 
-- Serie de preguntas al usuario
-- Reporte preliminar de la propiedad
-- Rango de precios estimado
-- Gráficos interactivos
+## Getting Started
 
-> El visor 3D no forma parte del MVP inicial.
+```bash
+npm install
+npm run dev
+```
 
-## Stack
+## Project Structure
 
-### Frontend
-- Astro
-- Tailwind CSS
-- TypeScript
+```
+src/
+├── components/
+│   ├── ui/          # Button, Input, Card, Container, Badge
+│   ├── layout/      # Navbar, Sidebar, Footer
+│   └── forms/       # Form-specific components
+├── layouts/         # MainLayout
+├── pages/           # File-based routing
+│   ├── index.astro        # Home
+│   ├── login.astro        # Login
+│   ├── dashboard.astro    # Dashboard
+│   └── valuation.astro    # Valuation form
+├── styles/          # Global CSS + design tokens
+├── hooks/           # Custom React hooks
+├── lib/             # Core libraries and configs
+├── services/        # API and external service calls
+├── stores/          # State management
+├── types/           # TypeScript type definitions
+├── utils/           # Utility functions
+└── constants/       # App-wide constants
+```
 
-### Backend
-- Node.js
-- Express
-- PostgreSQL
-- Python
-- Selenium
-- Vercel
+## Scripts
 
-### IA / Datos
-- Python
-- Google Dataset Search
-- Three.js
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start dev server |
+| `npm run build` | Build for production |
+| `npm run preview` | Preview production build |
+| `npm run lint` | Run ESLint |
+| `npm run format` | Format with Prettier |
+| `npm run typecheck` | Run TypeScript checks |
+| `npm run check` | Run all checks |
 
-### UX/UI
-- Figma
+## Environment Variables
 
-## Equipo
+```bash
+cp .env.example .env
+```
 
-- Simón Flomenboim — Frontend
-- Jonas Leiserson — Backend
-- Liam Lutteral — IA
-- Manuel Smulovitz — UX/UI
+## Team
 
-## Funcionalidades previstas
-
-- Tasación automatizada
-- Carga de imágenes de la propiedad
-- Integración de datos del mercado
-- Reporte técnico
-- Comparación entre precio de publicación y precio estimado
-- Visualización 3D en futuras versiones
+- Simon Flomenboim - Frontend
+- Jonas Leiserson - Backend
+- Liam Lutteral - IA
+- Manuel Smulovitz - UX/UI
 
 ## Roadmap
 
-### Sprint 1
-Cimientos y definición.
+- **Sprint 1:** Cimientos y definicion
+- **Sprint 2:** Estructuracion del flujo, preguntas y datos
+- **Sprint 3:** Finalizado del maquetado y logica principal
+- **Sprint 4:** Integracion de datos, reportes e inteligencia
+- **Sprint 5:** Refinamiento y realidad aumentada opcional
+- **Sprint 6:** Pulido, testeo y entrega final
 
-### Sprint 2
-Estructuración del flujo, preguntas y datos.
+## License
 
-### Sprint 3
-Finalizado del maquetado y lógica principal.
-
-### Sprint 4
-Integración de datos, reportes e inteligencia.
-
-### Sprint 5
-Refinamiento y realidad aumentada opcional.
-
-### Sprint 6
-Pulido, testeo y entrega final.
-
-## Referencias
-
-- Inspiración de diseño
-- Referencias técnicas y legales
-- Datasets utilizados
-- Figma
-- Trello
-
-## Estado del proyecto
-
-Proyecto académico en desarrollo.
+Proyecto academico en desarrollo.

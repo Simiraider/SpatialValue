@@ -1,0 +1,117 @@
+---
+import { APP_NAME, NAV_ITEMS } from '../../constants';
+---
+
+<header class="navbar">
+  <div class="navbar-brand">
+    <a href="/" class="navbar-logo">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="32" rx="8" fill="currentColor" />
+        <path d="M8 24L16 8L24 24H8Z" stroke="white" stroke-width="2" fill="none" />
+      </svg>
+      <span class="navbar-title">{APP_NAME}</span>
+    </a>
+  </div>
+
+  <nav class="navbar-nav">
+    {NAV_ITEMS.map((item) => (
+      <a
+        href={item.href}
+        class:list={['navbar-link', { active: Astro.url.pathname === item.href }]}
+      >
+        {item.label}
+      </a>
+    ))}
+  </nav>
+
+  <div class="navbar-actions">
+    <a href="/login" class="navbar-login">Iniciar Sesion</a>
+  </div>
+</header>
+
+<style>
+  .navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    height: 4rem;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .navbar-brand {
+    display: flex;
+    align-items: center;
+  }
+
+  .navbar-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: var(--color-primary);
+  }
+
+  .navbar-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .navbar-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .navbar-link {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+
+  .navbar-link:hover {
+    color: var(--color-text);
+    background: var(--color-surface-hover);
+  }
+
+  .navbar-link.active {
+    color: var(--color-primary);
+    background: var(--color-primary-soft);
+  }
+
+  .navbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .navbar-login {
+    padding: 0.5rem 1.25rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: white;
+    background: var(--color-primary);
+    text-decoration: none;
+    transition: opacity 0.15s ease;
+  }
+
+  .navbar-login:hover {
+    opacity: 0.9;
+  }
+
+  @media (max-width: 768px) {
+    .navbar-nav {
+      display: none;
+    }
+  }
+</style>

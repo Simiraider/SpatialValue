@@ -1,0 +1,50 @@
+---
+interface Props {
+  variant?: 'success' | 'warning' | 'error' | 'info' | 'neutral';
+}
+
+const {
+  variant = 'neutral',
+} = Astro.props;
+---
+
+<span class:list={['badge', `badge-${variant}`]}>
+  <slot />
+</span>
+
+<style>
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.625rem;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .badge-success {
+    background: var(--color-success-soft);
+    color: var(--color-success);
+  }
+
+  .badge-warning {
+    background: var(--color-warning-soft);
+    color: var(--color-warning);
+  }
+
+  .badge-error {
+    background: var(--color-error-soft);
+    color: var(--color-error);
+  }
+
+  .badge-info {
+    background: var(--color-info-soft);
+    color: var(--color-info);
+  }
+
+  .badge-neutral {
+    background: var(--color-surface-hover);
+    color: var(--color-text-secondary);
+  }
+</style>

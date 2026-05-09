@@ -1,0 +1,99 @@
+---
+interface Props {
+  type?: string;
+  name: string;
+  id: string;
+  label?: string;
+  placeholder?: string;
+  required?: boolean;
+  disabled?: boolean;
+  error?: string;
+  value?: string;
+}
+
+const {
+  type = 'text',
+  name,
+  id,
+  label,
+  placeholder,
+  required = false,
+  disabled = false,
+  error,
+  value,
+} = Astro.props;
+---
+
+<div class:list={['input-group', { 'input-error': error }]}>
+  {label && (
+    <label for={id} class="input-label">
+      {label}
+      {required && <span class="input-required">*</span>}
+    </label>
+  )}
+  <input
+    type={type}
+    id={id}
+    name={name}
+    placeholder={placeholder}
+    required={required}
+    disabled={disabled}
+    value={value}
+    class="input-field"
+  />
+  {error && <span class="input-error-text">{error}</span>}
+</div>
+
+<style>
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .input-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  .input-required {
+    color: var(--color-error);
+    margin-left: 0.125rem;
+  }
+
+  .input-field {
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 0.9375rem;
+    font-family: var(--font-sans);
+    background: var(--color-bg);
+    color: var(--color-text);
+    outline: none;
+    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+  }
+
+  .input-field:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-soft);
+  }
+
+  .input-field:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .input-error .input-field {
+    border-color: var(--color-error);
+  }
+
+  .input-error .input-field:focus {
+    box-shadow: 0 0 0 3px var(--color-error-soft);
+  }
+
+  .input-error-text {
+    font-size: 0.8125rem;
+    color: var(--color-error);
+  }
+</style>

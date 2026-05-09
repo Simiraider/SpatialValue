@@ -1,0 +1,31 @@
+---
+import { APP_NAME } from '../../constants';
+const year = new Date().getFullYear();
+---
+
+<footer class="footer">
+  <div class="footer-content">
+    <p class="footer-copy">&copy; {year} {APP_NAME}. Todos los derechos reservados.</p>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    padding: 1.5rem 2rem;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .footer-content {
+    max-width: 80rem;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .footer-copy {
+    font-size: 0.8125rem;
+    color: var(--color-text-tertiary);
+  }
+</style>

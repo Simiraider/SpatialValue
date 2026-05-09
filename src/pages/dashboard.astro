@@ -1,0 +1,235 @@
+---
+import MainLayout from '../layouts/MainLayout.astro';
+---
+
+<MainLayout title="Dashboard - Spatial Value" showSidebar={true}>
+  <section class="dashboard">
+    <div class="dashboard-header">
+      <h1 class="dashboard-title">Dashboard</h1>
+      <a href="/valuation" class="btn btn-primary">Nueva Tasacion</a>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-label">Tasaciones Activas</span>
+        <span class="stat-value">12</span>
+        <span class="stat-change positive">+3 este mes</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Completadas</span>
+        <span class="stat-value">48</span>
+        <span class="stat-change positive">+8 este mes</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Pendientes</span>
+        <span class="stat-value">5</span>
+        <span class="stat-change neutral">Sin cambios</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Valor Promedio</span>
+        <span class="stat-value">$125M</span>
+        <span class="stat-change positive">+12% vs mes anterior</span>
+      </div>
+    </div>
+
+    <div class="dashboard-section">
+      <h2 class="section-title">Tasaciones Recientes</h2>
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Direccion</th>
+              <th>Tipo</th>
+              <th>Estado</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>#TAS-001</td>
+              <td>Av. Corrientes 1234, CABA</td>
+              <td>Departamento</td>
+              <td><span class="badge badge-success">Completada</span></td>
+              <td>09/05/2026</td>
+            </tr>
+            <tr>
+              <td>#TAS-002</td>
+              <td>Av. Santa Fe 567, CABA</td>
+              <td>Oficina</td>
+              <td><span class="badge badge-warning">En Proceso</span></td>
+              <td>08/05/2026</td>
+            </tr>
+            <tr>
+              <td>#TAS-003</td>
+              <td>Florida 890, Vicente Lopez</td>
+              <td>Casa</td>
+              <td><span class="badge badge-info">Pendiente</span></td>
+              <td>07/05/2026</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</MainLayout>
+
+<style>
+  .dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .dashboard-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .dashboard-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.625rem 1.25rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .btn-primary {
+    color: white;
+    background: var(--color-primary);
+  }
+
+  .btn-primary:hover {
+    opacity: 0.9;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+  }
+
+  .stat-card {
+    padding: 1.25rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .stat-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+  }
+
+  .stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-text);
+  }
+
+  .stat-change {
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .stat-change.positive {
+    color: var(--color-success);
+  }
+
+  .stat-change.neutral {
+    color: var(--color-text-tertiary);
+  }
+
+  .section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0 0 1rem;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+
+  .table th {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .badge {
+    display: inline-flex;
+    padding: 0.25rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .badge-success {
+    background: var(--color-success-soft);
+    color: var(--color-success);
+  }
+
+  .badge-warning {
+    background: var(--color-warning-soft);
+    color: var(--color-warning);
+  }
+
+  .badge-info {
+    background: var(--color-info-soft);
+    color: var(--color-info);
+  }
+
+  @media (max-width: 1024px) {
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .dashboard-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+  }
+</style>
