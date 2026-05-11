@@ -1,0 +1,25 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { Navbar } from '../components/Navbar';
+import { Footer } from '../components/Footer';
+import { PropertyForm } from '../components/PropertyForm';
+---
+
+<Layout title="Nueva Tasación">
+  <Navbar client:load />
+  
+  <main class="flex-1 bg-slate-50 py-12">
+    <div class="container mx-auto px-4 max-w-4xl">
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-slate-900">Nueva Tasación</h1>
+        <p class="text-slate-600 mt-2">Completa los datos de la propiedad para obtener una valoración precisa.</p>
+      </div>
+      
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+        <PropertyForm client:load />
+      </div>
+    </div>
+  </main>
+
+  <Footer />
+</Layout>

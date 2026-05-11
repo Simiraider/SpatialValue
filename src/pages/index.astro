@@ -1,17 +1,45 @@
 ---
-// Aquí va el JavaScript/TypeScript si lo necesitas
-const nombre = "Mi Proyecto";
+import Layout from '../layouts/Layout.astro';
+import { Navbar } from '../components/Navbar';
+import { Hero } from '../components/Hero';
+import { FeatureCard } from '../components/FeatureCard';
+import { Footer } from '../components/Footer';
+import { Search, Zap, ShieldCheck } from 'lucide-react';
 ---
 
-<html lang="es">
-	<head>
-		<meta charset="utf-8" />
-		<title>{nombre}</title>
-	</head>
-	<body>
-		<h1 class="text-4xl font-bold text-purple-600">
-			¡Adiós pantalla de bienvenida, hola {nombre}!
-		</h1>
-		<p>Si ves esto en color morado, es que Tailwind también funciona.</p>
-	</body>
-</html>
+<Layout title="Inicio">
+  <Navbar client:load />
+  
+  <main>
+    <Hero client:load />
+    
+    <section id="features" class="py-24 bg-slate-50">
+      <div class="container mx-auto px-4">
+        <div class="text-center max-w-2xl mx-auto mb-16">
+          <h2 class="text-3xl font-bold text-slate-900 mb-4">¿Por qué elegir Spatial Value?</h2>
+          <p class="text-slate-600">Nuestra plataforma está diseñada para simplificar el proceso de tasación, ofreciendo resultados precisos respaldados por datos del mercado.</p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <FeatureCard 
+            title="Resultados Instantáneos"
+            description="Obtén un estimado de valor en segundos gracias a nuestro algoritmo de valoración impulsado por datos."
+            icon={Zap}
+          />
+          <FeatureCard 
+            title="Análisis Detallado"
+            description="Profundiza en las tendencias del mercado local, comparables recientes y proyecciones futuras."
+            icon={Search}
+          />
+          <FeatureCard 
+            title="Datos Confiables"
+            description="Nuestros modelos se alimentan de miles de transacciones reales para garantizar la máxima precisión."
+            icon={ShieldCheck}
+          />
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <Footer />
+</Layout>
