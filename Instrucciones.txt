@@ -1,0 +1,5 @@
+npm i 
+npm i -g vercel
+vercel login
+vercel env pull .env.local
+npm run dev
