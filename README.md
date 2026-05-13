@@ -100,3 +100,5 @@ Pulido, testeo y entrega final.
 ## Estado del proyecto
 
 Proyecto académico en desarrollo.
+
+
