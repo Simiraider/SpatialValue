@@ -1,5 +1,5 @@
 export const prerender = false;
-import sql from '../carga.js';
+import sql from '../../Backend/carga.js';
 import { argon2id } from 'hash-wasm';
 
 export async function POST({ request }) {

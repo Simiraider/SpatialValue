@@ -1,5 +1,5 @@
 export const prerender = false;
-import sql from '../carga.js';
+import sql from '../../Backend/carga.js';
 import argon2 from 'argon2';
 
 export async function POST({ request }) {
