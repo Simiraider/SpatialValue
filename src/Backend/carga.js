@@ -1,11 +1,10 @@
 import { neon } from '@neondatabase/serverless';
 
-const connectionString = import.meta.env.DATABASE_URL;
+const connectionString = import.meta.env.SpatialValueStorage_DATABASE_URL || process.env.SpatialValueStorage_DATABASE_URL;
 
 if (!connectionString) {
-  console.error("❌ ERROR: DATABASE_URL no encontrada. Verificá tu archivo .env.local");
+  throw new Error("❌ DATABASE_URL no está definida. Revisá el archivo .env.local");
 }
-
+console.log("Intentando conectar a:", connectionString ? "URL detectada (oculta por seguridad)" : "NADA");
 const sql = neon(connectionString);
-
 export default sql;

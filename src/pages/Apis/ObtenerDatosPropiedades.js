@@ -1,5 +1,5 @@
 export const prerender = false;
-import sql from '../carga.js';
+import sql from '../../Backend/carga.js';
 
 export async function GET({ url }) {
   try {
