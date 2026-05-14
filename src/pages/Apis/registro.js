@@ -10,12 +10,12 @@ export async function POST({ request }) {
       return new Response(JSON.stringify({ error: "Datos incompletos" }), { status: 400 });
     }
 
-    const existe = await sql`SELECT "ID" FROM "Usuarios" WHERE "Nombre" = ${usuario}`;
+    const existe = await sql`SELECT "id" FROM "usuarios" WHERE "nombre" = ${usuario}`;
     
     if (existe.length > 0) {
       return new Response(JSON.stringify({ error: "El usuario ya existe" }), { status: 400 });
     }
-    const existeMail = await sql`SELECT "ID" FROM "Usuarios" WHERE "email" = ${email}`;
+    const existeMail = await sql`SELECT "id" FROM "usuarios" WHERE "email" = ${email}`;
     
     if (existeMail.length > 0) {
       return new Response(JSON.stringify({ error: "El usuario ya existe" }), { status: 400 });
@@ -33,7 +33,7 @@ export async function POST({ request }) {
     });
     
     await sql`
-      INSERT INTO "Usuarios" ("Nombre", "Contraseña") 
+      INSERT INTO "usuarios" ("nombre", "contraseña", "email") 
       VALUES (${usuario}, ${hash}, ${email})
     `;
 
