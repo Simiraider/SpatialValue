@@ -15,7 +15,7 @@ export async function DELETE({ request }) {
     }
 
     const resultado = await sql`
-      DELETE FROM "Propiedades" 
+      DELETE FROM "propiedades" 
       WHERE id = ${id_propiedad} AND usuario_id = ${usuarioActual}
       RETURNING *;
     `;

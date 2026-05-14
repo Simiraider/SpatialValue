@@ -9,6 +9,7 @@ export async function POST({ request }) {
       precio, 
       direccion, 
       ciudad, 
+      barrio,
       habitaciones, 
       baños, 
       area_m2, 
@@ -23,12 +24,13 @@ export async function POST({ request }) {
     }
 
     const nuevaPropiedad = await sql`
-      INSERT INTO Propiedades (
+      INSERT INTO propiedades (
         titulo, 
         descripcion, 
         precio, 
         direccion, 
         ciudad, 
+        barrio,
         habitaciones, 
         baños, 
         area_m2, 
@@ -40,6 +42,7 @@ export async function POST({ request }) {
         ${precio}, 
         ${direccion}, 
         ${ciudad}, 
+        ${barrio}, 
         ${habitaciones}, 
         ${baños}, 
         ${area_m2}, 

@@ -9,17 +9,17 @@ export async function GET({ url }) {
 
     if (usuarioId) {
       propiedades = await sql`
-        SELECT p.*, u."Nombre" as autor 
-        FROM "Propiedades" p
-        JOIN "Usuarios" u ON p.usuario_id = u.id
+        SELECT p.*, u."nombre" as autor 
+        FROM "propiedades" p
+        JOIN "usuarios" u ON p.usuario_id = u.id
         WHERE p.usuario_id = ${usuarioId}
         ORDER BY p.creada_en DESC
       `;
     } else {
       propiedades = await sql`
-        SELECT p.*, u."Nombre" as autor 
-        FROM "Propiedades" p
-        JOIN "Usuarios" u ON p.usuario_id = u.id
+        SELECT p.*, u."nombre" as autor 
+        FROM "propiedades" p
+        JOIN "usuarios" u ON p.usuario_id = u.id
         ORDER BY p.creada_en DESC
       `;
     }

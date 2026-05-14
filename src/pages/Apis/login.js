@@ -6,20 +6,20 @@ export async function POST({ request }) {
   try {
     const { email, contraseña } = await request.json();
 
-    const users = await sql`SELECT * FROM "Usuarios" WHERE "email" = ${email}`;
+    const users = await sql`SELECT * FROM "usuarios" WHERE "email" = ${email}`;
     const user = users[0];
 
     if (!user) {
       return new Response(JSON.stringify({ error: "El correo electrónico no está registrado" }), { status: 401 });
     }
 
-    const esValida = await argon2.verify(user.Contraseña, contraseña);
+    const esValida = await argon2.verify(user.contraseña, contraseña);
 
     if (esValida) {
       return new Response(JSON.stringify({ 
         success: true, 
-        username: user.Nombre,
-        email: user.Email 
+        username: user.nombre,
+        email: user.email 
       }), { status: 200 });
     } else {
       return new Response(JSON.stringify({ error: "Contraseña incorrecta" }), { status: 401 });
