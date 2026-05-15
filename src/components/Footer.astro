@@ -1,0 +1,39 @@
+---
+import Logo from "./Logo.astro";
+
+const year = new Date().getFullYear();
+---
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="/" class="logo">
+          <Logo />
+          <span>SpatialValue</span>
+        </a>
+        <p>Tasación inmobiliaria basada en datos, no en opiniones.</p>
+      </div>
+
+      <div>
+        <h4>Empresa</h4>
+        <ul>
+          <li><a href="#">Sobre nosotros</a></li>
+          <li><a href="#">Blog</a></li>
+          <li><a href="#">Consejos de tasación</a></li>
+        </ul>
+      </div>
+
+      <div id="precios">
+        <h4>Datos y legal</h4>
+        <ul>
+          <li><a href="#">Datos en que nos basamos</a></li>
+          <li><a href="#">Normas de tasación</a></li>
+          <li><a href="#">Términos y privacidad</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="footer-bottom">&copy; {year} SpatialValue. Proyecto académico.</p>
+  </div>
+</footer>

@@ -1,0 +1,24 @@
+---
+import Logo from "./Logo.astro";
+---
+
+<header class="navbar">
+  <div class="navbar-inner">
+    <a href="/" class="logo">
+      <Logo />
+      <span>SpatialValue</span>
+    </a>
+
+    <nav aria-label="Principal">
+      <ul class="nav-links">
+        <li><a href="#metodologia">Metodología</a></li>
+        <li><a href="#precios">Precios</a></li>
+      </ul>
+    </nav>
+
+    <div class="nav-right">
+      <a href="/login" class="nav-login">Iniciar Sesión</a>
+      <a href="/tasacion" class="button-primary">Tasación Instantánea</a>
+    </div>
+  </div>
+</header>

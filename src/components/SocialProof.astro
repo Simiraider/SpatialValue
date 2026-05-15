@@ -1,0 +1,33 @@
+---
+/**
+ * Logos en la franja de confianza.
+ * - Solo tu marca: dejá un ítem con src "/logo.svg"
+ * - Partners reales: agregá PNG/SVG en public/logos/ y listalos acá
+ */
+const partners = [
+  { name: "SpatialValue", src: "/logo.svg" },
+  // { name: "RE/MAX", src: "/logos/remax.png" },
+];
+---
+
+<section class="social-proof" aria-label="Confianza">
+  <div class="social-proof-inner">
+    <p class="social-proof-metric">
+      <strong>Margen de error &lt; 5%</strong> · respaldado por datos de mercado
+    </p>
+    {partners.length > 0 && (
+      <div class="logo-row">
+        {partners.map((partner) => (
+          <img
+            class="partner-logo-img"
+            src={partner.src}
+            alt={partner.name}
+            title={partner.name}
+            width="60"
+            height="60"
+          />
+        ))}
+      </div>
+    )}
+  </div>
+</section>

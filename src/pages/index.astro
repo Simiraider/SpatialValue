@@ -1,51 +1,34 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import { Navbar } from '../components/Navbar';
-import { Hero } from '../components/Hero';
-import { FeatureCard } from '../components/FeatureCard';
-import { Footer } from '../components/Footer';
-import { Search, Zap, ShieldCheck } from 'lucide-react';
+import Layout from "../layouts/Layout.astro";
+import Navbar from "../components/Navbar.astro";
+import Hero from "../components/Hero.astro";
+import SocialProof from "../components/SocialProof.astro";
+import Features from "../components/Features.astro";
+import Steps from "../components/Steps.astro";
+import Cta from "../components/Cta.astro";
+import Footer from "../components/Footer.astro";
+import "../styles/variables.css";
+import "../styles/buttons.css";
+import "../styles/navbar.css";
+import "../styles/hero.css";
+import "../styles/social-proof.css";
+import "../styles/features.css";
+import "../styles/steps.css";
+import "../styles/cta.css";
+import "../styles/footer.css";
+import "../styles/landing-page.css";
 ---
 
 <Layout title="Inicio">
-  <Navbar client:load />
-  <section id="features" class="py-24 bg-slate-50">
-    <div class="container mx-auto px-4">
-      <div class="text-center max-w-2xl mx-auto mb-16">
-        <h1 class="text-3xl font-bold text-slate-900 mb-4">Spatial Value</h1>
-        <h2 class="text-slate-600">La nueva generación de Herramientas para tasaciones</h2>
-        <h3 class="text-slate-700">Haz tu Tasación a partir de datos, no opiniones</h3>
-      </div>
-  <main>
-    <Hero client:load />
-    
-    <section id="features" class="py-24 bg-slate-50">
-      <div class="container mx-auto px-4">
-        <div class="text-center max-w-2xl mx-auto mb-16">
-          <h2 class="text-3xl font-bold text-slate-900 mb-4">¿Por qué elegir Spatial Value?</h2>
-          <p class="text-slate-600">Nuestra plataforma está diseñada para simplificar el proceso de tasación, ofreciendo resultados precisos respaldados por datos del mercado.</p>
-        </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <FeatureCard 
-            title="Resultados Instantáneos"
-            description="Obtén un estimado de valor en segundos gracias a nuestro algoritmo de valoración impulsado por datos."
-            icon={Zap}
-          />
-          <FeatureCard 
-            title="Análisis Detallado"
-            description="Profundiza en las tendencias del mercado local, comparables recientes y proyecciones futuras."
-            icon={Search}
-          />
-          <FeatureCard 
-            title="Datos Confiables"
-            description="Nuestros modelos se alimentan de miles de transacciones reales para garantizar la máxima precisión."
-            icon={ShieldCheck}
-          />
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <Footer />
+  <div class="landing-page">
+    <Navbar />
+    <main>
+      <Hero />
+      <SocialProof />
+      <Features />
+      <Steps />
+      <Cta />
+    </main>
+    <Footer />
+  </div>
 </Layout>
