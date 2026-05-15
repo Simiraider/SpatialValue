@@ -1,0 +1,37 @@
+---
+const steps = [
+  {
+    title: "Iniciar sesión",
+    description: "Creá tu cuenta o ingresá para guardar tus tasaciones.",
+  },
+  {
+    title: "Responder las preguntas",
+    description: "Completá el formulario guiado sobre ubicación, medidas y estado técnico.",
+  },
+  {
+    title: "Ver el cálculo de la IA",
+    description: "Obtené el valor estimado al instante con datos de mercado actualizados.",
+  },
+  {
+    title: "Descargar el informe",
+    description: "Descargá el reporte redactado por la IA listo para compartir.",
+  },
+];
+---
+
+<section id="pasos" class="steps">
+  <div class="steps-inner">
+    <h2 class="steps-title">Pasos para tu tasación</h2>
+    <ol class="steps-list">
+      {steps.map((step, index) => (
+        <li class="step-item">
+          <span class="step-number">{index + 1}</span>
+          <div class="step-text">
+            <h3>{step.title}</h3>
+            <p>{step.description}</p>
+          </div>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>

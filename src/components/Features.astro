@@ -1,0 +1,39 @@
+---
+const features = [
+  {
+    iconSrc: "/icons/inspeccion.svg",
+    title: "Inspección Profunda",
+    description:
+      "Análisis con IA de imágenes y datos de la propiedad para detectar irregularidades.",
+  },
+  {
+    iconSrc: "/icons/macro.svg",
+    title: "Análisis Macroeconómico",
+    description:
+      "Variables del mercado y tendencias locales integradas en cada estimación.",
+  },
+  {
+    iconSrc: "/icons/gemelo.svg",
+    title: "Gemelo Digital",
+    description:
+      "Representación digital de la propiedad para comparar escenarios de valor.",
+  },
+];
+---
+
+<section id="metodologia" class="features">
+  <div class="features-inner">
+    <h2 class="features-title">¿Por qué SpatialValue?</h2>
+    <div class="features-grid">
+      {features.map((feature) => (
+        <article class="feature-card">
+          <div class="feature-icon">
+            <img src={feature.iconSrc} alt="" width="28" height="28" />
+          </div>
+          <h3>{feature.title}</h3>
+          <p>{feature.description}</p>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
