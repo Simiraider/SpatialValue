@@ -1,0 +1,55 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { Button } from '../components/ui/Button';
+import { ValorM2CacChart } from '../components/ReportCharts';
+import { reporteMock } from '../data/mock';
+import { Download } from 'lucide-react';
+---
+
+<Layout title="Reporte de tasación">
+  <div class="min-h-screen bg-slate-50">
+    <header class="border-b border-slate-200 bg-white px-4 py-4 sm:px-8">
+      <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4">
+        <div>
+          <p class="text-sm text-slate-500">ID: {reporteMock.id} · {reporteMock.fecha}</p>
+          <h1 class="text-xl font-bold text-slate-900">Reporte final</h1>
+        </div>
+        <Button variant="outline" className="bg-white">
+          <Download className="mr-2 h-4 w-4" />
+          Descargar PDF
+        </Button>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-5xl px-4 py-8 sm:px-8">
+      <section class="mb-8 rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <p class="text-sm font-medium text-slate-500">Valor total</p>
+        <p class="mt-2 text-4xl font-bold text-slate-900 md:text-5xl">
+          {reporteMock.valorUsd} USD
+        </p>
+        <p class="mt-1 text-2xl font-semibold text-primary-600">
+          {reporteMock.valorArs} ARS
+        </p>
+      </section>
+
+      <section class="mb-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 class="mb-1 text-lg font-semibold text-slate-900">Valor de m² / Comparación con CAC</h2>
+        <p class="mb-4 text-sm text-slate-500">{reporteMock.valorM2Usd} USD/m² estimado</p>
+        <ValorM2CacChart client:load />
+      </section>
+
+      <section class="mb-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 class="mb-4 text-lg font-semibold text-slate-900">Propiedades similares</h2>
+        <div class="flex min-h-[220px] items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-500">
+          Mapa con comparables — integración en sprint posterior (scraping / API).
+        </div>
+      </section>
+
+      <div class="flex justify-center">
+        <a href="/dashboard">
+          <Button>Volver al Dashboard</Button>
+        </a>
+      </div>
+    </main>
+  </div>
+</Layout>
