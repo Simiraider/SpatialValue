@@ -14,22 +14,92 @@ const conservationOptions = [
   { label: 'Malo', className: 'PropertyForm-conservationOption--bad' },
 ] as const;
 
+type FormData = {
+  // Paso 1 — Ubicación
+  direccion: string;
+  ciudad: string;
+  codigoPostal: string;
+  tipoUnidad: string;
+  // Paso 2 — Medidas
+  superficieCubierta: string;
+  superficieSemiCubierta: string;
+  descubierta: string;
+  ambientes: string;
+  dormitorios: string;
+  banos: string;
+  cocheras: string;
+  // Paso 3 — Peritaje
+  conservacion: 'Bueno' | 'Regular' | 'Malo';
+  calidad: string;
+  calefaccion: string;
+  antiguedadCanherias: string;
+  comentarios: string;
+};
+
+type StepErrors = Partial<Record<keyof FormData, string>>;
+
+const initialData: FormData = {
+  direccion: '',
+  ciudad: '',
+  codigoPostal: '',
+  tipoUnidad: 'Departamento',
+  superficieCubierta: '',
+  superficieSemiCubierta: '',
+  descubierta: '',
+  ambientes: '3',
+  dormitorios: '2',
+  banos: '1',
+  cocheras: '0',
+  conservacion: 'Bueno',
+  calidad: 'Buena',
+  calefaccion: 'Central',
+  antiguedadCanherias: 'Menos de 10 años',
+  comentarios: '',
+};
+
+function validateStep(step: number, data: FormData): StepErrors {
+  const errors: StepErrors = {};
+  if (step === 1) {
+    if (!data.direccion.trim()) errors.direccion = 'La dirección es obligatoria.';
+    if (!data.ciudad.trim()) errors.ciudad = 'La ciudad es obligatoria.';
+    if (!data.codigoPostal.trim()) errors.codigoPostal = 'El código postal es obligatorio.';
+  }
+  if (step === 2) {
+    if (!data.superficieCubierta || Number(data.superficieCubierta) <= 0)
+      errors.superficieCubierta = 'Ingresá la superficie cubierta.';
+  }
+  return errors;
+}
+
 export const PropertyForm = () => {
   const [step, setStep] = useState(1);
+  const [data, setData] = useState<FormData>(initialData);
+  const [errors, setErrors] = useState<StepErrors>({});
 
   const progress = (step / TOTAL_STEPS) * 100;
 
+  const update = <K extends keyof FormData>(field: K, value: FormData[K]) =>
+    setData((prev) => ({ ...prev, [field]: value }));
+
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
-    if (step < TOTAL_STEPS) {
-      setStep(step + 1);
+    const stepErrors = validateStep(step, data);
+    if (Object.keys(stepErrors).length > 0) {
+      setErrors(stepErrors);
       return;
     }
+    setErrors({});
+    if (step < TOTAL_STEPS) {
+      setStep((s) => s + 1);
+      return;
+    }
+    // Guardar draft en sessionStorage antes de navegar
+    sessionStorage.setItem('tasacion-draft', JSON.stringify(data));
     window.location.href = '/cargando';
   };
 
   return (
-    <form className="PropertyForm" onSubmit={handleNext}>
+    <form className="PropertyForm" onSubmit={handleNext} noValidate>
       <section className="PropertyForm-progress" aria-label="Progreso">
         <p className="PropertyForm-progressLabel">
           Paso {step}/{TOTAL_STEPS}
@@ -45,12 +115,37 @@ export const PropertyForm = () => {
       {step === 1 && (
         <fieldset className="PropertyForm-fieldset">
           <legend className="sr-only">Ubicación</legend>
-          <Input label="Dirección Exacta" placeholder="Ej. Av. Corrientes 1234" required />
-          <Input label="Ciudad" placeholder="Ej. Buenos Aires" required />
-          <Input label="Código Postal" placeholder="Ej. 1425" required />
+          <Input
+            label="Dirección Exacta"
+            placeholder="Ej. Av. Corrientes 1234"
+            value={data.direccion}
+            onChange={(e) => update('direccion', e.target.value)}
+            error={errors.direccion}
+            required
+          />
+          <Input
+            label="Ciudad"
+            placeholder="Ej. Buenos Aires"
+            value={data.ciudad}
+            onChange={(e) => update('ciudad', e.target.value)}
+            error={errors.ciudad}
+            required
+          />
+          <Input
+            label="Código Postal"
+            placeholder="Ej. 1425"
+            value={data.codigoPostal}
+            onChange={(e) => update('codigoPostal', e.target.value)}
+            error={errors.codigoPostal}
+            required
+          />
           <div>
             <label className="PropertyForm-label">Tipo de Unidad</label>
-            <select className="PropertyForm-select" defaultValue="Departamento" required>
+            <select
+              className="PropertyForm-select"
+              value={data.tipoUnidad}
+              onChange={(e) => update('tipoUnidad', e.target.value)}
+            >
               {unitTypes.map((type) => (
                 <option key={type} value={type}>
                   {type}
@@ -67,12 +162,36 @@ export const PropertyForm = () => {
       {step === 2 && (
         <fieldset className="PropertyForm-fieldset PropertyForm-fieldset--grid">
           <legend className="sr-only">Medidas y estructura</legend>
-          <Input label="Superficie Cubierta (m²)" type="number" placeholder="Ej. 80" required />
-          <Input label="Superficie Semi-Cubierta (m²)" type="number" placeholder="Ej. 10" />
-          <Input label="Descubierta (m²)" type="number" placeholder="Ej. 15" />
+          <Input
+            label="Superficie Cubierta (m²)"
+            type="number"
+            placeholder="Ej. 80"
+            value={data.superficieCubierta}
+            onChange={(e) => update('superficieCubierta', e.target.value)}
+            error={errors.superficieCubierta}
+            required
+          />
+          <Input
+            label="Superficie Semi-Cubierta (m²)"
+            type="number"
+            placeholder="Ej. 10"
+            value={data.superficieSemiCubierta}
+            onChange={(e) => update('superficieSemiCubierta', e.target.value)}
+          />
+          <Input
+            label="Descubierta (m²)"
+            type="number"
+            placeholder="Ej. 15"
+            value={data.descubierta}
+            onChange={(e) => update('descubierta', e.target.value)}
+          />
           <div>
             <label className="PropertyForm-label">Cantidad de Ambientes</label>
-            <select className="PropertyForm-select" defaultValue="3">
+            <select
+              className="PropertyForm-select"
+              value={data.ambientes}
+              onChange={(e) => update('ambientes', e.target.value)}
+            >
               {[1, 2, 3, 4, 5, 6].map((n) => (
                 <option key={n} value={n}>
                   {n}
@@ -82,7 +201,11 @@ export const PropertyForm = () => {
           </div>
           <div>
             <label className="PropertyForm-label">Dormitorios</label>
-            <select className="PropertyForm-select" defaultValue="2">
+            <select
+              className="PropertyForm-select"
+              value={data.dormitorios}
+              onChange={(e) => update('dormitorios', e.target.value)}
+            >
               {[0, 1, 2, 3, 4, 5].map((n) => (
                 <option key={n} value={n}>
                   {n}
@@ -92,7 +215,11 @@ export const PropertyForm = () => {
           </div>
           <div>
             <label className="PropertyForm-label">Baños</label>
-            <select className="PropertyForm-select" defaultValue="1">
+            <select
+              className="PropertyForm-select"
+              value={data.banos}
+              onChange={(e) => update('banos', e.target.value)}
+            >
               {[1, 2, 3, 4].map((n) => (
                 <option key={n} value={n}>
                   {n}
@@ -102,7 +229,11 @@ export const PropertyForm = () => {
           </div>
           <div>
             <label className="PropertyForm-label">Cocheras</label>
-            <select className="PropertyForm-select" defaultValue="0">
+            <select
+              className="PropertyForm-select"
+              value={data.cocheras}
+              onChange={(e) => update('cocheras', e.target.value)}
+            >
               {[0, 1, 2, 3].map((n) => (
                 <option key={n} value={n}>
                   {n}
@@ -124,14 +255,19 @@ export const PropertyForm = () => {
               {conservationOptions.map((opt) => (
                 <label
                   key={opt.label}
-                  className={`PropertyForm-conservationOption ${opt.className}`}
+                  className={`PropertyForm-conservationOption ${opt.className}${
+                    data.conservacion === opt.label ? ' PropertyForm-conservationOption--selected' : ''
+                  }`}
                 >
                   <input
                     type="radio"
                     name="conservacion"
                     value={opt.label}
                     className="sr-only"
-                    defaultChecked={opt.label === 'Bueno'}
+                    checked={data.conservacion === opt.label}
+                    onChange={() =>
+                      update('conservacion', opt.label as FormData['conservacion'])
+                    }
                   />
                   {opt.label}
                 </label>
@@ -140,7 +276,11 @@ export const PropertyForm = () => {
           </div>
           <div>
             <label className="PropertyForm-label">Calidad de aberturas</label>
-            <select className="PropertyForm-select" defaultValue="Buena">
+            <select
+              className="PropertyForm-select"
+              value={data.calidad}
+              onChange={(e) => update('calidad', e.target.value)}
+            >
               <option>Buena</option>
               <option>Regular</option>
               <option>Mala</option>
@@ -148,7 +288,11 @@ export const PropertyForm = () => {
           </div>
           <div>
             <label className="PropertyForm-label">Tipo de Calefacción</label>
-            <select className="PropertyForm-select" defaultValue="Central">
+            <select
+              className="PropertyForm-select"
+              value={data.calefaccion}
+              onChange={(e) => update('calefaccion', e.target.value)}
+            >
               <option>Central</option>
               <option>Individual</option>
               <option>Sin calefacción</option>
@@ -157,7 +301,11 @@ export const PropertyForm = () => {
           </div>
           <div>
             <label className="PropertyForm-label">Antigüedad de Cañerías</label>
-            <select className="PropertyForm-select" defaultValue="Menos de 10 años">
+            <select
+              className="PropertyForm-select"
+              value={data.antiguedadCanherias}
+              onChange={(e) => update('antiguedadCanherias', e.target.value)}
+            >
               <option>Menos de 10 años</option>
               <option>10–20 años</option>
               <option>Más de 20 años</option>
@@ -168,6 +316,8 @@ export const PropertyForm = () => {
             <textarea
               className="PropertyForm-textarea"
               placeholder="Observaciones sobre la estructura..."
+              value={data.comentarios}
+              onChange={(e) => update('comentarios', e.target.value)}
             />
           </div>
         </fieldset>
@@ -201,4 +351,3 @@ export const PropertyForm = () => {
     </form>
   );
 };
-
