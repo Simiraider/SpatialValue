@@ -51,7 +51,6 @@ export const UploadBox = () => {
 
   return (
     <div className="UploadBox">
-      {/* Drop zone */}
       <div
         className={`UploadBox-inner${dragging ? ' UploadBox-inner--dragging' : ''}`}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -82,10 +81,8 @@ export const UploadBox = () => {
         <p className="UploadBox-formats">PDF, JPG, PNG hasta {MAX_SIZE_MB} MB</p>
       </div>
 
-      {/* Error */}
       {error && <p className="UploadBox-error" role="alert">{error}</p>}
 
-      {/* File list */}
       {files.length > 0 && (
         <ul className="UploadBox-list" aria-label="Archivos seleccionados">
           {files.map((f, i) => (

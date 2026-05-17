@@ -1,9 +1,9 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import Logo from '../components/Logo.astro';
-import '../styles/login.css';
+import Layout from "../layouts/Layout.astro";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
+import Logo from "../components/Logo.astro";
+import "../styles/login.css";
 
 /**
  * DEMO: formulario de login sin autenticación real.
@@ -26,7 +26,6 @@ import '../styles/login.css';
       </header>
 
       <div class="LoginPage-card">
-        {/* POST evita exponer credenciales en la URL; en demo redirige igual */}
         <form class="LoginPage-form" action="/dashboard" method="POST">
           <Input
             label="Usuario / Mail"
@@ -35,24 +34,31 @@ import '../styles/login.css';
             autoComplete="email"
             required
           />
-          <Input label="Contraseña" type="password" placeholder="••••••••" autoComplete="current-password" required />
+          <Input
+            label="Contraseña"
+            type="password"
+            placeholder="••••••••"
+            autoComplete="current-password"
+            required
+          />
 
-          <Button type="submit" fullWidth client:load>
-            Ingresar
-          </Button>
+          <Button type="submit" fullWidth client:load>Ingresar</Button>
         </form>
 
         <p class="LoginPage-footer">
-          ¿No tenés cuenta?{' '}
-          <a href="#registro" class="LoginPage-link">
-            Registrate
-          </a>
+          ¿No tenés cuenta?{" "}
+          <a href="#registro" class="LoginPage-link"> Registrate</a>
           <span class="LoginPage-footerNote">(próximamente)</span>
         </p>
 
         <div class="LoginPage-google">
-          {/* TODO: integrar OAuth en sprint siguiente */}
-          <Button variant="outline" fullWidth type="button" disabled client:load>
+          <Button
+            variant="outline"
+            fullWidth
+            type="button"
+            disabled
+            client:load
+          >
             Acceso con Google (próximamente)
           </Button>
         </div>

@@ -1,8 +1,4 @@
 ---
-/**
- * Logo de marca. Pon tu archivo en public/logo.svg (o .png / .webp).
- * Si usás otro nombre, cambiá `src` abajo.
- */
 interface Props {
   class?: string;
 }
@@ -10,8 +6,4 @@ interface Props {
 const { class: className = "" } = Astro.props;
 ---
 
-<img
-  src="/logo.svg"
-  alt="SpatialValue"
-  class:list={["logo-img", className]}
-/>
+<img src="/logo.svg" alt="SpatialValue" class:list={["logo-img", className]} />
