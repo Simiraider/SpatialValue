@@ -1,0 +1,130 @@
+.ReportePage {
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+.ReportePage-header {
+  padding: 1rem 1rem;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+@media (min-width: 640px) {
+  .ReportePage-header {
+    padding: 1rem 2rem;
+  }
+}
+
+.ReportePage-headerInner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 64rem;
+  margin: 0 auto;
+}
+
+.ReportePage-meta {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.ReportePage-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ReportePage-main {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+@media (min-width: 640px) {
+  .ReportePage-main {
+    padding: 2rem;
+  }
+}
+
+.ReportePage-valueCard {
+  margin-bottom: 2rem;
+  padding: 2rem;
+  text-align: center;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.ReportePage-valueLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.ReportePage-valueUsd {
+  margin-top: 0.5rem;
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+@media (min-width: 768px) {
+  .ReportePage-valueUsd {
+    font-size: 3rem;
+  }
+}
+
+.ReportePage-valueArs {
+  margin-top: 0.25rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-primary-600);
+}
+
+.ReportePage-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.ReportePage-sectionTitle {
+  margin-bottom: 0.25rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.ReportePage-sectionSubtitle {
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.ReportePage-mapPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  font-size: 0.875rem;
+  color: #64748b;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 0.5rem;
+}
+
+.ReportePage-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.ReportePage-downloadIcon {
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.5rem;
+}

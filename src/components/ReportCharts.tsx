@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   BarChart,
   Bar,
@@ -9,6 +8,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
+import '../styles/report-charts.css';
 
 const cacData = [
   { name: 'Valor m²', valor: 2500 },
@@ -17,7 +17,7 @@ const cacData = [
 ];
 
 export const ValorM2CacChart = () => (
-  <div className="h-[280px] w-full">
+  <div className="ReportChart">
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={cacData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
@@ -30,7 +30,7 @@ export const ValorM2CacChart = () => (
         />
         <Tooltip
           contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-          formatter={(value: number) => [`$${value} USD`, '']}
+          formatter={(value) => [`$${Number(value ?? 0)} USD`, '']}
         />
         <Legend />
         <Bar dataKey="valor" fill="#2563eb" radius={[4, 4, 0, 0]} barSize={40} name="USD/m²" />
@@ -38,3 +38,6 @@ export const ValorM2CacChart = () => (
     </ResponsiveContainer>
   </div>
 );
+
+
+

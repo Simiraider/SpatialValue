@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Bell, User, Search } from 'lucide-react';
 import { tasacionesRecientes, borradores } from '../data/mock';
 import '../styles/dashboard.css';
@@ -30,7 +30,7 @@ export const DashboardApp = () => {
   return (
     <div className="dashboard-layout">
       <aside className="dashboard-sidebar" aria-label="Menú principal">
-        <a href="/" className="block px-4 pb-4 font-bold text-slate-900 no-underline">
+        <a href="/" className="dashboard-brand">
           SpatialValue
         </a>
         {sidebarItems.map((item) => (
@@ -50,44 +50,43 @@ export const DashboardApp = () => {
 
       <div className="dashboard-main">
         <header className="dashboard-topbar">
-          <div className="dashboard-search relative">
+          <div className="dashboard-search">
             <label className="sr-only" htmlFor="buscar-tasacion">
               Buscar tasación
             </label>
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="dashboard-search-icon" />
             <input
               id="buscar-tasacion"
               type="search"
               placeholder="Buscar Tasación..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              style={{ paddingLeft: '2.25rem' }}
             />
           </div>
           <div className="dashboard-topbar-actions">
             <button type="button" className="dashboard-icon-btn" aria-label="Notificaciones">
-              <Bell className="h-5 w-5" />
+              <Bell className="dashboard-icon" />
             </button>
             <button type="button" className="dashboard-icon-btn" aria-label="Perfil">
-              <User className="h-5 w-5" />
+              <User className="dashboard-icon" />
             </button>
           </div>
         </header>
 
         <main className="dashboard-content">
           {section === 'indices' && (
-            <p className="text-slate-600">Índices de mercado — disponible en un próximo sprint.</p>
+            <p className="dashboard-placeholder">Índices de mercado — disponible en un próximo sprint.</p>
           )}
           {section === 'config' && (
-            <p className="text-slate-600">Configuración — disponible en un próximo sprint.</p>
+            <p className="dashboard-placeholder">Configuración — disponible en un próximo sprint.</p>
           )}
           {(section === 'tasaciones' || section === 'borradores') && (
             <>
-              <h1 className="mb-4 text-xl font-bold text-slate-900">
+              <h1 className="dashboard-sectionTitle">
                 {section === 'borradores' ? 'Mis borradores' : 'Mis tasaciones'}
               </h1>
               {filtered.length === 0 ? (
-                <p className="text-slate-500">No hay resultados para tu búsqueda.</p>
+                <p className="dashboard-empty">No hay resultados para tu búsqueda.</p>
               ) : (
                 <div className="tasacion-grid">
                   {filtered.map((t) => (
@@ -109,3 +108,6 @@ export const DashboardApp = () => {
     </div>
   );
 };
+
+
+
