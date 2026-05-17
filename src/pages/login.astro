@@ -4,6 +4,12 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import Logo from '../components/Logo.astro';
 import '../styles/login.css';
+
+/**
+ * DEMO: formulario de login sin autenticación real.
+ * Para producción: implementar POST + sesión/JWT con middleware Astro SSR.
+ * NO usar method="GET" con credenciales en producción.
+ */
 ---
 
 <Layout title="Iniciar Sesión">
@@ -14,17 +20,22 @@ import '../styles/login.css';
           <Logo />
         </a>
         <h1 class="LoginPage-title">Iniciar sesión</h1>
+        <p class="LoginPage-demoBadge" role="note">
+          ⚠ Modo demo — cualquier credencial redirige al dashboard
+        </p>
       </header>
 
       <div class="LoginPage-card">
-        <form class="LoginPage-form" action="/dashboard" method="GET">
+        {/* POST evita exponer credenciales en la URL; en demo redirige igual */}
+        <form class="LoginPage-form" action="/dashboard" method="POST">
           <Input
             label="Usuario / Mail"
-            type="text"
+            type="email"
             placeholder="usuario@gmail.com"
+            autoComplete="email"
             required
           />
-          <Input label="Contraseña" type="password" placeholder="••••••••" required />
+          <Input label="Contraseña" type="password" placeholder="••••••••" autoComplete="current-password" required />
 
           <Button type="submit" fullWidth client:load>
             Ingresar
@@ -32,19 +43,20 @@ import '../styles/login.css';
         </form>
 
         <p class="LoginPage-footer">
-          Si no estás iniciado sesión,{' '}
-          <a href="#" class="LoginPage-link">
-            registrate
+          ¿No tenés cuenta?{' '}
+          <a href="#registro" class="LoginPage-link">
+            Registrate
           </a>
+          <span class="LoginPage-footerNote">(próximamente)</span>
         </p>
 
         <div class="LoginPage-google">
-          <Button variant="outline" fullWidth type="button" client:load>
-            Acceso con Google
+          {/* TODO: integrar OAuth en sprint siguiente */}
+          <Button variant="outline" fullWidth type="button" disabled client:load>
+            Acceso con Google (próximamente)
           </Button>
         </div>
       </div>
     </div>
   </div>
 </Layout>
-

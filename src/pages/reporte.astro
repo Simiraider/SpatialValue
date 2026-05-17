@@ -1,10 +1,15 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { Button } from '../components/ui/Button';
 import { ValorM2CacChart } from '../components/ReportCharts';
+import { ReportActions, ReportDownloadButton } from '../components/ReportActions';
 import { reporteMock } from '../data/mock';
-import { Download } from 'lucide-react';
 import '../styles/reporte.css';
+
+/**
+ * DEMO: esta página siempre muestra datos mock.
+ * Para un entorno real, leer el borrador de sessionStorage o de la API
+ * mediante una ruta dinámica /reporte/[id].astro.
+ */
 ---
 
 <Layout title="Reporte de tasación">
@@ -14,11 +19,9 @@ import '../styles/reporte.css';
         <div>
           <p class="ReportePage-meta">ID: {reporteMock.id} · {reporteMock.fecha}</p>
           <h1 class="ReportePage-title">Reporte final</h1>
+          <p class="ReportePage-demoBadge" aria-label="Modo demostración">⚠ Datos de demostración</p>
         </div>
-        <Button variant="outline" client:load>
-          <Download className="ReportePage-downloadIcon" />
-          Descargar PDF
-        </Button>
+        <ReportDownloadButton client:load />
       </div>
     </header>
 
@@ -46,11 +49,7 @@ import '../styles/reporte.css';
         </div>
       </section>
 
-      <div class="ReportePage-actions">
-        <a href="/dashboard">
-          <Button client:load>Volver al Dashboard</Button>
-        </a>
-      </div>
+      <ReportActions client:load />
     </main>
   </div>
 </Layout>

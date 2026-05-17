@@ -36,6 +36,17 @@
   color: #0f172a;
 }
 
+.ReportePage-demoBadge {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 0.375rem;
+  padding: 0.15rem 0.6rem;
+  display: inline-block;
+}
+
 .ReportePage-main {
   max-width: 64rem;
   margin: 0 auto;

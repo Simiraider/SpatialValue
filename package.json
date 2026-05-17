@@ -1,5 +1,5 @@
 {
-  "name": "",
+  "name": "spatial-value",
   "type": "module",
   "version": "0.0.1",
   "engines": {
@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@astrojs/react": "^5.0.4",
-    "@tailwindcss/vite": "^4.2.4",
+    "@tailwindcss/vite": "^4.1.8",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "astro": "^6.3.1",
@@ -23,6 +23,6 @@
     "react-dom": "^19.2.6",
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.6.0",
-    "tailwindcss": "^4.2.4"
+    "tailwindcss": "^4.1.8"
   }
 }

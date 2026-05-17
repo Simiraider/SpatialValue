@@ -71,3 +71,20 @@
 .LoginPage-google {
   margin-top: 1.5rem;
 }
+
+.LoginPage-demoBadge {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.75rem;
+}
+
+.LoginPage-footerNote {
+  display: block;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 0.25rem;
+}

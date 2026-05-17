@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Bell, User, Search } from 'lucide-react';
-import { tasacionesRecientes, borradores } from '../data/mock';
+import { tasacionesRecientes, borradores, type TasacionItem } from '../data/mock';
 import '../styles/dashboard.css';
 
 type Section = 'tasaciones' | 'borradores' | 'indices' | 'config';
@@ -11,6 +11,11 @@ const sidebarItems: { id: Section; label: string }[] = [
   { id: 'indices', label: 'Índices de Mercado' },
   { id: 'config', label: 'Configuración' },
 ];
+
+const statusLabel: Record<TasacionItem['status'], string> = {
+  completada: 'Completada',
+  borrador: 'Borrador',
+};
 
 export const DashboardApp = () => {
   const [section, setSection] = useState<Section>('tasaciones');
@@ -27,25 +32,27 @@ export const DashboardApp = () => {
     t.address.toLowerCase().includes(query.toLowerCase())
   );
 
+  const isSearching = query.trim().length > 0;
+
   return (
     <div className="dashboard-layout">
       <aside className="dashboard-sidebar" aria-label="Menú principal">
         <a href="/" className="dashboard-brand">
           SpatialValue
         </a>
-        {sidebarItems.map((item) => (
-          <a
-            key={item.id}
-            href="#"
-            className={section === item.id ? 'active' : ''}
-            onClick={(e) => {
-              e.preventDefault();
-              setSection(item.id);
-            }}
-          >
-            {item.label}
-          </a>
-        ))}
+        <nav aria-label="Secciones">
+          {sidebarItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`dashboard-nav-btn${section === item.id ? ' active' : ''}`}
+              aria-current={section === item.id ? 'page' : undefined}
+              onClick={() => setSection(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
       </aside>
 
       <div className="dashboard-main">
@@ -86,12 +93,25 @@ export const DashboardApp = () => {
                 {section === 'borradores' ? 'Mis borradores' : 'Mis tasaciones'}
               </h1>
               {filtered.length === 0 ? (
-                <p className="dashboard-empty">No hay resultados para tu búsqueda.</p>
+                <p className="dashboard-empty">
+                  {isSearching
+                    ? 'No hay resultados para tu búsqueda.'
+                    : 'Todavía no tenés tasaciones aquí. ¡Creá una nueva!'}
+                </p>
               ) : (
                 <div className="tasacion-grid">
                   {filtered.map((t) => (
-                    <a key={t.id} href="/reporte" className="tasacion-card">
-                      <h3>{t.address}</h3>
+                    <a
+                      key={t.id}
+                      href={`/reporte?id=${t.id}`}
+                      className={`tasacion-card tasacion-card--${t.status}`}
+                    >
+                      <div className="tasacion-card-header">
+                        <h3>{t.address}</h3>
+                        <span className={`tasacion-status tasacion-status--${t.status}`}>
+                          {statusLabel[t.status]}
+                        </span>
+                      </div>
                       <p>{t.value}</p>
                     </a>
                   ))}
@@ -108,6 +128,3 @@ export const DashboardApp = () => {
     </div>
   );
 };
-
-
-
