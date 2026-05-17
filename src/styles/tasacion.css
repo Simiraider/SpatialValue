@@ -1,0 +1,44 @@
+.TasacionPage-header {
+  padding: 1rem;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.TasacionPage-headerInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+.TasacionPage-brand {
+  font-weight: 700;
+  color: #0f172a;
+  text-decoration: none;
+}
+
+.TasacionPage-subtitle {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.TasacionPage-main {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.TasacionPage-card {
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+@media (min-width: 768px) {
+  .TasacionPage-card {
+    padding: 2rem;
+  }
+}

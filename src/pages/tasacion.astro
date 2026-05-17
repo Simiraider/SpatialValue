@@ -1,18 +1,19 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { PropertyForm } from '../components/PropertyForm';
+import '../styles/tasacion.css';
 ---
 
 <Layout title="Nueva Tasación">
-  <header class="border-b border-slate-200 bg-white px-4 py-4">
-    <div class="mx-auto flex max-w-2xl items-center justify-between">
-      <a href="/dashboard" class="font-bold text-slate-900 no-underline">SpatialValue</a>
-      <span class="text-sm text-slate-500">Nueva tasación</span>
+  <header class="TasacionPage-header">
+    <div class="TasacionPage-headerInner">
+      <a href="/dashboard" class="TasacionPage-brand">SpatialValue</a>
+      <span class="TasacionPage-subtitle">Nueva tasación</span>
     </div>
   </header>
 
-  <main class="mx-auto max-w-2xl px-4 py-8">
-    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
+  <main class="TasacionPage-main">
+    <div class="TasacionPage-card">
       <PropertyForm client:load />
     </div>
   </main>

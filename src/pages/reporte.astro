@@ -4,50 +4,51 @@ import { Button } from '../components/ui/Button';
 import { ValorM2CacChart } from '../components/ReportCharts';
 import { reporteMock } from '../data/mock';
 import { Download } from 'lucide-react';
+import '../styles/reporte.css';
 ---
 
 <Layout title="Reporte de tasación">
-  <div class="min-h-screen bg-slate-50">
-    <header class="border-b border-slate-200 bg-white px-4 py-4 sm:px-8">
-      <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4">
+  <div class="ReportePage">
+    <header class="ReportePage-header">
+      <div class="ReportePage-headerInner">
         <div>
-          <p class="text-sm text-slate-500">ID: {reporteMock.id} · {reporteMock.fecha}</p>
-          <h1 class="text-xl font-bold text-slate-900">Reporte final</h1>
+          <p class="ReportePage-meta">ID: {reporteMock.id} · {reporteMock.fecha}</p>
+          <h1 class="ReportePage-title">Reporte final</h1>
         </div>
-        <Button variant="outline" className="bg-white">
-          <Download className="mr-2 h-4 w-4" />
+        <Button variant="outline" client:load>
+          <Download className="ReportePage-downloadIcon" />
           Descargar PDF
         </Button>
       </div>
     </header>
 
-    <main class="mx-auto max-w-5xl px-4 py-8 sm:px-8">
-      <section class="mb-8 rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-        <p class="text-sm font-medium text-slate-500">Valor total</p>
-        <p class="mt-2 text-4xl font-bold text-slate-900 md:text-5xl">
+    <main class="ReportePage-main">
+      <section class="ReportePage-valueCard">
+        <p class="ReportePage-valueLabel">Valor total</p>
+        <p class="ReportePage-valueUsd">
           {reporteMock.valorUsd} USD
         </p>
-        <p class="mt-1 text-2xl font-semibold text-primary-600">
+        <p class="ReportePage-valueArs">
           {reporteMock.valorArs} ARS
         </p>
       </section>
 
-      <section class="mb-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 class="mb-1 text-lg font-semibold text-slate-900">Valor de m² / Comparación con CAC</h2>
-        <p class="mb-4 text-sm text-slate-500">{reporteMock.valorM2Usd} USD/m² estimado</p>
+      <section class="ReportePage-section">
+        <h2 class="ReportePage-sectionTitle">Valor de m² / Comparación con CAC</h2>
+        <p class="ReportePage-sectionSubtitle">{reporteMock.valorM2Usd} USD/m² estimado</p>
         <ValorM2CacChart client:load />
       </section>
 
-      <section class="mb-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 class="mb-4 text-lg font-semibold text-slate-900">Propiedades similares</h2>
-        <div class="flex min-h-[220px] items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-500">
+      <section class="ReportePage-section">
+        <h2 class="ReportePage-sectionTitle">Propiedades similares</h2>
+        <div class="ReportePage-mapPlaceholder">
           Mapa con comparables — integración en sprint posterior (scraping / API).
         </div>
       </section>
 
-      <div class="flex justify-center">
+      <div class="ReportePage-actions">
         <a href="/dashboard">
-          <Button>Volver al Dashboard</Button>
+          <Button client:load>Volver al Dashboard</Button>
         </a>
       </div>
     </main>

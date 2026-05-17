@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { UploadBox } from './UploadBox';
-import { cn } from '../lib/utils';
+import '../styles/property-form.css';
 
 const TOTAL_STEPS = 4;
 
 const unitTypes = ['Casa', 'Departamento', 'Local', 'Terreno'];
 
-const selectClass =
-  'flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600';
+const conservationOptions = [
+  { label: 'Bueno', className: 'PropertyForm-conservationOption--good' },
+  { label: 'Regular', className: 'PropertyForm-conservationOption--regular' },
+  { label: 'Malo', className: 'PropertyForm-conservationOption--bad' },
+] as const;
 
 export const PropertyForm = () => {
   const [step, setStep] = useState(1);
@@ -26,28 +29,28 @@ export const PropertyForm = () => {
   };
 
   return (
-    <form className="space-y-8" onSubmit={handleNext}>
-      <section className="space-y-2" aria-label="Progreso">
-        <p className="text-sm font-medium text-slate-600">
+    <form className="PropertyForm" onSubmit={handleNext}>
+      <section className="PropertyForm-progress" aria-label="Progreso">
+        <p className="PropertyForm-progressLabel">
           Paso {step}/{TOTAL_STEPS}
         </p>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+        <div className="PropertyForm-progressTrack">
           <div
-            className="h-full rounded-full bg-primary-600 transition-all duration-300"
+            className="PropertyForm-progressBar"
             style={{ width: `${progress}%` }}
           />
         </div>
       </section>
 
       {step === 1 && (
-        <fieldset className="space-y-4">
+        <fieldset className="PropertyForm-fieldset">
           <legend className="sr-only">Ubicación</legend>
           <Input label="Dirección Exacta" placeholder="Ej. Av. Corrientes 1234" required />
           <Input label="Ciudad" placeholder="Ej. Buenos Aires" required />
           <Input label="Código Postal" placeholder="Ej. 1425" required />
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Tipo de Unidad</label>
-            <select className={selectClass} defaultValue="Departamento" required>
+            <label className="PropertyForm-label">Tipo de Unidad</label>
+            <select className="PropertyForm-select" defaultValue="Departamento" required>
               {unitTypes.map((type) => (
                 <option key={type} value={type}>
                   {type}
@@ -55,21 +58,21 @@ export const PropertyForm = () => {
               ))}
             </select>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+          <div className="PropertyForm-mapPlaceholder">
             Mapa interactivo — se integrará con API de mapas en un sprint posterior.
           </div>
         </fieldset>
       )}
 
       {step === 2 && (
-        <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <fieldset className="PropertyForm-fieldset PropertyForm-fieldset--grid">
           <legend className="sr-only">Medidas y estructura</legend>
           <Input label="Superficie Cubierta (m²)" type="number" placeholder="Ej. 80" required />
           <Input label="Superficie Semi-Cubierta (m²)" type="number" placeholder="Ej. 10" />
           <Input label="Descubierta (m²)" type="number" placeholder="Ej. 15" />
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Cantidad de Ambientes</label>
-            <select className={selectClass} defaultValue="3">
+            <label className="PropertyForm-label">Cantidad de Ambientes</label>
+            <select className="PropertyForm-select" defaultValue="3">
               {[1, 2, 3, 4, 5, 6].map((n) => (
                 <option key={n} value={n}>
                   {n}
@@ -78,8 +81,8 @@ export const PropertyForm = () => {
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Dormitorios</label>
-            <select className={selectClass} defaultValue="2">
+            <label className="PropertyForm-label">Dormitorios</label>
+            <select className="PropertyForm-select" defaultValue="2">
               {[0, 1, 2, 3, 4, 5].map((n) => (
                 <option key={n} value={n}>
                   {n}
@@ -88,8 +91,8 @@ export const PropertyForm = () => {
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Baños</label>
-            <select className={selectClass} defaultValue="1">
+            <label className="PropertyForm-label">Baños</label>
+            <select className="PropertyForm-select" defaultValue="1">
               {[1, 2, 3, 4].map((n) => (
                 <option key={n} value={n}>
                   {n}
@@ -98,8 +101,8 @@ export const PropertyForm = () => {
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Cocheras</label>
-            <select className={selectClass} defaultValue="0">
+            <label className="PropertyForm-label">Cocheras</label>
+            <select className="PropertyForm-select" defaultValue="0">
               {[0, 1, 2, 3].map((n) => (
                 <option key={n} value={n}>
                   {n}
@@ -111,22 +114,17 @@ export const PropertyForm = () => {
       )}
 
       {step === 3 && (
-        <fieldset className="space-y-5">
+        <fieldset className="PropertyForm-fieldset PropertyForm-fieldset--spaced">
           <legend className="sr-only">Peritaje técnico</legend>
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Estado de Conservación</label>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { label: 'Bueno', color: 'border-green-500 bg-green-50 text-green-800' },
-                { label: 'Regular', color: 'border-amber-500 bg-amber-50 text-amber-800' },
-                { label: 'Malo', color: 'border-red-500 bg-red-50 text-red-800' },
-              ].map((opt) => (
+            <label className="PropertyForm-label PropertyForm-label--group">
+              Estado de Conservación
+            </label>
+            <div className="PropertyForm-conservationGroup">
+              {conservationOptions.map((opt) => (
                 <label
                   key={opt.label}
-                  className={cn(
-                    'cursor-pointer rounded-lg border-2 px-4 py-2 text-sm font-medium has-[:checked]:ring-2 has-[:checked]:ring-primary-600',
-                    opt.color
-                  )}
+                  className={`PropertyForm-conservationOption ${opt.className}`}
                 >
                   <input
                     type="radio"
@@ -141,16 +139,16 @@ export const PropertyForm = () => {
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Calidad de aberturas</label>
-            <select className={selectClass} defaultValue="Buena">
+            <label className="PropertyForm-label">Calidad de aberturas</label>
+            <select className="PropertyForm-select" defaultValue="Buena">
               <option>Buena</option>
               <option>Regular</option>
               <option>Mala</option>
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Tipo de Calefacción</label>
-            <select className={selectClass} defaultValue="Central">
+            <label className="PropertyForm-label">Tipo de Calefacción</label>
+            <select className="PropertyForm-select" defaultValue="Central">
               <option>Central</option>
               <option>Individual</option>
               <option>Sin calefacción</option>
@@ -158,17 +156,17 @@ export const PropertyForm = () => {
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Antigüedad de Cañerías</label>
-            <select className={selectClass} defaultValue="Menos de 10 años">
+            <label className="PropertyForm-label">Antigüedad de Cañerías</label>
+            <select className="PropertyForm-select" defaultValue="Menos de 10 años">
               <option>Menos de 10 años</option>
               <option>10–20 años</option>
               <option>Más de 20 años</option>
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Comentarios Adicionales</label>
+            <label className="PropertyForm-label">Comentarios Adicionales</label>
             <textarea
-              className="min-h-[100px] w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+              className="PropertyForm-textarea"
               placeholder="Observaciones sobre la estructura..."
             />
           </div>
@@ -176,9 +174,9 @@ export const PropertyForm = () => {
       )}
 
       {step === 4 && (
-        <fieldset className="space-y-4">
+        <fieldset className="PropertyForm-fieldset">
           <legend className="sr-only">Multimedia</legend>
-          <p className="text-sm text-slate-600">
+          <p className="PropertyForm-hint">
             Fotos de fachada o ambientes (opcional). Subir imágenes mejora la precisión del algoritmo en futuros
             sprints.
           </p>
@@ -186,7 +184,7 @@ export const PropertyForm = () => {
         </fieldset>
       )}
 
-      <div className="flex justify-between gap-3 pt-4">
+      <div className="PropertyForm-actions">
         {step > 1 ? (
           <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
             Anterior
@@ -196,7 +194,7 @@ export const PropertyForm = () => {
             Cancelar
           </Button>
         )}
-        <Button type="submit" className="ml-auto">
+        <Button type="submit" className="PropertyForm-submit">
           {step === TOTAL_STEPS ? 'Finalizar y Calcular' : 'Siguiente'}
         </Button>
       </div>

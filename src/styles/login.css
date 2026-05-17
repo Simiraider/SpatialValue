@@ -1,0 +1,73 @@
+.LoginPage {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 3rem 1rem;
+  background: #f8fafc;
+}
+
+.LoginPage-inner {
+  width: 100%;
+  max-width: 28rem;
+  margin: 0 auto;
+}
+
+.LoginPage-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.LoginPage-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  text-decoration: none;
+}
+
+.LoginPage-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.LoginPage-card {
+  padding: 2rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.LoginPage-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.LoginPage-footer {
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+  text-align: center;
+  color: #475569;
+}
+
+.LoginPage-link {
+  font-weight: 500;
+  color: var(--color-primary-600);
+  text-decoration: none;
+}
+
+.LoginPage-link:hover {
+  color: var(--color-primary-500);
+}
+
+.LoginPage-google {
+  margin-top: 1.5rem;
+}

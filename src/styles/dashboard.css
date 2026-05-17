@@ -31,6 +31,34 @@
   color: #1d4ed8;
 }
 
+.dashboard-brand {
+  display: block;
+  padding: 0 1rem 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  text-decoration: none;
+}
+
+.dashboard-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.dashboard-sectionTitle {
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dashboard-placeholder {
+  color: #475569;
+}
+
+.dashboard-empty {
+  color: #64748b;
+}
+
 .dashboard-main {
   flex: 1;
   display: flex;
@@ -50,6 +78,7 @@
 .dashboard-search {
   flex: 1;
   max-width: 420px;
+  position: relative;
 }
 
 .dashboard-search input {
@@ -57,8 +86,19 @@
   height: 40px;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 0 1rem;
+  padding: 0 1rem 0 2.25rem;
   font-size: 0.9rem;
+}
+
+.dashboard-search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  width: 1rem;
+  height: 1rem;
+  color: #94a3b8;
+  pointer-events: none;
+  transform: translateY(-50%);
 }
 
 .dashboard-topbar-actions {

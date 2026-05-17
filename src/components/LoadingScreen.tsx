@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, Loader2 } from 'lucide-react';
+import '../styles/loading-screen.css';
 
 const steps = [
   'Verificando precios de mercado',
@@ -25,31 +26,32 @@ export const LoadingScreen = () => {
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4">
-      <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-full border-4 border-primary-100 bg-white shadow-sm">
-        <Loader2 className="h-10 w-10 animate-spin text-primary-600" />
+    <section className="LoadingScreen">
+      <div className="LoadingScreen-spinnerWrap">
+        <Loader2 className="LoadingScreen-spinner" />
       </div>
-      <h1 className="text-2xl font-bold text-slate-900">Cargando...</h1>
-      <ul className="mt-8 w-full max-w-sm space-y-3">
+      <h1 className="LoadingScreen-title">Cargando...</h1>
+      <ul className="LoadingScreen-steps">
         {steps.map((label, i) => {
           const done = completed > i;
           return (
             <li
               key={label}
-              className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-sm ${
-                done ? 'border-green-200 bg-green-50 text-green-800' : 'border-slate-200 bg-white text-slate-600'
-              }`}
+              className={done ? 'LoadingScreen-step LoadingScreen-step--done' : 'LoadingScreen-step'}
             >
               {done ? (
-                <Check className="h-5 w-5 shrink-0 text-green-600" />
+                <Check className="LoadingScreen-stepIcon" />
               ) : (
-                <span className="h-5 w-5 shrink-0 rounded-full border-2 border-slate-300" />
+                <span className="LoadingScreen-stepPending" />
               )}
               {label}
             </li>
           );
         })}
       </ul>
-    </div>
+    </section>
   );
 };
+
+
+
