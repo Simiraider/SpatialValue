@@ -15,12 +15,10 @@ const conservationOptions = [
 ] as const;
 
 type FormData = {
-  // Paso 1 — Ubicación
   direccion: string;
   ciudad: string;
   codigoPostal: string;
   tipoUnidad: string;
-  // Paso 2 — Medidas
   superficieCubierta: string;
   superficieSemiCubierta: string;
   descubierta: string;
@@ -28,7 +26,6 @@ type FormData = {
   dormitorios: string;
   banos: string;
   cocheras: string;
-  // Paso 3 — Peritaje
   conservacion: 'Bueno' | 'Regular' | 'Malo';
   calidad: string;
   calefaccion: string;
@@ -93,7 +90,6 @@ export const PropertyForm = () => {
       setStep((s) => s + 1);
       return;
     }
-    // Guardar draft en sessionStorage antes de navegar
     sessionStorage.setItem('tasacion-draft', JSON.stringify(data));
     window.location.href = '/cargando';
   };
@@ -255,9 +251,8 @@ export const PropertyForm = () => {
               {conservationOptions.map((opt) => (
                 <label
                   key={opt.label}
-                  className={`PropertyForm-conservationOption ${opt.className}${
-                    data.conservacion === opt.label ? ' PropertyForm-conservationOption--selected' : ''
-                  }`}
+                  className={`PropertyForm-conservationOption ${opt.className}${data.conservacion === opt.label ? ' PropertyForm-conservationOption--selected' : ''
+                    }`}
                 >
                   <input
                     type="radio"

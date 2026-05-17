@@ -1,15 +1,12 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import { ValorM2CacChart } from '../components/ReportCharts';
-import { ReportActions, ReportDownloadButton } from '../components/ReportActions';
-import { reporteMock } from '../data/mock';
-import '../styles/reporte.css';
-
-/**
- * DEMO: esta página siempre muestra datos mock.
- * Para un entorno real, leer el borrador de sessionStorage o de la API
- * mediante una ruta dinámica /reporte/[id].astro.
- */
+import Layout from "../layouts/Layout.astro";
+import { ValorM2CacChart } from "../components/ReportCharts";
+import {
+  ReportActions,
+  ReportDownloadButton,
+} from "../components/ReportActions";
+import { reporteMock } from "../data/mock";
+import "../styles/reporte.css";
 ---
 
 <Layout title="Reporte de tasación">
@@ -17,9 +14,13 @@ import '../styles/reporte.css';
     <header class="ReportePage-header">
       <div class="ReportePage-headerInner">
         <div>
-          <p class="ReportePage-meta">ID: {reporteMock.id} · {reporteMock.fecha}</p>
+          <p class="ReportePage-meta">
+            ID: {reporteMock.id} · {reporteMock.fecha}
+          </p>
           <h1 class="ReportePage-title">Reporte final</h1>
-          <p class="ReportePage-demoBadge" aria-label="Modo demostración">⚠ Datos de demostración</p>
+          <p class="ReportePage-demoBadge" aria-label="Modo demostración">
+            ⚠ Datos de demostración
+          </p>
         </div>
         <ReportDownloadButton client:load />
       </div>
@@ -37,15 +38,20 @@ import '../styles/reporte.css';
       </section>
 
       <section class="ReportePage-section">
-        <h2 class="ReportePage-sectionTitle">Valor de m² / Comparación con CAC</h2>
-        <p class="ReportePage-sectionSubtitle">{reporteMock.valorM2Usd} USD/m² estimado</p>
+        <h2 class="ReportePage-sectionTitle">
+          Valor de m² / Comparación con CAC
+        </h2>
+        <p class="ReportePage-sectionSubtitle">
+          {reporteMock.valorM2Usd} USD/m² estimado
+        </p>
         <ValorM2CacChart client:load />
       </section>
 
       <section class="ReportePage-section">
         <h2 class="ReportePage-sectionTitle">Propiedades similares</h2>
         <div class="ReportePage-mapPlaceholder">
-          Mapa con comparables — integración en sprint posterior (scraping / API).
+          Mapa con comparables — integración en sprint posterior (scraping /
+          API).
         </div>
       </section>
 

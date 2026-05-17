@@ -1,10 +1,7 @@
 import { Download, ArrowLeft } from 'lucide-react';
 import { Button } from './ui/Button';
 
-/**
- * ReportActions — botones del reporte agrupados en una sola isla React.
- * Evita anidar <button> dentro de <a> y consolida islas independientes.
- */
+
 export const ReportActions = () => {
   return (
     <div className="ReportePage-actions">
@@ -22,7 +19,6 @@ export const ReportActions = () => {
 
 export const ReportDownloadButton = () => {
   const handleDownload = () => {
-    // TODO: integrar generación de PDF real en un sprint posterior
     window.print();
   };
 
