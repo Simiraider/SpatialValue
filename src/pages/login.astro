@@ -4,12 +4,6 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import Logo from "../components/Logo.astro";
 import "../styles/login.css";
-
-/**
- * DEMO: formulario de login sin autenticación real.
- * Para producción: implementar POST + sesión/JWT con middleware Astro SSR.
- * NO usar method="GET" con credenciales en producción.
- */
 ---
 
 <Layout title="Iniciar Sesión">
@@ -20,14 +14,15 @@ import "../styles/login.css";
           <Logo />
         </a>
         <h1 class="LoginPage-title">Iniciar sesión</h1>
-        <p class="LoginPage-demoBadge" role="note">
-          ⚠ Modo demo — cualquier credencial redirige al dashboard
+        <p class="LoginPage-demoBadge" id="mensaje-estado" role="note">
+          Ingresá tus credenciales para conectar a la base de datos
         </p>
       </header>
 
       <div class="LoginPage-card">
-        <form class="LoginPage-form" action="/dashboard" method="POST">
+        <form class="LoginPage-form" id="loginForm">
           <Input
+            id="emailInput"
             label="Usuario / Mail"
             type="email"
             placeholder="usuario@gmail.com"
@@ -35,6 +30,7 @@ import "../styles/login.css";
             required
           />
           <Input
+            id="passwordInput"
             label="Contraseña"
             type="password"
             placeholder="••••••••"
@@ -65,4 +61,54 @@ import "../styles/login.css";
       </div>
     </div>
   </div>
+
+  <script>
+    const form = document.getElementById('loginForm') as HTMLFormElement;
+    const mensajeEstado = document.getElementById('mensaje-estado') as HTMLElement;
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault(); // Evita que la página se recargue automáticamente
+
+      // Capturamos los elementos input por su ID
+      const emailElement = document.getElementById('emailInput') as HTMLInputElement;
+      const passwordElement = document.getElementById('passwordInput') as HTMLInputElement;
+
+      const body = {
+        email: emailElement.value,
+        contraseña: passwordElement.value
+      };
+
+      try {
+        mensajeEstado.innerText = "Verificando credenciales...";
+        mensajeEstado.style.color = "#3b82f6"; // Azul
+
+        // Enviamos la petición POST a tu API real
+        const res = await fetch('/Apis/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          mensajeEstado.innerText = "¡Éxito! Redirigiendo...";
+          mensajeEstado.style.color = "#10b981"; // Verde
+          
+          // Como el backend devolvió el Set-Cookie, el navegador ya guardó la sesión.
+          // Ahora redirigimos de forma segura por JavaScript.
+          window.location.href = '/'; 
+        } else {
+          // Si el backend da error (401, 404, etc), lo mostramos en pantalla
+          mensajeEstado.innerText = `❌ ${data.error || 'Error al iniciar sesión'}`;
+          mensajeEstado.style.color = "#ef4444"; // Rojo
+        }
+
+      } catch (error) {
+        console.error("Error en la petición:", error);
+        mensajeEstado.innerText = "❌ Error de conexión con el servidor.";
+        mensajeEstado.style.color = "#ef4444";
+      }
+    });
+  </script>
 </Layout>

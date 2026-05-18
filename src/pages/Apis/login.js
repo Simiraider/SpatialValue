@@ -33,7 +33,7 @@ export async function POST({ request }) {
 
       response.headers.append(
         "Set-Cookie", 
-        `usuario_id=${user.id}; Path=/; Max-Age=1800; SameSite=Lax`
+        `usuario_id=${user.id}; Path=/; Max-Age=1800; SameSite=Lax; Secure`
       );
 
       return response;
