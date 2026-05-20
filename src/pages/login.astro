@@ -14,15 +14,14 @@ import "../styles/login.css";
           <Logo />
         </a>
         <h1 class="LoginPage-title">Iniciar sesión</h1>
-        <p class="LoginPage-demoBadge" id="mensaje-estado" role="note">
-          Ingresá tus credenciales para conectar a la base de datos
+        <p class="LoginPage-demoBadge" role="note">
+          ⚠ Modo demo — cualquier credencial redirige al dashboard
         </p>
       </header>
 
       <div class="LoginPage-card">
-        <form class="LoginPage-form" id="loginForm">
+        <form class="LoginPage-form" action="/dashboard" method="POST">
           <Input
-            id="emailInput"
             label="Usuario / Mail"
             type="email"
             placeholder="usuario@gmail.com"
@@ -30,7 +29,6 @@ import "../styles/login.css";
             required
           />
           <Input
-            id="passwordInput"
             label="Contraseña"
             type="password"
             placeholder="••••••••"
@@ -43,8 +41,7 @@ import "../styles/login.css";
 
         <p class="LoginPage-footer">
           ¿No tenés cuenta?{" "}
-          <a href="#registro" class="LoginPage-link"> Registrate</a>
-          <span class="LoginPage-footerNote">(próximamente)</span>
+          <a href="/registro" class="LoginPage-link">Registrate</a>
         </p>
 
         <div class="LoginPage-google">
