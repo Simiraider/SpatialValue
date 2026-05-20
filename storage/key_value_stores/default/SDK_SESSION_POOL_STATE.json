@@ -1,0 +1,77 @@
+{
+  "usableSessionsCount": 1,
+  "retiredSessionsCount": 0,
+  "sessions": [
+    {
+      "id": "session_klKiH7Ky1i",
+      "cookieJar": {
+        "version": "tough-cookie@6.0.1",
+        "storeType": "MemoryCookieStore",
+        "rejectPublicSuffixes": true,
+        "enableLooseMode": false,
+        "allowSpecialUseDomain": true,
+        "prefixSecurity": "silent",
+        "cookies": [
+          {
+            "key": "_properati_user_id",
+            "value": "aa4a889d-5c92-4ee2-99e5-e058335fa67c",
+            "expires": "2028-05-19T15:04:11.000Z",
+            "domain": "www.properati.com.ar",
+            "path": "/",
+            "hostOnly": true,
+            "creation": "2026-05-20T15:04:11.961Z",
+            "lastAccessed": "2026-05-20T15:04:11.962Z"
+          },
+          {
+            "key": "Origin",
+            "value": "1",
+            "expires": "2026-05-27T15:04:11.000Z",
+            "domain": "www.properati.com.ar",
+            "path": "/",
+            "hostOnly": true,
+            "creation": "2026-05-20T15:04:11.962Z",
+            "lastAccessed": "2026-05-20T15:04:11.962Z"
+          },
+          {
+            "key": "t_pvid",
+            "value": "f3f81303-fde5-4eaf-ad61-c5ed9b90affd",
+            "expires": "2028-05-19T15:04:10.000Z",
+            "domain": "www.properati.com.ar",
+            "path": "/",
+            "hostOnly": true,
+            "creation": "2026-05-20T15:04:11.962Z",
+            "lastAccessed": "2026-05-20T15:04:11.962Z"
+          },
+          {
+            "key": "t_or",
+            "value": "1",
+            "expires": "2028-05-19T15:04:10.000Z",
+            "domain": "www.properati.com.ar",
+            "path": "/",
+            "hostOnly": true,
+            "creation": "2026-05-20T15:04:11.962Z",
+            "lastAccessed": "2026-05-20T15:04:11.962Z"
+          },
+          {
+            "key": "page",
+            "value": "1",
+            "expires": "2028-05-19T15:04:10.000Z",
+            "domain": "www.properati.com.ar",
+            "path": "/",
+            "hostOnly": true,
+            "creation": "2026-05-20T15:04:11.962Z",
+            "lastAccessed": "2026-05-20T15:04:11.962Z"
+          }
+        ]
+      },
+      "userData": {},
+      "maxErrorScore": 3,
+      "errorScoreDecrement": 0.5,
+      "expiresAt": "2026-05-20T15:54:08.656Z",
+      "createdAt": "2026-05-20T15:04:08.656Z",
+      "usageCount": 1,
+      "maxUsageCount": 50,
+      "errorScore": 0
+    }
+  ]
+}
