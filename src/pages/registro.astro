@@ -1,0 +1,120 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
+import Logo from "../components/Logo.astro";
+import "../styles/registro.css";
+
+/**
+ * DEMO: formulario de registro sin autenticación real.
+ * Para producción: implementar POST + hash de contraseña + validación server-side.
+ */
+---
+
+<Layout title="Crear cuenta">
+  <div class="RegisterPage">
+    <div class="RegisterPage-inner">
+      <header class="RegisterPage-header">
+        <a href="/" class="RegisterPage-logo">
+          <Logo />
+        </a>
+        <h1 class="RegisterPage-title">Crear cuenta</h1>
+        <p class="RegisterPage-subtitle">
+          Empezá a tasar propiedades en segundos
+        </p>
+      </header>
+
+      <div class="RegisterPage-card">
+        <form class="RegisterPage-form" id="register-form" action="/dashboard" method="POST">
+          <div class="RegisterPage-row">
+            <Input
+              label="Nombre"
+              type="text"
+              id="register-nombre"
+              name="nombre"
+              placeholder="Juan"
+              autoComplete="given-name"
+              required
+            />
+            <Input
+              label="Apellido"
+              type="text"
+              id="register-apellido"
+              name="apellido"
+              placeholder="García"
+              autoComplete="family-name"
+              required
+            />
+          </div>
+
+          <Input
+            label="Email"
+            type="email"
+            id="register-email"
+            name="email"
+            placeholder="usuario@gmail.com"
+            autoComplete="email"
+            required
+          />
+
+          <Input
+            label="Contraseña"
+            type="password"
+            id="register-password"
+            name="password"
+            placeholder="Mínimo 8 caracteres"
+            autoComplete="new-password"
+            required
+          />
+
+          <Input
+            label="Confirmar contraseña"
+            type="password"
+            id="register-password-confirm"
+            name="password_confirm"
+            placeholder="Repetí tu contraseña"
+            autoComplete="new-password"
+            required
+          />
+
+          <p class="RegisterPage-terms">
+            Al registrarte aceptás nuestros{" "}
+            <a href="#" class="RegisterPage-link">Términos de uso</a>
+            {" "}y{" "}
+            <a href="#" class="RegisterPage-link">Política de privacidad</a>.
+          </p>
+
+          <Button type="submit" fullWidth client:load id="register-submit">
+            Crear cuenta
+          </Button>
+        </form>
+
+        <p class="RegisterPage-footer">
+          ¿Ya tenés cuenta?{" "}
+          <a href="/login" class="RegisterPage-link">Iniciá sesión</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  // Demo: validación básica de contraseñas coincidentes antes de enviar
+  const form = document.getElementById("register-form") as HTMLFormElement | null;
+  const pwd = document.getElementById("register-password") as HTMLInputElement | null;
+  const pwdConfirm = document.getElementById("register-password-confirm") as HTMLInputElement | null;
+
+  form?.addEventListener("submit", (e) => {
+    if (pwd && pwdConfirm && pwd.value !== pwdConfirm.value) {
+      e.preventDefault();
+      pwdConfirm.setCustomValidity("Las contraseñas no coinciden");
+      pwdConfirm.reportValidity();
+    } else {
+      pwdConfirm?.setCustomValidity("");
+    }
+  });
+
+  pwdConfirm?.addEventListener("input", () => {
+    pwdConfirm.setCustomValidity("");
+  });
+</script>

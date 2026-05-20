@@ -4,12 +4,6 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import Logo from "../components/Logo.astro";
 import "../styles/login.css";
-
-/**
- * DEMO: formulario de login sin autenticación real.
- * Para producción: implementar POST + sesión/JWT con middleware Astro SSR.
- * NO usar method="GET" con credenciales en producción.
- */
 ---
 
 <Layout title="Iniciar Sesión">
@@ -47,8 +41,7 @@ import "../styles/login.css";
 
         <p class="LoginPage-footer">
           ¿No tenés cuenta?{" "}
-          <a href="#registro" class="LoginPage-link"> Registrate</a>
-          <span class="LoginPage-footerNote">(próximamente)</span>
+          <a href="/registro" class="LoginPage-link">Registrate</a>
         </p>
 
         <div class="LoginPage-google">
