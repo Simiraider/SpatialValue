@@ -11,6 +11,9 @@
     "preview": "astro preview",
     "astro": "astro"
   },
+  "overrides": {
+    "vite": "^7"
+  },
   "dependencies": {
     "@astrojs/react": "^5.0.4",
     "@neondatabase/serverless": "^1.1.0",
