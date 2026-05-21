@@ -1,5 +1,5 @@
 {
-	"id_propiedad": "7929389763",
+	"id_propiedad": "7933616679",
 	"tipo_propiedad": "Departamento",
 	"barrio_zona": "Palermo",
 	"ambientes": null,
@@ -13,7 +13,7 @@
 	"orientacion": null,
 	"disposicion": null,
 	"cochera": false,
-	"balcon": false,
+	"balcon": true,
 	"terraza": false,
 	"patio": false,
 	"pileta": false,
@@ -21,5 +21,5 @@
 	"seguridad_24hs": false,
 	"ascensor": false,
 	"expensas_ars": 0,
-	"precio_usd": 1590
+	"precio_usd": 1270000
 }

@@ -1,9 +1,0 @@
-{
-	"id": "XVkKIZYhO0xzine",
-	"json": "{\"id\":\"XVkKIZYhO0xzine\",\"url\":\"https://www.properati.com.ar/s/capital-federal/departamento/venta\",\"loadedUrl\":\"https://www.properati.com.ar/s/capital-federal/departamento/venta\",\"uniqueKey\":\"https://www.properati.com.ar/s/capital-federal/departamento/venta\",\"method\":\"GET\",\"noRetry\":false,\"retryCount\":0,\"errorMessages\":[],\"headers\":{},\"userData\":{\"__crawlee\":{\"state\":4}},\"handledAt\":\"2026-05-20T15:04:11.990Z\"}",
-	"method": "GET",
-	"orderNo": null,
-	"retryCount": 0,
-	"uniqueKey": "https://www.properati.com.ar/s/capital-federal/departamento/venta",
-	"url": "https://www.properati.com.ar/s/capital-federal/departamento/venta"
-}

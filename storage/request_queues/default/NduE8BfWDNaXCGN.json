@@ -1,0 +1,9 @@
+{
+	"id": "NduE8BfWDNaXCGN",
+	"json": "{\"id\":\"NduE8BfWDNaXCGN\",\"url\":\"https://buenosaires.craigslist.org/apa/d/el-preferido-apartment-amenities/7932494907.html\",\"loadedUrl\":\"https://buenosaires.craigslist.org/apa/d/el-preferido-apartment-amenities/7932494907.html\",\"uniqueKey\":\"https://buenosaires.craigslist.org/apa/d/el-preferido-apartment-amenities/7932494907.html\",\"method\":\"GET\",\"noRetry\":false,\"retryCount\":0,\"errorMessages\":[],\"headers\":{},\"userData\":{\"__crawlee\":{\"crawlDepth\":1,\"state\":4}},\"handledAt\":\"2026-05-21T12:00:01.723Z\"}",
+	"method": "GET",
+	"orderNo": null,
+	"retryCount": 0,
+	"uniqueKey": "https://buenosaires.craigslist.org/apa/d/el-preferido-apartment-amenities/7932494907.html",
+	"url": "https://buenosaires.craigslist.org/apa/d/el-preferido-apartment-amenities/7932494907.html"
+}

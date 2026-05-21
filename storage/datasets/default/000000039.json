@@ -1,7 +1,7 @@
 {
-	"id_propiedad": "7929389763",
+	"id_propiedad": "7926345993",
 	"tipo_propiedad": "Departamento",
-	"barrio_zona": "Palermo",
+	"barrio_zona": "Capital Federal",
 	"ambientes": null,
 	"dormitorios": null,
 	"banos": null,
@@ -14,12 +14,12 @@
 	"disposicion": null,
 	"cochera": false,
 	"balcon": false,
-	"terraza": false,
+	"terraza": true,
 	"patio": false,
 	"pileta": false,
-	"parrilla": false,
+	"parrilla": true,
 	"seguridad_24hs": false,
 	"ascensor": false,
 	"expensas_ars": 0,
-	"precio_usd": 1590
+	"precio_usd": 900
 }

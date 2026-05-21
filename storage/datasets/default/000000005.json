@@ -1,7 +1,7 @@
 {
-	"id_propiedad": "7929389763",
+	"id_propiedad": "7934068794",
 	"tipo_propiedad": "Departamento",
-	"barrio_zona": "Palermo",
+	"barrio_zona": "Belgrano",
 	"ambientes": null,
 	"dormitorios": null,
 	"banos": null,
@@ -9,17 +9,17 @@
 	"superficie_cubierta_m2": null,
 	"estado": "Usado",
 	"anios_de_antiguedad": null,
-	"piso": null,
+	"piso": 19,
 	"orientacion": null,
 	"disposicion": null,
 	"cochera": false,
-	"balcon": false,
+	"balcon": true,
 	"terraza": false,
 	"patio": false,
 	"pileta": false,
 	"parrilla": false,
-	"seguridad_24hs": false,
+	"seguridad_24hs": true,
 	"ascensor": false,
 	"expensas_ars": 0,
-	"precio_usd": 1590
+	"precio_usd": 1400
 }
