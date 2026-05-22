@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@astrojs/react": "^5.0.4",
+    "@astrojs/vercel": "^10.0.7",
     "@neondatabase/serverless": "^1.1.0",
     "@tailwindcss/vite": "^4.1.8",
     "@types/react": "^19.2.14",
