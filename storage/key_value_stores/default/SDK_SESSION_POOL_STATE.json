@@ -3,7 +3,7 @@
   "retiredSessionsCount": 0,
   "sessions": [
     {
-      "id": "session_UfI0j2v6GF",
+      "id": "session_GnUc1KA27B",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -14,38 +14,38 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|4ccf3e9ff940b5c8cb910aec4ddd2af62ce1d337|1779364796DO8zg",
+            "value": "4|416fa81751edaf2dcf02adfcd805096a6f72c94a|1779891904l3_8E",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T11:59:57.299Z",
-            "lastAccessed": "2026-05-21T11:59:57.299Z"
+            "creation": "2026-05-27T14:25:04.243Z",
+            "lastAccessed": "2026-05-27T14:25:04.243Z"
           },
           {
             "key": "cl_search_redirected",
-            "expires": "2026-05-21T11:55:11.000Z",
+            "expires": "2026-05-27T14:25:04.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T11:59:57.304Z",
-            "lastAccessed": "2026-05-21T11:59:57.304Z"
+            "creation": "2026-05-27T14:25:04.250Z",
+            "lastAccessed": "2026-05-27T14:25:04.250Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:49:54.978Z",
-      "createdAt": "2026-05-21T11:59:54.978Z",
+      "expiresAt": "2026-05-27T15:15:01.534Z",
+      "createdAt": "2026-05-27T14:25:01.534Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_855JOcrXPe",
+      "id": "session_nMDv6LLkwH",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -56,28 +56,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|19ddf8379cdf24558468a8f333295fe63b735431|1779364798JHdaE",
+            "value": "4|04519bc3ee369f8c5450a53307b3fe4f4d5a71fc|1779891906TzV7Q",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T11:59:59.124Z",
-            "lastAccessed": "2026-05-21T11:59:59.124Z"
+            "creation": "2026-05-27T14:25:06.795Z",
+            "lastAccessed": "2026-05-27T14:25:06.795Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:49:58.859Z",
-      "createdAt": "2026-05-21T11:59:58.859Z",
+      "expiresAt": "2026-05-27T15:15:06.573Z",
+      "createdAt": "2026-05-27T14:25:06.573Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_laJoDQal32",
+      "id": "session_NVpdlmbSC8",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -88,28 +88,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|87a2f7d28879feab33e67d01dee294822908d265|1779364799lBz4k",
+            "value": "4|05d1ebc5766ac588806f111f249ec6e730ffed8c|1779891907SL_TE",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T11:59:59.834Z",
-            "lastAccessed": "2026-05-21T11:59:59.834Z"
+            "creation": "2026-05-27T14:25:07.344Z",
+            "lastAccessed": "2026-05-27T14:25:07.344Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:49:58.869Z",
-      "createdAt": "2026-05-21T11:59:58.869Z",
+      "expiresAt": "2026-05-27T15:15:06.589Z",
+      "createdAt": "2026-05-27T14:25:06.589Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_0cdiQptUdI",
+      "id": "session_j9sarjklQw",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -120,28 +120,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|e04062ef6d28f6e3998bbc6e193f48713f912c78|1779364799FVzQM",
+            "value": "4|9dd021d999c372505faa5e4b37111e6c18898075|177989190779zI8",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T11:59:59.799Z",
-            "lastAccessed": "2026-05-21T11:59:59.799Z"
+            "creation": "2026-05-27T14:25:07.406Z",
+            "lastAccessed": "2026-05-27T14:25:07.406Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:49:58.879Z",
-      "createdAt": "2026-05-21T11:59:58.879Z",
+      "expiresAt": "2026-05-27T15:15:06.609Z",
+      "createdAt": "2026-05-27T14:25:06.609Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_hFeUPsAMa4",
+      "id": "session_HIHwCXQipp",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -152,28 +152,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|eaca65cb2346d4d2c948241dc21f06fea2f9d025|1779364799AJYsk",
+            "value": "4|619e04ef2c7ac4ff5139e45f3159581e4263cb59|1779891907Mm09w",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T11:59:59.758Z",
-            "lastAccessed": "2026-05-21T11:59:59.758Z"
+            "creation": "2026-05-27T14:25:07.312Z",
+            "lastAccessed": "2026-05-27T14:25:07.312Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:49:58.888Z",
-      "createdAt": "2026-05-21T11:59:58.888Z",
+      "expiresAt": "2026-05-27T15:15:06.628Z",
+      "createdAt": "2026-05-27T14:25:06.628Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_5XAQFWbiYj",
+      "id": "session_dBUvLQS9yH",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -184,28 +184,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|6861facde0e333d397192b0cd5edc63824fc133c|1779364799BlTKY",
+            "value": "4|56c13b1cca4b6a0834880c1dfeaf71982d4431f2|1779891907tINDE",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T11:59:59.769Z",
-            "lastAccessed": "2026-05-21T11:59:59.769Z"
+            "creation": "2026-05-27T14:25:07.329Z",
+            "lastAccessed": "2026-05-27T14:25:07.329Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:49:58.896Z",
-      "createdAt": "2026-05-21T11:59:58.896Z",
+      "expiresAt": "2026-05-27T15:15:06.643Z",
+      "createdAt": "2026-05-27T14:25:06.643Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_pQq8k6CoYu",
+      "id": "session_6ResKyN5WF",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -216,28 +216,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|555a56e7ebbefd7bcde057f4275b5dae509eaac9|1779364799vTD6w",
+            "value": "4|87391a8dd9e943b8dedf8be8c07e3061de49bb3e|17798919076TXxQ",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T11:59:59.746Z",
-            "lastAccessed": "2026-05-21T11:59:59.746Z"
+            "creation": "2026-05-27T14:25:08.270Z",
+            "lastAccessed": "2026-05-27T14:25:08.270Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:49:58.905Z",
-      "createdAt": "2026-05-21T11:59:58.905Z",
+      "expiresAt": "2026-05-27T15:15:06.660Z",
+      "createdAt": "2026-05-27T14:25:06.660Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_WpBTZo1p0b",
+      "id": "session_K0c1C74wV7",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -248,28 +248,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|9bfb07c436e94b6ff75b8dee1872e1a5877dd7a3|1779364799g1DZc",
+            "value": "4|c277e7a109ad71f11f4e65d0e1caa50200495ef6|1779891907UNP6A",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T11:59:59.783Z",
-            "lastAccessed": "2026-05-21T11:59:59.783Z"
+            "creation": "2026-05-27T14:25:08.620Z",
+            "lastAccessed": "2026-05-27T14:25:08.620Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:49:58.913Z",
-      "createdAt": "2026-05-21T11:59:58.913Z",
+      "expiresAt": "2026-05-27T15:15:06.674Z",
+      "createdAt": "2026-05-27T14:25:06.674Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_KLeB40dSva",
+      "id": "session_pWAqRPOWf4",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -280,28 +280,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|4c5b31de07a141c124a2417b100d7a26f2c2deab|1779364799SBJak",
+            "value": "4|00fe2ce3d49b9c8407429dd430038a8cd5386e84|1779891907wpTxI",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T11:59:59.848Z",
-            "lastAccessed": "2026-05-21T11:59:59.848Z"
+            "creation": "2026-05-27T14:25:07.441Z",
+            "lastAccessed": "2026-05-27T14:25:07.441Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:49:58.924Z",
-      "createdAt": "2026-05-21T11:59:58.924Z",
+      "expiresAt": "2026-05-27T15:15:06.691Z",
+      "createdAt": "2026-05-27T14:25:06.691Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_dnhhdTDxgt",
+      "id": "session_BnGcckkC7G",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -312,28 +312,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|1fb2c8c7adc7d2235ee39c393b8d7d31e4b0f640|1779364799sTRWA",
+            "value": "4|ba8eba7137c800239a723e564ac7a1105ac7c353|1779891907VCeN0",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T11:59:59.811Z",
-            "lastAccessed": "2026-05-21T11:59:59.811Z"
+            "creation": "2026-05-27T14:25:07.414Z",
+            "lastAccessed": "2026-05-27T14:25:07.414Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:49:58.932Z",
-      "createdAt": "2026-05-21T11:59:58.932Z",
+      "expiresAt": "2026-05-27T15:15:06.707Z",
+      "createdAt": "2026-05-27T14:25:06.707Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_a4UERes7an",
+      "id": "session_xHZGchYATu",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -344,28 +344,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|d935c17990b4bc3fe346d0a9e8325078629f2442|1779364799iVJQA",
+            "value": "4|f028b2dabdbc61e66fd653c7f6e4e55b22cb3a95|1779891907DDyw4",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T11:59:59.823Z",
-            "lastAccessed": "2026-05-21T11:59:59.823Z"
+            "creation": "2026-05-27T14:25:07.460Z",
+            "lastAccessed": "2026-05-27T14:25:07.460Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:49:58.938Z",
-      "createdAt": "2026-05-21T11:59:58.938Z",
+      "expiresAt": "2026-05-27T15:15:06.720Z",
+      "createdAt": "2026-05-27T14:25:06.720Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_BjHtd2T7bh",
+      "id": "session_wsWCMYx46C",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -376,28 +376,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|182a3a5c39a6db3ce6c8877ad52ec6f80089dca9|1779364799RFgnY",
+            "value": "4|ab02ab994061c636fcaa696e23d8124037a79df4|1779891906Suchw",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T11:59:59.417Z",
-            "lastAccessed": "2026-05-21T11:59:59.417Z"
+            "creation": "2026-05-27T14:25:07.096Z",
+            "lastAccessed": "2026-05-27T14:25:07.096Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:49:59.190Z",
-      "createdAt": "2026-05-21T11:59:59.190Z",
+      "expiresAt": "2026-05-27T15:15:06.887Z",
+      "createdAt": "2026-05-27T14:25:06.887Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_rm9r5Fzzlf",
+      "id": "session_hQfpsGc9Ej",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -408,28 +408,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|53d39ab7779b8a388118db46a3f84804a1d80ea2|1779364799TXilI",
+            "value": "4|ab2e2ec36d56552a6660f52b1c78af1a8def819c|1779891907ye7O8",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T11:59:59.789Z",
-            "lastAccessed": "2026-05-21T11:59:59.789Z"
+            "creation": "2026-05-27T14:25:07.473Z",
+            "lastAccessed": "2026-05-27T14:25:07.473Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:49:59.488Z",
-      "createdAt": "2026-05-21T11:59:59.488Z",
+      "expiresAt": "2026-05-27T15:15:07.178Z",
+      "createdAt": "2026-05-27T14:25:07.178Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_7eTLFwFECg",
+      "id": "session_JixjhbakOy",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -440,28 +440,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|773070e67f0ddf269c07de4a36153df2b1517f03|1779364800UVDhg",
+            "value": "4|eb5af4f099ed6b2e8940bf7390af1f069f6b7b93|17798919073YsSU",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:00.446Z",
-            "lastAccessed": "2026-05-21T12:00:00.446Z"
+            "creation": "2026-05-27T14:25:07.851Z",
+            "lastAccessed": "2026-05-27T14:25:07.851Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:00.126Z",
-      "createdAt": "2026-05-21T12:00:00.126Z",
+      "expiresAt": "2026-05-27T15:15:07.643Z",
+      "createdAt": "2026-05-27T14:25:07.643Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_GZrkrvyTpa",
+      "id": "session_7NmR2SfhKk",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -472,28 +472,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|2793d10e4661b3fddc0393c96106d92c177f72d1|1779364800-00Oo",
+            "value": "4|7d9c09d9632794e3791111bf0cbda7df6f240893|1779891907GfF60",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:00.453Z",
-            "lastAccessed": "2026-05-21T12:00:00.453Z"
+            "creation": "2026-05-27T14:25:07.889Z",
+            "lastAccessed": "2026-05-27T14:25:07.889Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:00.140Z",
-      "createdAt": "2026-05-21T12:00:00.140Z",
+      "expiresAt": "2026-05-27T15:15:07.682Z",
+      "createdAt": "2026-05-27T14:25:07.682Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_LthuDyp6EG",
+      "id": "session_dCWek4z2e4",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -504,28 +504,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|3c3af19451667267d48d9e05e90c7692ec7bb325|1779364800OQpuk",
+            "value": "4|9e0f83338c9d8ab9175bf06f97b1c69cf0aa8567|1779891907NbF5Y",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:00.474Z",
-            "lastAccessed": "2026-05-21T12:00:00.474Z"
+            "creation": "2026-05-27T14:25:07.929Z",
+            "lastAccessed": "2026-05-27T14:25:07.929Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:00.143Z",
-      "createdAt": "2026-05-21T12:00:00.143Z",
+      "expiresAt": "2026-05-27T15:15:07.699Z",
+      "createdAt": "2026-05-27T14:25:07.699Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_yNN005YvDb",
+      "id": "session_GcOFQ1cHdH",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -536,28 +536,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|e6334b5114642b8869987273b2490dccdc9a341c|177936480042DTU",
+            "value": "4|bfe0925bf307b173c4b243bb085afbab0d85fe9b|1779891907gYDCM",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:00.464Z",
-            "lastAccessed": "2026-05-21T12:00:00.464Z"
+            "creation": "2026-05-27T14:25:08.020Z",
+            "lastAccessed": "2026-05-27T14:25:08.020Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:00.146Z",
-      "createdAt": "2026-05-21T12:00:00.146Z",
+      "expiresAt": "2026-05-27T15:15:07.759Z",
+      "createdAt": "2026-05-27T14:25:07.759Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_RPCNcIRUTQ",
+      "id": "session_9lFWYVIoF6",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -568,28 +568,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|fa7f0b1ab1ad8fd4ee2c0086f61565bebcf8f96f|1779364800REIqg",
+            "value": "4|f4a6e8dd93ab989e9b012ad6d88af18a7128187c|1779891907zHgKI",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:00.486Z",
-            "lastAccessed": "2026-05-21T12:00:00.486Z"
+            "creation": "2026-05-27T14:25:08.009Z",
+            "lastAccessed": "2026-05-27T14:25:08.009Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:00.157Z",
-      "createdAt": "2026-05-21T12:00:00.157Z",
+      "expiresAt": "2026-05-27T15:15:07.762Z",
+      "createdAt": "2026-05-27T14:25:07.762Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_36ALvTvgtI",
+      "id": "session_QeJoDefdH8",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -600,28 +600,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|aee92641fd9fec00a055a7ec645927e564f9e8d7|1779364800ABNes",
+            "value": "4|f003d6f531b04fe4f9438d9fed24b0a721874592|1779891907V0RZA",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:00.494Z",
-            "lastAccessed": "2026-05-21T12:00:00.494Z"
+            "creation": "2026-05-27T14:25:08.037Z",
+            "lastAccessed": "2026-05-27T14:25:08.037Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:00.160Z",
-      "createdAt": "2026-05-21T12:00:00.160Z",
+      "expiresAt": "2026-05-27T15:15:07.785Z",
+      "createdAt": "2026-05-27T14:25:07.785Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_oV503WUCtQ",
+      "id": "session_2YgpLgxRzR",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -632,28 +632,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|8863c6760c3f812481256176ced46f508d90c381|17793648004YrRs",
+            "value": "4|672b6e3495335cbae43f7ea17615703663bee24d|1779891907QLVDw",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:00.504Z",
-            "lastAccessed": "2026-05-21T12:00:00.504Z"
+            "creation": "2026-05-27T14:25:08.087Z",
+            "lastAccessed": "2026-05-27T14:25:08.087Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:00.182Z",
-      "createdAt": "2026-05-21T12:00:00.182Z",
+      "expiresAt": "2026-05-27T15:15:07.788Z",
+      "createdAt": "2026-05-27T14:25:07.788Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_E1nVmgDpGw",
+      "id": "session_UziycbEIP6",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -664,28 +664,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|16550880f90dbbaef6ac4b4240ff1f91d0c5b2a2|17793648000_rEQ",
+            "value": "4|7ef1f71f2da68ae748d75432be249189d74061c9|1779891908udbrE",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:00.513Z",
-            "lastAccessed": "2026-05-21T12:00:00.513Z"
+            "creation": "2026-05-27T14:25:08.518Z",
+            "lastAccessed": "2026-05-27T14:25:08.518Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:00.186Z",
-      "createdAt": "2026-05-21T12:00:00.186Z",
+      "expiresAt": "2026-05-27T15:15:07.793Z",
+      "createdAt": "2026-05-27T14:25:07.793Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_wXbgW4hrYf",
+      "id": "session_x3NHf0pUbi",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -696,28 +696,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|66f9bf758e18b37808a68fb611a4d373fd8ee878|1779364800IHU18",
+            "value": "4|26dae3874331724cea34829c15219383fafa95c9|17798919083fKSc",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:00.521Z",
-            "lastAccessed": "2026-05-21T12:00:00.521Z"
+            "creation": "2026-05-27T14:25:08.322Z",
+            "lastAccessed": "2026-05-27T14:25:08.322Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:00.200Z",
-      "createdAt": "2026-05-21T12:00:00.200Z",
+      "expiresAt": "2026-05-27T15:15:08.052Z",
+      "createdAt": "2026-05-27T14:25:08.052Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_mH8ewef6GT",
+      "id": "session_A3V2GGuHXI",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -728,28 +728,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|a2701803ab97981802b863316286b96e085b84e4|1779364800u6WPg",
+            "value": "4|bb294ae724159be2cd558fab124ebd933e08312f|17798919080UNH8",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:00.531Z",
-            "lastAccessed": "2026-05-21T12:00:00.531Z"
+            "creation": "2026-05-27T14:25:08.448Z",
+            "lastAccessed": "2026-05-27T14:25:08.448Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:00.210Z",
-      "createdAt": "2026-05-21T12:00:00.210Z",
+      "expiresAt": "2026-05-27T15:15:08.204Z",
+      "createdAt": "2026-05-27T14:25:08.204Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_GMbrYN7fBZ",
+      "id": "session_cA0gxmLQGY",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -760,28 +760,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|6fd7a678d6034946222f3f7deec4639cc6feb9f1|1779364800yaDBw",
+            "value": "4|9a7c0630b13c743331dbba2f8df6dba813172beb|1779891908ND1uQ",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:01.065Z",
-            "lastAccessed": "2026-05-21T12:00:01.065Z"
+            "creation": "2026-05-27T14:25:08.545Z",
+            "lastAccessed": "2026-05-27T14:25:08.545Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:00.746Z",
-      "createdAt": "2026-05-21T12:00:00.746Z",
+      "expiresAt": "2026-05-27T15:15:08.276Z",
+      "createdAt": "2026-05-27T14:25:08.276Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_Qtd6Y0nN6C",
+      "id": "session_5h4oezaroI",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -792,28 +792,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|d5eac0a75aab8210e5faab805ecefc59dbf4680d|17793648007FhIE",
+            "value": "4|387d3423a36966c299fda5f994cc65f519c5ffc3|1779891908yeCms",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:01.077Z",
-            "lastAccessed": "2026-05-21T12:00:01.077Z"
+            "creation": "2026-05-27T14:25:10.096Z",
+            "lastAccessed": "2026-05-27T14:25:10.096Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:00.751Z",
-      "createdAt": "2026-05-21T12:00:00.751Z",
+      "expiresAt": "2026-05-27T15:15:08.375Z",
+      "createdAt": "2026-05-27T14:25:08.375Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_RsixZ3pogq",
+      "id": "session_Uxj7WUXYfK",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -824,28 +824,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|eaba63148d2ec5ae1f9b0feea2ee4369ccfba2f3|1779364802-xEPU",
+            "value": "4|4541099e7ac8a7d846dff3e947d0368b288e024c|17798919095f2yw",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:02.190Z",
-            "lastAccessed": "2026-05-21T12:00:02.190Z"
+            "creation": "2026-05-27T14:25:09.440Z",
+            "lastAccessed": "2026-05-27T14:25:09.440Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:01.341Z",
-      "createdAt": "2026-05-21T12:00:01.341Z",
+      "expiresAt": "2026-05-27T15:15:09.250Z",
+      "createdAt": "2026-05-27T14:25:09.250Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_KlBk8HbraS",
+      "id": "session_M7r94MFgON",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -856,28 +856,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|0cb5d27980ac2fd2c6c17823e41ef9de45cd09f8|1779364801tlvUo",
+            "value": "4|efb7fe5d3a2de178e5203708859c119375beb83d|17798919093OBGU",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:01.553Z",
-            "lastAccessed": "2026-05-21T12:00:01.553Z"
+            "creation": "2026-05-27T14:25:09.964Z",
+            "lastAccessed": "2026-05-27T14:25:09.964Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:01.352Z",
-      "createdAt": "2026-05-21T12:00:01.352Z",
+      "expiresAt": "2026-05-27T15:15:09.270Z",
+      "createdAt": "2026-05-27T14:25:09.270Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_VdcNldeodu",
+      "id": "session_00AzEc8e4u",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -888,28 +888,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|6a6fca8216a7d3686f88de5a166a32335cbeb3e3|1779364801kcdYk",
+            "value": "4|018647737204171b2201fc74d19808f29785c164|1779891909PMbsk",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:01.561Z",
-            "lastAccessed": "2026-05-21T12:00:01.561Z"
+            "creation": "2026-05-27T14:25:09.537Z",
+            "lastAccessed": "2026-05-27T14:25:09.537Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:01.360Z",
-      "createdAt": "2026-05-21T12:00:01.360Z",
+      "expiresAt": "2026-05-27T15:15:09.284Z",
+      "createdAt": "2026-05-27T14:25:09.284Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_7jxUtBXQQg",
+      "id": "session_uCiHScgZ1g",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -920,28 +920,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|0216277c28b509909c6b5bc832268a027c18c915|1779364801ATt2U",
+            "value": "4|c81fa30f0a40e6d65a39854f5a610aac5643a27e|1779891909BRgaE",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:01.582Z",
-            "lastAccessed": "2026-05-21T12:00:01.582Z"
+            "creation": "2026-05-27T14:25:09.510Z",
+            "lastAccessed": "2026-05-27T14:25:09.510Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:01.369Z",
-      "createdAt": "2026-05-21T12:00:01.369Z",
+      "expiresAt": "2026-05-27T15:15:09.298Z",
+      "createdAt": "2026-05-27T14:25:09.298Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_Fmgdd2gmaR",
+      "id": "session_Ds0KHhHfaa",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -952,28 +952,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|ee90c4a5a442bcdfab266826d5206b9bc4d793e2|1779364801QxuIA",
+            "value": "4|6f7e3254cf3128b3dad421163ab54c6ffe629f02|17798919097EC0o",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:01.603Z",
-            "lastAccessed": "2026-05-21T12:00:01.603Z"
+            "creation": "2026-05-27T14:25:09.523Z",
+            "lastAccessed": "2026-05-27T14:25:09.523Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:01.377Z",
-      "createdAt": "2026-05-21T12:00:01.377Z",
+      "expiresAt": "2026-05-27T15:15:09.312Z",
+      "createdAt": "2026-05-27T14:25:09.312Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_zaju52I6K1",
+      "id": "session_HBUGbYSI1n",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -984,28 +984,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|1dd5599f436763da4462c7297e0c8cf2c5f00708|1779364801Kx4HM",
+            "value": "4|bc0436b1d4b77240ab2f4d2bb374f725b0c7b638|17798919092oTdM",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:01.669Z",
-            "lastAccessed": "2026-05-21T12:00:01.669Z"
+            "creation": "2026-05-27T14:25:09.594Z",
+            "lastAccessed": "2026-05-27T14:25:09.594Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:01.386Z",
-      "createdAt": "2026-05-21T12:00:01.386Z",
+      "expiresAt": "2026-05-27T15:15:09.322Z",
+      "createdAt": "2026-05-27T14:25:09.322Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_hNEl79QzwB",
+      "id": "session_ZocVADVWZl",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -1016,28 +1016,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|4e23e7fa9de6c6f4b61bc04be64e39a1268516a9|1779364801LlZVo",
+            "value": "4|b9ac9836cface86dcb407cbb5d979c581dc23e8a|177989190943M5U",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:01.659Z",
-            "lastAccessed": "2026-05-21T12:00:01.659Z"
+            "creation": "2026-05-27T14:25:09.632Z",
+            "lastAccessed": "2026-05-27T14:25:09.632Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:01.396Z",
-      "createdAt": "2026-05-21T12:00:01.396Z",
+      "expiresAt": "2026-05-27T15:15:09.333Z",
+      "createdAt": "2026-05-27T14:25:09.333Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_lswqehHx3h",
+      "id": "session_dTKvTcpMLw",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -1048,28 +1048,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|c99af02846a4775915ad1827774fb0adc8c85b0d|1779364801Ji2xQ",
+            "value": "4|063f4a469c50385a0dd73afb286abde0ada97fe7|17798919097SYEg",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:01.702Z",
-            "lastAccessed": "2026-05-21T12:00:01.702Z"
+            "creation": "2026-05-27T14:25:09.604Z",
+            "lastAccessed": "2026-05-27T14:25:09.604Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:01.403Z",
-      "createdAt": "2026-05-21T12:00:01.403Z",
+      "expiresAt": "2026-05-27T15:15:09.341Z",
+      "createdAt": "2026-05-27T14:25:09.341Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_IdxxNhOGYF",
+      "id": "session_xJYJwyDWvK",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -1080,28 +1080,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|357a54418feb43b3a24d0dd28f89ed43f393706c|1779364801LY2QY",
+            "value": "4|28fe8bb3b848bbdfe99beb5fcf35693830548820|1779891909eRxIY",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:01.687Z",
-            "lastAccessed": "2026-05-21T12:00:01.687Z"
+            "creation": "2026-05-27T14:25:09.611Z",
+            "lastAccessed": "2026-05-27T14:25:09.611Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:01.408Z",
-      "createdAt": "2026-05-21T12:00:01.408Z",
+      "expiresAt": "2026-05-27T15:15:09.349Z",
+      "createdAt": "2026-05-27T14:25:09.349Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_dUP8mIh4zA",
+      "id": "session_g9UShtecQP",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -1112,28 +1112,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|d468a301552e3be8399b5d84e87d9b24a3aeced9|1779364801hDjGk",
+            "value": "4|6bad637c88cd75d3d4ef0619cffe23370ed71779|17798919096FwCs",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:01.693Z",
-            "lastAccessed": "2026-05-21T12:00:01.693Z"
+            "creation": "2026-05-27T14:25:09.973Z",
+            "lastAccessed": "2026-05-27T14:25:09.973Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:01.413Z",
-      "createdAt": "2026-05-21T12:00:01.413Z",
+      "expiresAt": "2026-05-27T15:15:09.589Z",
+      "createdAt": "2026-05-27T14:25:09.589Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_XpTWg0AsAH",
+      "id": "session_4vs0EyZ7aA",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -1144,28 +1144,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|4acd1602d9dc6a91edd7b8180d7501a449f0914f|1779364801ylsLM",
+            "value": "4|400b494e627f9759e4b214ee2080dcc33fb1f977|17798919107l1E0",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:01.969Z",
-            "lastAccessed": "2026-05-21T12:00:01.969Z"
+            "creation": "2026-05-27T14:25:10.271Z",
+            "lastAccessed": "2026-05-27T14:25:10.271Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:01.740Z",
-      "createdAt": "2026-05-21T12:00:01.740Z",
+      "expiresAt": "2026-05-27T15:15:09.958Z",
+      "createdAt": "2026-05-27T14:25:09.958Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_5RPKkkzOOB",
+      "id": "session_gZWFtFUHhI",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -1176,28 +1176,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|493e6f0fee00120476846c08eb2d157475dc1202|1779364801arRmg",
+            "value": "4|75e2420e97039075d9b326d22e1ee47ba9e30d54|17798919103wxMg",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:02.022Z",
-            "lastAccessed": "2026-05-21T12:00:02.022Z"
+            "creation": "2026-05-27T14:25:10.281Z",
+            "lastAccessed": "2026-05-27T14:25:10.281Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:01.791Z",
-      "createdAt": "2026-05-21T12:00:01.791Z",
+      "expiresAt": "2026-05-27T15:15:09.991Z",
+      "createdAt": "2026-05-27T14:25:09.991Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_unxkhXIiSZ",
+      "id": "session_pIXlbWuinu",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -1208,28 +1208,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|a85600b93eebd89dc8828d88ef5be0837c98be60|17793648014npWc",
+            "value": "4|fa7634a86e59f4e489438bc30aee126312dc6ef5|1779891910oLmrw",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:02.068Z",
-            "lastAccessed": "2026-05-21T12:00:02.068Z"
+            "creation": "2026-05-27T14:25:10.293Z",
+            "lastAccessed": "2026-05-27T14:25:10.293Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:01.841Z",
-      "createdAt": "2026-05-21T12:00:01.841Z",
+      "expiresAt": "2026-05-27T15:15:10.004Z",
+      "createdAt": "2026-05-27T14:25:10.004Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_hrnjxnQM3N",
+      "id": "session_3KzfGf8rov",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -1240,28 +1240,28 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|fcb6b9e8982828f9a2022697861a0b2366ff113a|1779364801f-sk0",
+            "value": "4|3a493ea45c79508b17d55a83cfb51787e7485d6a|1779891910BrVBo",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:02.108Z",
-            "lastAccessed": "2026-05-21T12:00:02.108Z"
+            "creation": "2026-05-27T14:25:10.304Z",
+            "lastAccessed": "2026-05-27T14:25:10.304Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:01.867Z",
-      "createdAt": "2026-05-21T12:00:01.867Z",
+      "expiresAt": "2026-05-27T15:15:10.046Z",
+      "createdAt": "2026-05-27T14:25:10.046Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_JJdzpeean3",
+      "id": "session_tDHci0bUsu",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -1272,22 +1272,22 @@
         "cookies": [
           {
             "key": "cl_b",
-            "value": "4|3402504badc8500f35d6f796b0d2cf7a5b07aaec|1779364802vxS6c",
+            "value": "4|dfdc4c4126084c1ccaea39323bf6259e4b85cf44|177989191074pag",
             "expires": "2038-01-01T00:00:00.000Z",
             "domain": "craigslist.org",
             "path": "/",
             "secure": true,
             "hostOnly": false,
-            "creation": "2026-05-21T12:00:02.227Z",
-            "lastAccessed": "2026-05-21T12:00:02.227Z"
+            "creation": "2026-05-27T14:25:10.740Z",
+            "lastAccessed": "2026-05-27T14:25:10.740Z"
           }
         ]
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-05-21T12:50:02.011Z",
-      "createdAt": "2026-05-21T12:00:02.011Z",
+      "expiresAt": "2026-05-27T15:15:10.548Z",
+      "createdAt": "2026-05-27T14:25:10.548Z",
       "usageCount": 1,
       "maxUsageCount": 50,
       "errorScore": 0

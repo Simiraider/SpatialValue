@@ -1,12 +1,12 @@
 {
-	"id_propiedad": "7935084355",
+	"id_propiedad": "7928905327",
 	"tipo_propiedad": "Departamento",
-	"barrio_zona": "Palermo",
+	"barrio_zona": "Capital Federal",
 	"ambientes": null,
 	"dormitorios": null,
 	"banos": null,
-	"superficie_total_m2": null,
-	"superficie_cubierta_m2": null,
+	"superficie_total_m2": 35,
+	"superficie_cubierta_m2": 31,
 	"estado": "Usado",
 	"anios_de_antiguedad": null,
 	"piso": null,
@@ -21,5 +21,6 @@
 	"seguridad_24hs": false,
 	"ascensor": false,
 	"expensas_ars": 0,
-	"precio_usd": 1700
+	"precio_usd": 550,
+	"fecha_publicacion": "2026-04-20T06:52:11-0300"
 }

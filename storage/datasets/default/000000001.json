@@ -1,15 +1,15 @@
 {
-	"id_propiedad": "7929389763",
+	"id_propiedad": "7937007478",
 	"tipo_propiedad": "Departamento",
 	"barrio_zona": "Palermo",
-	"ambientes": null,
-	"dormitorios": null,
+	"ambientes": 4,
+	"dormitorios": 3,
 	"banos": null,
-	"superficie_total_m2": null,
-	"superficie_cubierta_m2": null,
+	"superficie_total_m2": 50,
+	"superficie_cubierta_m2": 45,
 	"estado": "Usado",
 	"anios_de_antiguedad": null,
-	"piso": null,
+	"piso": 1,
 	"orientacion": null,
 	"disposicion": null,
 	"cochera": false,
@@ -21,5 +21,6 @@
 	"seguridad_24hs": false,
 	"ascensor": false,
 	"expensas_ars": 0,
-	"precio_usd": 1590
+	"precio_usd": 1550,
+	"fecha_publicacion": "2026-05-27T09:55:18-0300"
 }

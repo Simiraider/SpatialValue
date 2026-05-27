@@ -1,4 +1,3 @@
-// src/pages/Apis/LicenciadoScraper.js
 import { CheerioCrawler, Dataset } from 'crawlee';
 import fs from 'fs';
 import path from 'path';
@@ -8,10 +7,10 @@ export const GET = async () => {
     const ARCHIVO_FINAL = path.join(process.cwd(), 'dataset_propiedades.json');  
 
     try {
-        console.log("🤖 [Scraper] Iniciando extracción inteligente y dirigida...");
+        console.log("🤖 [Scraper] Iniciando extracción inteligente, bilingüe y dirigida...");
         
         const crawler = new CheerioCrawler({
-            maxRequestsPerCrawl: 40, // Ampliado para cubrir suficientes muestras limpias
+            maxRequestsPerCrawl: 40, 
             
             preNavigationHooks: [
                 async ({ request, gotOptions }) => {
@@ -31,118 +30,150 @@ export const GET = async () => {
                 const urlActual = request.url;
                 log.info(`🔍 Analizando ruta: ${urlActual}`);
                 
-                // 🛑 CASO 1: Es la página de listados/catálogo.
-                // Filtramos estrictamente para SOLO seguir links que apunten a publicaciones individuales de propiedades (.html)
                 if (urlActual.includes('/search/') || urlActual.endsWith('/apa')) {
                     log.info("📋 Catálogo detectado. Filtrando enlaces de propiedades reales...");
                     
                     await enqueueLinks({
                         selector: '.gallery-card a, .titlestring, a[href*="/apa/d/"]',
-                        globs: ['**/apa/d/**/*.html'], // 🎯 FILTRO CRÍTICO: Solo entra a URLs con formato de anuncio individual
+                        globs: ['**/apa/d/**/*.html'],
                         baseUrl: request.loadedUrl,
                     });
                     return;
                 } 
-                
-                // 🏠 CASO 2: Procesar la ficha de una Propiedad Real
                 if (urlActual.includes('/apa/d/')) {
                     log.info("📌 Ficha de propiedad confirmada. Procesando selectores estructurados...");
 
-                    // 1. Extraer ID Único desde la URL o el footer
                     const idMatch = urlActual.match(/\/(\d+)\.html/);
                     const id_propiedad = idMatch ? idMatch[1] : `cl-${Math.floor(Math.random() * 10000000)}`;
 
-                    // 2. Título principal
-                    const tituloCompleto = $('#titletextonly').text().trim() || $('title').text().trim();
-
-                    // 3. Extracción y normalización de Precio
-                    const precioTexto = $('.price').first().text().trim();
+                    // --- EXTRACCIÓN QUIRÚRGICA DEL HEADER DE CRAIGSLIST ---
+                    const precioTexto = $('.price').first().text().trim();           // Captura "₱1550"
+                    const housingTexto = $('.housing').first().text().trim();         // Captura "3br - 50m²"
+                    const tituloTexto = $('#titletextonly').first().text().trim();    // Captura "3 Bedrooms Flat in Recoleta..."
+                    
+                    // 1. Limpieza del precio
                     let precio_usd = null;
                     if (precioTexto) {
-                        // Limpia símbolos y convierte a entero (ej: "₱1590" o "$1200" -> 1590)
                         precio_usd = parseInt(precioTexto.replace(/\D/g, ''), 10) || null;
                     }
-
-                    // 4. Mapear Atributos Nativos del bloque ".shared-line-bubble" de Craigslist
-                    // Suelen venir en formatos como: "3BR / 1Ba", "57m2", "available aug 1"
-                    const especificaciones = $('.attrgroup .shared-line-bubble').map((i, el) => $(el).text().toLowerCase()).get().join(' | ');
-
-                    // Extracción de dormitorios (BR)
-                    const dormitoriosMatch = especificaciones.match(/(\d+)\s?br/);
+                    
+                    // 2. Extraer datos técnicos desde la burbuja .housing (la más confiable)
+                    const dormitoriosMatch = housingTexto.match(/(\d+)\s*br/i);
                     const dormitorios = dormitoriosMatch ? parseInt(dormitoriosMatch[1], 10) : null;
 
-                    // Extracción de baños (Ba)
-                    const banosMatch = especificaciones.match(/(\d+)\s?ba/);
+                    const banosMatch = housingTexto.match(/(\d+)\s*ba/i);
                     const banos = banosMatch ? parseInt(banosMatch[1], 10) : null;
 
-                    // Extracción de superficie en m²
-                    const superficieMatch = especificaciones.match(/(\d+)\s?m²/);
-                    const superficie_total_m2 = superficieMatch ? parseInt(superficieMatch[1], 10) : null;
+                    const superficieMatch = housingTexto.match(/(\d+)\s*(?:m²|m2|mts|sqm)/i);
+                    let superficie_total_m2 = superficieMatch ? parseInt(superficieMatch[1], 10) : null;
 
-                    // 5. Análisis e inferencia inteligente sobre el Cuerpo de la Publicación (#postingbody)
+                    // Fallback para superficie por si no figura en .housing pero sí en el cuerpo del título
+                    if (!superficie_total_m2 && tituloTexto) {
+                        const superficieFallback = tituloTexto.toLowerCase().match(/(\d+)\s*(?:m²|m2|mts|sqm)/i);
+                        superficie_total_m2 = superficieFallback ? parseInt(superficieFallback[1], 10) : null;
+                    }
+
+                    // 3. Capturar especificaciones adicionales (burbujas inferiores si existieran)
+                    const especificacionesInfe = $('.attrgroup .shared-line-bubble').map((i, el) => $(el).text().toLowerCase()).get().join(' | ');
+
+                    // --- ANÁLISIS SOBRE EL CUERPO DE LA PUBLICACIÓN ---
                     const cuerpoTexto = $('#postingbody').text().toLowerCase();
 
-                    // Mapeo inteligente de booleanos basados en palabras clave presentes en el texto descriptivo
-                    const cochera = cuerpoTexto.includes('cochera') || cuerpoTexto.includes('cocheras') || cuerpoTexto.includes('garage') || cuerpoTexto.includes('estacionamiento');
-                    const balcon = cuerpoTexto.includes('balcon') || cuerpoTexto.includes('balcón');
-                    const terraza = cuerpoTexto.includes('terraza');
-                    const patio = cuerpoTexto.includes('patio');
-                    const pileta = cuerpoTexto.includes('pileta') || cuerpoTexto.includes('piscina');
-                    const parrilla = cuerpoTexto.includes('parrilla');
-                    const seguridad_24hs = cuerpoTexto.includes('seguridad') || cuerpoTexto.includes('vigilancia') || cuerpoTexto.includes('custodia');
-                    const ascensor = cuerpoTexto.includes('ascensor') || cuerpoTexto.includes('ascensores') || cuerpoTexto.includes('elevador');
+                    // Mapeo bilingüe de Amenities
+                    const cochera = cuerpoTexto.includes('cochera') || cuerpoTexto.includes('cocheras') || cuerpoTexto.includes('garage') || cuerpoTexto.includes('estacionamiento') || cuerpoTexto.includes('parking');
+                    const balcon = cuerpoTexto.includes('balcon') || cuerpoTexto.includes('balcón') || cuerpoTexto.includes('balcony');
+                    const terraza = cuerpoTexto.includes('terraza') || cuerpoTexto.includes('terrace');
+                    const patio = cuerpoTexto.includes('patio') || cuerpoTexto.includes('yard');
+                    const pileta = cuerpoTexto.includes('pileta') || cuerpoTexto.includes('piscina') || cuerpoTexto.includes('pool') || cuerpoTexto.includes('swimming');
+                    const parrilla = cuerpoTexto.includes('parrilla') || cuerpoTexto.includes('bbq') || cuerpoTexto.includes('grill');
+                    const seguridad_24hs = cuerpoTexto.includes('seguridad') || cuerpoTexto.includes('vigilancia') || cuerpoTexto.includes('custodia') || cuerpoTexto.includes('security') || cuerpoTexto.includes('doorman');
+                    const ascensor = cuerpoTexto.includes('ascensor') || cuerpoTexto.includes('ascensores') || cuerpoTexto.includes('elevador') || cuerpoTexto.includes('elevator') || cuerpoTexto.includes('lift');
 
-                    // Intentar pescar expensas si se mencionan explícitamente en Pesos
-                    const expensasMatch = cuerpoTexto.match(/expensas\s?(?:de|ars||\$)?\s?(\d+[\d.,]*)/);
+                    // Detección de Expensas
+                    const expensasMatch = cuerpoTexto.match(/(?:expensas|expenses|fee[s]?)\s?(?:de|ars|usd|\$)?\s?(\d+[\d.,]*)/i);
                     const expensas_ars = expensasMatch ? parseInt(expensasMatch[1].replace(/\D/g, ''), 10) : 0;
 
                     // Mapeo geográfico del Barrio/Zona
                     let barrio_zona = "Capital Federal";
                     const barriosConocidos = ['palermo', 'recoleta', 'belgrano', 'caballito', 'saavedra', 'san telmo', 'puerto madero', 'almagro', 'villa crespo', 'barrio norte', 'centro'];
                     for (const barrio of barriosConocidos) {
-                        if (cuerpoTexto.includes(barrio) || tituloCompleto.toLowerCase().includes(barrio)) {
+                        if (cuerpoTexto.includes(barrio) || tituloTexto.toLowerCase().includes(barrio)) {
                             barrio_zona = barrio.charAt(0).toUpperCase() + barrio.slice(1);
                             break;
                         }
                     }
 
-                    // 6. Ensamblamos el objeto final respetando estrictamente tus 23 columnas requeridas
+                    // Extracción de Piso
+                    const pisoMatch = cuerpoTexto.match(/(?:piso|floor)\s*(\d+)/i) || cuerpoTexto.match(/(\d+)\s*(?:°|º|º\spiso|rd|th|st|nd)\s*(?:piso|floor)?/i);
+                    const piso = pisoMatch ? parseInt(pisoMatch[1], 10) : null;
+
+                    // Extracción de Orientación
+                    let orientacion = null;
+                    const orientaciones = {
+                        Norte: ['norte', 'north'],
+                        Sur: ['sur', 'south'],
+                        Este: ['este', 'east'],
+                        Oeste: ['oeste', 'west']
+                    };
+                    for (const [key, values] of Object.entries(orientaciones)) {
+                        if (values.some(v => cuerpoTexto.includes(v))) {
+                            orientacion = key;
+                            break;
+                        }
+                    }
+
+                    // Extracción de Disposición
+                    const disposicion = cuerpoTexto.includes('frente') || cuerpoTexto.includes('front') || cuerpoTexto.includes('street view') ? 'Frente' : (cuerpoTexto.includes('contrafrente') || cuerpoTexto.includes('internal') || cuerpoTexto.includes('back view') ? 'Contrafrente' : null);
+
+                    // Extracción de Antigüedad
+                    let anios_de_antiguedad = cuerpoTexto.includes('estrenar') || cuerpoTexto.includes('nuevo') || cuerpoTexto.includes('brand new') ? 0 : null;
+                    if (anios_de_antiguedad === null) {
+                        const antiguedadMatch = cuerpoTexto.match(/(\d+)\s*(?:años de antigüedad|años de antiguedad|años|years old|years of antiquity)/i) || 
+                                                cuerpoTexto.match(/(?:antigüedad|antiguedad|age|built in):\s*(\d+)/i);
+                        if (antiguedadMatch) {
+                            anios_de_antiguedad = parseInt(antiguedadMatch[1], 10);
+                        }
+                    }
+
+                    // Extracción de Fecha de Publicación
+                    const fecha_publicacion = $('time.timeago').first().attr('datetime') || $('.postinginfo time').first().attr('datetime') || null;
+
+                    // Ensamblamos el objeto final
                     const propiedadData = {
                         id_propiedad: id_propiedad,
-                        tipo_propiedad: cuerpoTexto.includes('casa') ? 'Casa' : 'Departamento',
+                        tipo_propiedad: cuerpoTexto.includes('casa') || cuerpoTexto.includes('house') ? 'Casa' : 'Departamento',
                         barrio_zona: barrio_zona,
-                        ambientes: dormitorios ? dormitorios + 1 : null, // Métrica estándar: ambientes = dormitorios + living
+                        ambientes: dormitorios ? dormitorios + 1 : null, 
                         dormitorios: dormitorios,
                         banos: banos,
                         superficie_total_m2: superficie_total_m2,
-                        superficie_cubierta_m2: superficie_total_m2 ? Math.floor(superficie_total_m2 * 0.9) : null, // Cubierto estimado
-                        estado: cuerpoTexto.includes('nuevo') || cuerpoTexto.includes('estrenar') ? 'Excelente' : 'Usado',
-                        anios_de_antiguedad: cuerpoTexto.includes('estrenar') ? 0 : null,
-                        piso: cuerpoTexto.match(/piso\s?(\d+)/) ? parseInt(cuerpoTexto.match(/piso\s?(\d+)/)[1], 10) : null,
-                        orientacion: null, 
-                        disposicion: cuerpoTexto.includes('frente') ? 'Frente' : (cuerpoTexto.includes('contrafrente') ? 'Contrafrente' : null),
+                        superficie_cubierta_m2: superficie_total_m2 ? Math.floor(superficie_total_m2 * 0.9) : null, 
+                        estado: anios_de_antiguedad === 0 ? 'Excelente' : 'Usado',
+                        anios_de_antiguedad: anios_de_antiguedad,
+                        piso: piso,
+                        orientacion: orientacion,
+                        disposicion: disposicion,
                         cochera: cochera,
                         balcon: balcon,
-                        terraza: terraza,
+                        terraza: terraza, 
                         patio: patio,
                         pileta: pileta,
                         parrilla: parrilla,
                         seguridad_24hs: seguridad_24hs,
                         ascensor: ascensor,
                         expensas_ars: expensas_ars,
-                        precio_usd: precio_usd
+                        precio_usd: precio_usd,
+                        fecha_publicacion: fecha_publicacion
                     };
 
-                    // Guardamos solo si tiene un precio válido para que no te ensucie las métricas de la IA
                     if (propiedadData.precio_usd) {
                         await Dataset.pushData(propiedadData);
-                        log.info(`✅ Registro exitoso [ID: ${id_propiedad}] - USD ${precio_usd} en ${barrio_zona}`);
+                        log.info(`✅ Registro exitoso [ID: ${id_propiedad}] - USD ${precio_usd} - M2: ${superficie_total_m2} - Dormitorios: ${dormitorios}`);
                     }
                 }
             },
         });
 
-        // Ejecutamos apuntando a la sección principal de alquileres/ventas de propiedades
         await crawler.run(['https://buenosaires.craigslist.org/search/apa']); 
         console.log("✅ [Scraper] Extracción y segmentación finalizada.");
 
@@ -166,7 +197,7 @@ export const GET = async () => {
 
         return new Response(JSON.stringify({
             success: true,
-            mensaje: "¡Scraping estructurado completado con éxito!",
+            mensaje: "¡Scraping estructurado bilingüe completado con éxito!",
             propiedades_totales: totalPropiedades,
             ruta_archivo: ARCHIVO_FINAL
         }), {
