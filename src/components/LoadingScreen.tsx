@@ -16,6 +16,17 @@ export const LoadingScreen = () => {
       window.setTimeout(() => setCompleted(i + 1), (i + 1) * 1200)
     );
     const redirect = window.setTimeout(() => {
+      try {
+        const draftStr = sessionStorage.getItem('tasacion-draft');
+        if (draftStr) {
+          const draft = JSON.parse(draftStr);
+          if (draft.id) {
+            window.location.href = `/reporte?id=${draft.id}`;
+            return;
+          }
+        }
+      } catch (e) {
+      }
       window.location.href = '/reporte';
     }, 4500);
 

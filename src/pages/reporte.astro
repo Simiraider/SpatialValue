@@ -1,61 +1,8 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import { ValorM2CacChart } from "../components/ReportCharts";
-import {
-  ReportActions,
-  ReportDownloadButton,
-} from "../components/ReportActions";
-import { reporteMock } from "../data/mock";
-import "../styles/reporte.css";
+import { ReportPage } from "../components/ReportPage";
 ---
 
 <Layout title="Reporte de tasación">
-  <div class="ReportePage">
-    <header class="ReportePage-header">
-      <div class="ReportePage-headerInner">
-        <div>
-          <p class="ReportePage-meta">
-            ID: {reporteMock.id} · {reporteMock.fecha}
-          </p>
-          <h1 class="ReportePage-title">Reporte final</h1>
-          <p class="ReportePage-demoBadge" aria-label="Modo demostración">
-            ⚠ Datos de demostración
-          </p>
-        </div>
-        <ReportDownloadButton client:load />
-      </div>
-    </header>
-
-    <main class="ReportePage-main">
-      <section class="ReportePage-valueCard">
-        <p class="ReportePage-valueLabel">Valor total</p>
-        <p class="ReportePage-valueUsd">
-          {reporteMock.valorUsd} USD
-        </p>
-        <p class="ReportePage-valueArs">
-          {reporteMock.valorArs} ARS
-        </p>
-      </section>
-
-      <section class="ReportePage-section">
-        <h2 class="ReportePage-sectionTitle">
-          Valor de m² / Comparación con CAC
-        </h2>
-        <p class="ReportePage-sectionSubtitle">
-          {reporteMock.valorM2Usd} USD/m² estimado
-        </p>
-        <ValorM2CacChart client:load />
-      </section>
-
-      <section class="ReportePage-section">
-        <h2 class="ReportePage-sectionTitle">Propiedades similares</h2>
-        <div class="ReportePage-mapPlaceholder">
-          Mapa con comparables — integración en sprint posterior (scraping /
-          API).
-        </div>
-      </section>
-
-      <ReportActions client:load />
-    </main>
-  </div>
+  <ReportPage client:only="react" />
 </Layout>

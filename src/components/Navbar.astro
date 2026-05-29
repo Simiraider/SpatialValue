@@ -1,5 +1,20 @@
 ---
 import Logo from "./Logo.astro";
+import sql from "../Backend/carga.js";
+
+const userIdCookie = Astro.cookies.get("usuario_id");
+let username = null;
+
+if (userIdCookie?.value) {
+  try {
+    const res = await sql`SELECT nombre FROM usuarios WHERE id = ${userIdCookie.value}`;
+    if (res.length > 0) {
+      username = res[0].nombre;
+    }
+  } catch (error) {
+    console.error("Error al obtener nombre de usuario:", error);
+  }
+}
 ---
 
 <header class="navbar">
@@ -17,8 +32,12 @@ import Logo from "./Logo.astro";
     </nav>
 
     <div class="nav-right">
-      <a href="/login" class="nav-login">Iniciar Sesión</a>
-      <a href="/login" class="button-primary">Tasación Instantánea</a>
+      {username ? (
+        <a href="/dashboard" class="nav-login">Hola, {username}</a>
+      ) : (
+        <a href="/login" class="nav-login">Iniciar Sesión</a>
+      )}
+      <a href={username ? "/tasacion" : "/login"} class="button-primary">Tasación Instantánea</a>
     </div>
   </div>
 </header>

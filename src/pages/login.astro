@@ -66,9 +66,8 @@ import "../styles/login.css";
     const mensajeEstado = document.getElementById('mensaje-estado') as HTMLElement;
 
     form?.addEventListener('submit', async (e) => {
-      e.preventDefault(); // Evita que la página se recargue automáticamente
+      e.preventDefault();
 
-      // Capturamos los elementos input por su ID
       const emailElement = document.getElementById('emailInput') as HTMLInputElement;
       const passwordElement = document.getElementById('passwordInput') as HTMLInputElement;
 
@@ -79,9 +78,8 @@ import "../styles/login.css";
 
       try {
         mensajeEstado.innerText = "Verificando credenciales...";
-        mensajeEstado.style.color = "#3b82f6"; // Azul
+        mensajeEstado.style.color = "#3b82f6";
 
-        // Enviamos la petición POST a tu API real
         const res = await fetch('/Apis/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -92,15 +90,11 @@ import "../styles/login.css";
 
         if (res.ok && data.success) {
           mensajeEstado.innerText = "¡Éxito! Redirigiendo...";
-          mensajeEstado.style.color = "#10b981"; // Verde
-          
-          // Como el backend devolvió el Set-Cookie, el navegador ya guardó la sesión.
-          // Ahora redirigimos de forma segura por JavaScript.
+          mensajeEstado.style.color = "#10b981";
           window.location.href = '/'; 
         } else {
-          // Si el backend da error (401, 404, etc), lo mostramos en pantalla
           mensajeEstado.innerText = `❌ ${data.error || 'Error al iniciar sesión'}`;
-          mensajeEstado.style.color = "#ef4444"; // Rojo
+          mensajeEstado.style.color = "#ef4444";
         }
 
       } catch (error) {

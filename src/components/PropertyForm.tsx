@@ -78,7 +78,7 @@ export const PropertyForm = () => {
   const update = <K extends keyof FormData>(field: K, value: FormData[K]) =>
     setData((prev) => ({ ...prev, [field]: value }));
 
-  const handleNext = (e: React.FormEvent) => {
+  const handleNext = async (e: React.FormEvent) => {
     e.preventDefault();
     const stepErrors = validateStep(step, data);
     if (Object.keys(stepErrors).length > 0) {
@@ -90,8 +90,52 @@ export const PropertyForm = () => {
       setStep((s) => s + 1);
       return;
     }
-    sessionStorage.setItem('tasacion-draft', JSON.stringify(data));
-    window.location.href = '/cargando';
+
+    try {
+      const getCookie = (name: string) => {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop()?.split(';').shift();
+        return null;
+      };
+      
+      const usuarioId = getCookie('usuario_id');
+      if (!usuarioId) {
+        alert("Debes iniciar sesión para tasar una propiedad.");
+        return;
+      }
+
+      const body = {
+        titulo: `${data.tipoUnidad} en ${data.direccion}`,
+        descripcion: data.comentarios || "Sin descripción",
+        precio: 0,
+        direccion: data.direccion,
+        ciudad: data.ciudad,
+        barrio: data.ciudad,
+        habitaciones: Number(data.ambientes),
+        baños: Number(data.banos),
+        area_m2: Number(data.superficieCubierta),
+        usuario_id: usuarioId
+      };
+
+      const res = await fetch('/Apis/PublicarPropiedad', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      const resData = await res.json();
+      
+      if (res.ok && resData.success) {
+        sessionStorage.setItem('tasacion-draft', JSON.stringify({ ...data, id: resData.data.id }));
+        window.location.href = '/cargando';
+      } else {
+        alert(`Error al guardar: ${resData.error || 'Error desconocido'}`);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Error de conexión al enviar la tasación.");
+    }
   };
 
   return (
