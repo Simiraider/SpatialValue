@@ -74,9 +74,6 @@ export const DashboardApp = () => {
   return (
     <div className="dashboard-layout">
       <aside className="dashboard-sidebar" aria-label="Menú principal">
-        <a href="/" className="dashboard-brand">
-          SpatialValue
-        </a>
         <nav aria-label="Secciones">
           {sidebarItems.map((item) => (
             <button
@@ -94,6 +91,9 @@ export const DashboardApp = () => {
 
       <div className="dashboard-main">
         <header className="dashboard-topbar">
+          <a href="/" className="dashboard-brand-topbar">
+            <span>SpatialValue</span>
+          </a>
           <div className="dashboard-search">
             <label className="sr-only" htmlFor="buscar-tasacion">
               Buscar tasación
