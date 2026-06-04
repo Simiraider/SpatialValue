@@ -7,8 +7,6 @@ export const GET = async () => {
     const ARCHIVO_FINAL = path.join(process.cwd(), 'dataset_propiedades.json');  
 
     try {
-        console.log("🤖 [Scraper] Iniciando extracción inteligente, bilingüe y dirigida...");
-        
         const crawler = new CheerioCrawler({
             maxRequestsPerCrawl: 40, 
             
@@ -28,11 +26,8 @@ export const GET = async () => {
             
             async requestHandler({ $, request, enqueueLinks, log }) {
                 const urlActual = request.url;
-                log.info(`🔍 Analizando ruta: ${urlActual}`);
                 
                 if (urlActual.includes('/search/') || urlActual.endsWith('/apa')) {
-                    log.info("📋 Catálogo detectado. Filtrando enlaces de propiedades reales...");
-                    
                     await enqueueLinks({
                         selector: '.gallery-card a, .titlestring, a[href*="/apa/d/"]',
                         globs: ['**/apa/d/**/*.html'],
@@ -40,15 +35,15 @@ export const GET = async () => {
                     });
                     return;
                 } 
+                
                 if (urlActual.includes('/apa/d/')) {
-                    log.info("📌 Ficha de propiedad confirmada. Procesando selectores estructurados...");
-
                     const idMatch = urlActual.match(/\/(\d+)\.html/);
                     const id_propiedad = idMatch ? idMatch[1] : `cl-${Math.floor(Math.random() * 10000000)}`;
 
                     const precioTexto = $('.price').first().text().trim();          
                     const housingTexto = $('.housing').first().text().trim();         
                     const tituloTexto = $('#titletextonly').first().text().trim();   
+                    
                     let precio_usd = null;
                     if (precioTexto) {
                         precio_usd = parseInt(precioTexto.replace(/\D/g, ''), 10) || null;
@@ -67,7 +62,6 @@ export const GET = async () => {
                         const superficieFallback = tituloTexto.toLowerCase().match(/(\d+)\s*(?:m²|m2|mts|sqm)/i);
                         superficie_total_m2 = superficieFallback ? parseInt(superficieFallback[1], 10) : null;
                     }
-                    const especificacionesInfe = $('.attrgroup .shared-line-bubble').map((i, el) => $(el).text().toLowerCase()).get().join(' | ');
 
                     const cuerpoTexto = $('#postingbody').text().toLowerCase();
 
@@ -123,47 +117,64 @@ export const GET = async () => {
                     const fecha_publicacion = $('time.timeago').first().attr('datetime') || $('.postinginfo time').first().attr('datetime') || null;
 
                     const propiedadData = {
-                        id_propiedad: id_propiedad,
                         tipo_propiedad: cuerpoTexto.includes('casa') || cuerpoTexto.includes('house') ? 'Casa' : 'Departamento',
                         barrio_zona: barrio_zona,
-                        ambientes: dormitorios ? dormitorios + 1 : null, 
-                        dormitorios: dormitorios,
-                        banos: banos,
-                        superficie_total_m2: superficie_total_m2,
-                        superficie_cubierta_m2: superficie_total_m2 ? Math.floor(superficie_total_m2 * 0.9) : null, 
+                        ambientes: dormitorios ? dormitorios + 1 : 1, 
+                        dormitorios: dormitorios || 1,
+                        banos: banos || 1,
+                        superficie_total_m2: superficie_total_m2 || 45,
+                        superficie_cubierta_m2: superficie_total_m2 ? Math.floor(superficie_total_m2 * 0.9) : 40, 
                         estado: anios_de_antiguedad === 0 ? 'Excelente' : 'Usado',
-                        anios_de_antiguedad: anios_de_antiguedad,
-                        piso: piso,
-                        orientacion: orientacion,
-                        disposicion: disposicion,
+                        anios_de_antiguedad: anios_de_antiguedad || 10,
                         cochera: cochera,
                         balcon: balcon,
-                        terraza: terraza, 
+                        terraza: terrazo || terraza, 
                         patio: patio,
                         pileta: pileta,
                         parrilla: parrilla,
                         seguridad_24hs: seguridad_24hs,
                         ascensor: ascensor,
-                        expensas_ars: expensas_ars,
-                        precio_usd: precio_usd,
-                        fecha_publicacion: fecha_publicacion
+                        expensas_ars: expensas_ars
                     };
 
-                    if (propiedadData.precio_usd) {
-                        await Dataset.pushData(propiedadData);
-                        log.info(`✅ Registro exitoso [ID: ${id_propiedad}] - USD ${precio_usd} - M2: ${superficie_total_m2} - Dormitorios: ${dormitorios}`);
+                    if (precio_usd) {
+                        try {
+                            const respuestaIA = await fetch('http://127.0.0.1:8000/estimar-precio', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(propiedadData)
+                            });
+
+                            if (respuestaIA.ok) {
+                                const resultado = await respuestaIA.json();
+                                
+                                const registroFinal = {
+                                    id_propiedad,
+                                    ...propiedadData,
+                                    piso,
+                                    orientacion,
+                                    disposicion,
+                                    precio_real_usd: precio_usd,
+                                    precio_estimado_ia_usd: resultado.precio_estimado_usd,
+                                    coordenadas_gps: resultado.coordenadas,
+                                    fecha_publicacion
+                                };
+
+                                await Dataset.pushData(registroFinal);
+                            } else {
+                                await Dataset.pushData({ id_propiedad, ...propiedadData, precio_real_usd: precio_usd, fecha_publicacion });
+                            }
+                        } catch (err) {
+                            await Dataset.pushData({ id_propiedad, ...propiedadData, precio_real_usd: precio_usd, fecha_publicacion });
+                        }
                     }
                 }
             },
         });
 
         await crawler.run(['https://buenosaires.craigslist.org/search/apa']); 
-        console.log("✅ [Scraper] Extracción y segmentación finalizada.");
 
-        //unir
-        console.log("📊 [Unificador] Consolidando registros en un único JSON...");
         let totalPropiedades = 0;
-
         if (fs.existsSync(CARPETA_DATA)) {
             const archivos = fs.readdirSync(CARPETA_DATA);
             
@@ -180,7 +191,6 @@ export const GET = async () => {
 
         return new Response(JSON.stringify({
             success: true,
-            mensaje: "¡Scraping estructurado bilingüe completado con éxito!",
             propiedades_totales: totalPropiedades,
             ruta_archivo: ARCHIVO_FINAL
         }), {
@@ -189,7 +199,6 @@ export const GET = async () => {
         });
 
     } catch (error) {
-        console.error("❌ Error crítico en ejecución:", error);
         return new Response(JSON.stringify({ success: false, error: error.message }), {
             status: 500,
             headers: { "Content-Type": "application/json" }
