@@ -18,35 +18,13 @@ if "latitud" not in df.columns or "longitud" not in df.columns:
     df["latitud"] = -34.6037
     df["longitud"] = -58.3816
 
-X = df[[
-    "tipo_propiedad",
-    "barrio_zona",
-    "ambientes",
-    "dormitorios",
-    "banos",
-    "superficie_total_m2",
-    "superficie_cubierta_m2",
-    "estado",
-    "anios_de_antiguedad",
-    "cochera",
-    "balcon",
-    "terraza",
-    "patio",
-    "pileta",
-    "parrilla",
-    "seguridad_24hs",
-    "ascensor",
-    "expensas_ars",
-    "latitud",
-    "longitud"
-]]
-
-y = df["precio_usd"]
-
 columnas_texto = [
     "tipo_propiedad",
     "barrio_zona",
-    "estado"
+    "estado",
+    "orientacion",
+    "disposicion",
+    "seguridad_tipo"
 ]
 
 columnas_numericas = [
@@ -56,6 +34,7 @@ columnas_numericas = [
     "superficie_total_m2",
     "superficie_cubierta_m2",
     "anios_de_antiguedad",
+    "piso",
     "cochera",
     "balcon",
     "terraza",
@@ -65,9 +44,27 @@ columnas_numericas = [
     "seguridad_24hs",
     "ascensor",
     "expensas_ars",
+    "baulera",
+    "sum",
+    "camara",
+    "gym",
+    "lounge",
+    "laundry",
     "latitud",
     "longitud"
 ]
+for col in columnas_texto:
+    if col not in df.columns:
+        df[col] = "No especificada"
+    df[col] = df[col].fillna("No especificada")
+
+for col in columnas_numericas:
+    if col not in df.columns:
+        df[col] = 0
+    df[col] = df[col].fillna(0)
+
+X = df[columnas_texto + columnas_numericas]
+y = df["precio_usd"]
 
 preprocesador = ColumnTransformer(
     transformers=[
@@ -85,11 +82,8 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 modelo_v4.fit(X_train, y_train)
 
 predicciones = modelo_v4.predict(X_test)
-mae = mean_absolute_error(y_test, predicciones)
-r2 = r2_score(y_test, predicciones)
-
-print("Error promedio en USD:", mae)
-print("R2:", r2)
+print("Error promedio en USD:", mean_absolute_error(y_test, predicciones))
+print("R2 Score:", r2_score(y_test, predicciones))
 
 class PropiedadInput(BaseModel):
     tipo_propiedad: str
@@ -101,6 +95,9 @@ class PropiedadInput(BaseModel):
     superficie_cubierta_m2: int | None
     estado: str
     anios_de_antiguedad: int | None
+    piso: int | None
+    orientacion: str | None
+    disposicion: str | None
     cochera: bool
     balcon: bool
     terraza: bool
@@ -110,6 +107,13 @@ class PropiedadInput(BaseModel):
     seguridad_24hs: bool
     ascensor: bool
     expensas_ars: int
+    baulera: bool
+    sum: bool
+    seguridad_tipo: str
+    camara: bool
+    gym: bool
+    lounge: bool
+    laundry: bool
 
 @app.post("/estimar-precio")
 def estimar_precio(propiedad: PropiedadInput):
@@ -132,13 +136,17 @@ def estimar_precio(propiedad: PropiedadInput):
     datos_entrada = {
         "tipo_propiedad": [propiedad.tipo_propiedad],
         "barrio_zona": [propiedad.barrio_zona],
-        "ambientes": [propiedad.ambientes],
-        "dormitorios": [propiedad.dormitorios],
-        "banos": [propiedad.banos],
-        "superficie_total_m2": [propiedad.superficie_total_m2],
-        "superficie_cubierta_m2": [propiedad.superficie_cubierta_m2],
         "estado": [propiedad.estado],
-        "anios_de_antiguedad": [propiedad.anios_de_antiguedad],
+        "orientacion": [propiedad.orientacion or "No especificada"],
+        "disposicion": [propiedad.disposicion or "No especificada"],
+        "seguridad_tipo": [propiedad.seguridad_tipo or "Ninguno"],
+        "ambientes": [propiedad.ambientes or 1],
+        "dormitorios": [propiedad.dormitorios or 1],
+        "banos": [propiedad.banos or 1],
+        "superficie_total_m2": [propiedad.superficie_total_m2 or 45],
+        "superficie_cubierta_m2": [propiedad.superficie_cubierta_m2 or 40],
+        "anios_de_antiguedad": [propiedad.anios_de_antiguedad or 10],
+        "piso": [propiedad.piso or 1],
         "cochera": [int(propiedad.cochera)],
         "balcon": [int(propiedad.balcon)],
         "terraza": [int(propiedad.terraza)],
@@ -148,11 +156,19 @@ def estimar_precio(propiedad: PropiedadInput):
         "seguridad_24hs": [int(propiedad.seguridad_24hs)],
         "ascensor": [int(propiedad.ascensor)],
         "expensas_ars": [propiedad.expensas_ars],
+        "baulera": [int(propiedad.baulera)],
+        "sum": [int(propiedad.sum)],
+        "camara": [int(propiedad.camara)],
+        "gym": [int(propiedad.gym)],
+        "lounge": [int(propiedad.lounge)],
+        "laundry": [int(propiedad.laundry)],
         "latitud": [latitud],
         "longitud": [longitud]
     }
     
     df_input = pd.DataFrame(datos_entrada)
+    df_input = df_input[columnas_texto + columnas_numericas]
+    
     precio_predicho = modelo_v4.predict(df_input)[0]
     
     return {

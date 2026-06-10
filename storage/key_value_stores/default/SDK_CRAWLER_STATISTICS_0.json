@@ -1,27 +1,37 @@
 {
-  "requestsFinished": 40,
+  "requestsFinished": 0,
   "requestsFailed": 0,
   "requestsRetries": 0,
   "requestsFailedPerMinute": 0,
-  "requestsFinishedPerMinute": 230,
-  "requestMinDurationMillis": 253,
-  "requestMaxDurationMillis": 3849,
+  "requestsFinishedPerMinute": 0,
+  "requestMinDurationMillis": null,
+  "requestMaxDurationMillis": 0,
   "requestTotalFailedDurationMillis": 0,
-  "requestTotalFinishedDurationMillis": 31120,
-  "crawlerStartedAt": "2026-05-27T14:25:00.671Z",
-  "crawlerFinishedAt": "2026-05-27T14:25:10.892Z",
-  "statsPersistedAt": "2026-05-27T14:25:10.892Z",
-  "crawlerRuntimeMillis": 10454,
-  "crawlerLastStartTimestamp": 1779891900438,
-  "requestRetryHistogram": [
-    40
-  ],
+  "requestTotalFinishedDurationMillis": 0,
+  "crawlerStartedAt": "2026-06-10T15:07:43.127Z",
+  "crawlerFinishedAt": null,
+  "statsPersistedAt": "2026-06-10T15:10:43.110Z",
+  "crawlerRuntimeMillis": 180166,
+  "crawlerLastStartTimestamp": 1781104062944,
+  "requestRetryHistogram": [],
   "statsId": 0,
   "requestAvgFailedDurationMillis": null,
-  "requestAvgFinishedDurationMillis": 778,
-  "requestTotalDurationMillis": 31120,
-  "requestsTotal": 40,
-  "requestsWithStatusCode": {},
+  "requestAvgFinishedDurationMillis": null,
+  "requestTotalDurationMillis": 0,
+  "requestsTotal": 0,
+  "requestsWithStatusCode": {
+    "200": 3
+  },
   "errors": {},
-  "retryErrors": {}
+  "retryErrors": {
+    "C:\\Users\\49516747\\Documents\\GitHub\\SpatialValue\\node_modules\\@apify\\src\\index.ts:89:74": {
+      "missing error code": {
+        "Error": {
+          "requestHandler timed out after 60 seconds.": {
+            "count": 2
+          }
+        }
+      }
+    }
+  }
 }

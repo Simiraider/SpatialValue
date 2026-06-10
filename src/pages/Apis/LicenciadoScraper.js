@@ -1,4 +1,4 @@
-import { CheerioCrawler, Dataset } from 'crawlee';
+import { PlaywrightCrawler, Dataset } from 'crawlee';
 import fs from 'fs';
 import path from 'path';
 
@@ -7,78 +7,95 @@ export const GET = async () => {
     const ARCHIVO_FINAL = path.join(process.cwd(), 'dataset_propiedades.json');  
 
     try {
-        const crawler = new CheerioCrawler({
-            maxRequestsPerCrawl: 40, 
+        const crawler = new PlaywrightCrawler({
+            maxConcurrency: 1, 
+            maxRequestsPerCrawl: 2000, 
+            headless: false, 
+            browserPoolOptions: {
+                useFingerprints: true,
+            },
             
-            preNavigationHooks: [
-                async ({ request, gotOptions }) => {
-                    if (gotOptions) {
-                        gotOptions.headers = {
-                            ...gotOptions.headers,
-                            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-                            'accept-language': 'es-ES,es;q=0.9',
-                            'referer': 'https://buenosaires.craigslist.org/',
-                        };
-                    }
-                },
-            ],
-            
-            async requestHandler({ $, request, enqueueLinks, log }) {
+            async requestHandler({ page, request, enqueueLinks, parseWithCheerio }) {
                 const urlActual = request.url;
                 
-                if (urlActual.includes('/search/') || urlActual.endsWith('/apa')) {
+                if (urlActual.includes('-alquiler-') || urlActual.includes('-venta-') || (urlActual.includes('.html') && !urlActual.includes('/propiedades/'))) {
+                    
+                    try {
+                        await page.waitForSelector('[class*="PostingCard"], [data-qa="posting-card"]', { timeout: 30000 });
+                    } catch (e) {
+                        console.log("⚠️ No se detectaron propiedades. Si ves un Cloudflare/Captcha en la pantalla, resuélvelo manualmente ahora.");
+                        await page.waitForSelector('[class*="PostingCard"], [data-qa="posting-card"]', { timeout: 60000 });
+                    }
+
                     await enqueueLinks({
-                        selector: '.gallery-card a, .titlestring, a[href*="/apa/d/"]',
-                        globs: ['**/apa/d/**/*.html'],
-                        baseUrl: request.loadedUrl,
+                        selector: 'a[href*="/propiedades/"]',
+                        globs: ['**/propiedades/**/*.html'],
+                        baseUrl: 'https://www.zonaprop.com.ar',
                     });
                     return;
                 } 
                 
-                if (urlActual.includes('/apa/d/')) {
-                    const idMatch = urlActual.match(/\/(\d+)\.html/);
-                    const id_propiedad = idMatch ? idMatch[1] : `cl-${Math.floor(Math.random() * 10000000)}`;
+                if (urlActual.includes('/propiedades/')) {
+                    try {
+                        await page.waitForSelector('[class*="PriceValue"], [class*="DescriptionBlock"]', { timeout: 15000 });
+                    } catch (e) {}
 
-                    const precioTexto = $('.price').first().text().trim();          
-                    const housingTexto = $('.housing').first().text().trim();         
-                    const tituloTexto = $('#titletextonly').first().text().trim();   
+                    const $ = await parseWithCheerio();
+                    
+                    const idMatch = urlActual.match(/-(\d+)\.html/);
+                    const id_propiedad = idMatch ? `zp-${idMatch[1]}` : `zp-${Math.floor(Math.random() * 10000000)}`;
+
+                    const precioTexto = $('[class*="PriceValue"]').first().text().trim() || $('[class*="price"]').first().text().trim();
+                    const expensasTexto = $('[class*="ExpensesValue"]').first().text().trim() || $('[class*="expensas"]').first().text().trim();
+                    const tituloTexto = $('[class*="Title"]').first().text().trim();
+                    const cuerpoTexto = $('[class*="DescriptionBlock"]').text().toLowerCase();
                     
                     let precio_usd = null;
-                    if (precioTexto) {
+                    if (precioTexto.includes('USD')) {
                         precio_usd = parseInt(precioTexto.replace(/\D/g, ''), 10) || null;
-                    }
-                    
-                    const dormitoriosMatch = housingTexto.match(/(\d+)\s*br/i);
-                    const dormitorios = dormitoriosMatch ? parseInt(dormitoriosMatch[1], 10) : null;
-
-                    const banosMatch = housingTexto.match(/(\d+)\s*ba/i);
-                    const banos = banosMatch ? parseInt(banosMatch[1], 10) : null;
-
-                    const superficieMatch = housingTexto.match(/(\d+)\s*(?:m²|m2|mts|sqm)/i);
-                    let superficie_total_m2 = superficieMatch ? parseInt(superficieMatch[1], 10) : null;
-
-                    if (!superficie_total_m2 && tituloTexto) {
-                        const superficieFallback = tituloTexto.toLowerCase().match(/(\d+)\s*(?:m²|m2|mts|sqm)/i);
-                        superficie_total_m2 = superficieFallback ? parseInt(superficieFallback[1], 10) : null;
+                    } else if (precioTexto.includes('$')) {
+                        return; 
                     }
 
-                    const cuerpoTexto = $('#postingbody').text().toLowerCase();
+                    let expensas_ars = 0;
+                    if (expensasTexto) {
+                        expensas_ars = parseInt(expensasTexto.replace(/\D/g, ''), 10) || 0;
+                    }
 
-                    const cochera = cuerpoTexto.includes('cochera') || cuerpoTexto.includes('cocheras') || cuerpoTexto.includes('garage') || cuerpoTexto.includes('estacionamiento') || cuerpoTexto.includes('parking');
-                    const balcon = cuerpoTexto.includes('balcon') || cuerpoTexto.includes('balcón') || cuerpoTexto.includes('balcony');
-                    const terraza = cuerpoTexto.includes('terraza') || cuerpoTexto.includes('terrace');
-                    const patio = cuerpoTexto.includes('patio') || cuerpoTexto.includes('yard');
-                    const pileta = cuerpoTexto.includes('pileta') || cuerpoTexto.includes('piscina') || cuerpoTexto.includes('pool') || cuerpoTexto.includes('swimming');
-                    const parrilla = cuerpoTexto.includes('parrilla') || cuerpoTexto.includes('bbq') || cuerpoTexto.includes('grill');
-                    const seguridad_24hs = cuerpoTexto.includes('seguridad') || cuerpoTexto.includes('vigilancia') || cuerpoTexto.includes('custodia') || cuerpoTexto.includes('security') || cuerpoTexto.includes('doorman');
-                    const ascensor = cuerpoTexto.includes('ascensor') || cuerpoTexto.includes('ascensores') || cuerpoTexto.includes('elevador') || cuerpoTexto.includes('elevator') || cuerpoTexto.includes('lift');
+                    let superficie_total_m2 = null;
+                    let dormitorios = null;
+                    let banos = null;
 
-                    const expensasMatch = cuerpoTexto.match(/(?:expensas|expenses|fee[s]?)\s?(?:de|ars|usd|\$)?\s?(\d+[\d.,]*)/i);
-                    const expensas_ars = expensasMatch ? parseInt(expensasMatch[1].replace(/\D/g, ''), 10) : 0;
+                    $('[class*="IconFeatures"]').each((_, el) => {
+                        const textoFeature = $(el).text().toLowerCase();
+                        if (textoFeature.includes('tot') || textoFeature.includes('m²')) {
+                            superficie_total_m2 = parseInt(textoFeature.replace(/\D/g, ''), 10) || null;
+                        }
+                        if (textoFeature.includes('dorm') || textoFeature.includes('hab')) {
+                            dormitorios = parseInt(textoFeature.replace(/\D/g, ''), 10) || null;
+                        }
+                        if (textoFeature.includes('baño')) {
+                            banos = parseInt(textoFeature.replace(/\D/g, ''), 10) || null;
+                        }
+                    });
+
+                    const cochera = cuerpoTexto.includes('cochera') || cuerpoTexto.includes('garage') || cuerpoTexto.includes('estacionamiento');
+                    const balcon = cuerpoTexto.includes('balcon') || cuerpoTexto.includes('balcón');
+                    const terraza = cuerpoTexto.includes('terraza');
+                    const patio = cuerpoTexto.includes('patio');
+                    const pileta = cuerpoTexto.includes('pileta') || cuerpoTexto.includes('piscina');
+                    const parrilla = cuerpoTexto.includes('parrilla');
+                    const seguridad_24hs = cuerpoTexto.includes('seguridad') || cuerpoTexto.includes('vigilancia');
+                    const ascensor = cuerpoTexto.includes('ascensor') || cuerpoTexto.includes('elevador');
+                    const baulera = cuerpoTexto.includes('baulera');
+                    const sum = cuerpoTexto.includes('sum') || cuerpoTexto.includes('usos múltiples');
+                    const camara = cuerpoTexto.includes('camara') || cuerpoTexto.includes('cámara') || cuerpoTexto.includes('cctv');
+                    const gym = cuerpoTexto.includes('gym') || cuerpoTexto.includes('gimnasio');
+                    const lounge = cuerpoTexto.includes('lounge');
+                    const laundry = cuerpoTexto.includes('laundry') || cuerpoTexto.includes('lavadero');
 
                     let barrio_zona = "Capital Federal";
-                    const barriosConocidos = ['palermo', 'recoleta', 'belgrano', 'caballito', 'saavedra', 'san telmo', 'puerto madero', 'almagro', 'villa crespo', 'barrio norte', 'centro'];
+                    const barriosConocidos = ['palermo', 'recoleta', 'belgrano', 'caballito', 'saavedra', 'san telmo', 'puerto madero', 'almagro', 'villa crespo'];
                     for (const barrio of barriosConocidos) {
                         if (cuerpoTexto.includes(barrio) || tituloTexto.toLowerCase().includes(barrio)) {
                             barrio_zona = barrio.charAt(0).toUpperCase() + barrio.slice(1);
@@ -86,55 +103,38 @@ export const GET = async () => {
                         }
                     }
 
-                    const pisoMatch = cuerpoTexto.match(/(?:piso|floor)\s*(\d+)/i) || cuerpoTexto.match(/(\d+)\s*(?:°|º|º\spiso|rd|th|st|nd)\s*(?:piso|floor)?/i);
-                    const piso = pisoMatch ? parseInt(pisoMatch[1], 10) : null;
-
-                    let orientacion = null;
-                    const orientaciones = {
-                        Norte: ['norte', 'north'],
-                        Sur: ['sur', 'south'],
-                        Este: ['este', 'east'],
-                        Oeste: ['oeste', 'west']
-                    };
-                    for (const [key, values] of Object.entries(orientaciones)) {
-                        if (values.some(v => cuerpoTexto.includes(v))) {
-                            orientacion = key;
-                            break;
-                        }
-                    }
-
-                    const disposicion = cuerpoTexto.includes('frente') || cuerpoTexto.includes('front') || cuerpoTexto.includes('street view') ? 'Frente' : (cuerpoTexto.includes('contrafrente') || cuerpoTexto.includes('internal') || cuerpoTexto.includes('back view') ? 'Contrafrente' : null);
-
-                    let anios_de_antiguedad = cuerpoTexto.includes('estrenar') || cuerpoTexto.includes('nuevo') || cuerpoTexto.includes('brand new') ? 0 : null;
-                    if (anios_de_antiguedad === null) {
-                        const antiguedadMatch = cuerpoTexto.match(/(\d+)\s*(?:años de antigüedad|años de antiguedad|años|years old|years of antiquity)/i) || 
-                                                cuerpoTexto.match(/(?:antigüedad|antiguedad|age|built in):\s*(\d+)/i);
-                        if (antiguedadMatch) {
-                            anios_de_antiguedad = parseInt(antiguedadMatch[1], 10);
-                        }
-                    }
-
-                    const fecha_publicacion = $('time.timeago').first().attr('datetime') || $('.postinginfo time').first().attr('datetime') || null;
+                    const pisoMatch = cuerpoTexto.match(/(?:piso|floor)\s*(\d+)/i);
+                    const piso = pisoMatch ? parseInt(pisoMatch[1], 10) : 1;
 
                     const propiedadData = {
-                        tipo_propiedad: cuerpoTexto.includes('casa') || cuerpoTexto.includes('house') ? 'Casa' : 'Departamento',
+                        tipo_propiedad: cuerpoTexto.includes('casa') ? 'Casa' : 'Departamento',
                         barrio_zona: barrio_zona,
                         ambientes: dormitorios ? dormitorios + 1 : 1, 
                         dormitorios: dormitorios || 1,
                         banos: banos || 1,
                         superficie_total_m2: superficie_total_m2 || 45,
                         superficie_cubierta_m2: superficie_total_m2 ? Math.floor(superficie_total_m2 * 0.9) : 40, 
-                        estado: anios_de_antiguedad === 0 ? 'Excelente' : 'Usado',
-                        anios_de_antiguedad: anios_de_antiguedad || 10,
+                        estado: cuerpoTexto.includes('estrenar') || cuerpoTexto.includes('nuevo') ? 'Excelente' : 'Usado',
+                        anios_de_antiguedad: cuerpoTexto.includes('estrenar') ? 0 : 10,
+                        piso: piso,
+                        orientacion: "No especificada",
+                        disposicion: cuerpoTexto.includes('frente') ? 'Frente' : (cuerpoTexto.includes('contrafrente') ? 'Contrafrente' : 'No especificada'),
                         cochera: cochera,
                         balcon: balcon,
-                        terraza: terrazo || terraza, 
+                        terraza: terraza, 
                         patio: patio,
                         pileta: pileta,
                         parrilla: parrilla,
                         seguridad_24hs: seguridad_24hs,
                         ascensor: ascensor,
-                        expensas_ars: expensas_ars
+                        expensas_ars: expensas_ars,
+                        baulera: baulera,
+                        sum: sum,
+                        seguridad_tipo: seguridad_24hs ? 'Física' : 'Ninguno',
+                        camara: camara,
+                        gym: gym,
+                        lounge: lounge,
+                        laundry: laundry
                     };
 
                     if (precio_usd) {
@@ -147,32 +147,26 @@ export const GET = async () => {
 
                             if (respuestaIA.ok) {
                                 const resultado = await respuestaIA.json();
-                                
-                                const registroFinal = {
+                                await Dataset.pushData({
                                     id_propiedad,
                                     ...propiedadData,
-                                    piso,
-                                    orientacion,
-                                    disposicion,
                                     precio_real_usd: precio_usd,
                                     precio_estimado_ia_usd: resultado.precio_estimado_usd,
                                     coordenadas_gps: resultado.coordenadas,
-                                    fecha_publicacion
-                                };
-
-                                await Dataset.pushData(registroFinal);
+                                    fecha_publicacion: new Date().toISOString().split('T')[0]
+                                });
                             } else {
-                                await Dataset.pushData({ id_propiedad, ...propiedadData, precio_real_usd: precio_usd, fecha_publicacion });
+                                await Dataset.pushData({ id_propiedad, ...propiedadData, precio_real_usd: precio_usd, fecha_publicacion: null });
                             }
                         } catch (err) {
-                            await Dataset.pushData({ id_propiedad, ...propiedadData, precio_real_usd: precio_usd, fecha_publicacion });
+                            await Dataset.pushData({ id_propiedad, ...propiedadData, precio_real_usd: precio_usd, fecha_publicacion: null });
                         }
                     }
                 }
             },
         });
 
-        await crawler.run(['https://buenosaires.craigslist.org/search/apa']); 
+        await crawler.run(['https://www.zonaprop.com.ar/departamentos-alquiler-capital-federal.html']); 
 
         let totalPropiedades = 0;
         if (fs.existsSync(CARPETA_DATA)) {

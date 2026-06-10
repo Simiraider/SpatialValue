@@ -1,4 +1,4 @@
 npm i 
 $env:NODE_TLS_REJECT_UNAUTHORIZED = "0"; npx vercel login
 npx vercel link
-npm run dev
+npm run dev 

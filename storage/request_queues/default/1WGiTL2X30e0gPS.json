@@ -1,9 +1,0 @@
-{
-	"id": "1WGiTL2X30e0gPS",
-	"json": "{\"id\":\"1WGiTL2X30e0gPS\",\"url\":\"https://buenosaires.craigslist.org/search/apa\",\"loadedUrl\":\"https://buenosaires.craigslist.org/search/apa\",\"uniqueKey\":\"https://buenosaires.craigslist.org/search/apa\",\"method\":\"GET\",\"noRetry\":false,\"retryCount\":0,\"errorMessages\":[],\"headers\":{},\"userData\":{\"__crawlee\":{\"state\":4}},\"handledAt\":\"2026-05-27T14:25:05.359Z\"}",
-	"method": "GET",
-	"orderNo": null,
-	"retryCount": 0,
-	"uniqueKey": "https://buenosaires.craigslist.org/search/apa",
-	"url": "https://buenosaires.craigslist.org/search/apa"
-}
