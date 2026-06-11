@@ -1,6 +1,6 @@
 .features {
-  background: var(--color-bg);
-  padding: var(--space-xl) 1.5rem;
+  background: #d9d9d9;
+  padding: 5rem 1.5rem;
 }
 
 .features-inner {
@@ -10,17 +10,17 @@
 
 .features-title {
   text-align: center;
-  font-size: 1.6rem;
-  font-weight: 700;
-  margin: 0 0 2.5rem;
+  font-size: clamp(2.4rem, 5vw, 4.5rem);
+  font-weight: 800;
+  margin: 0 0 3rem;
   color: var(--color-text);
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .features-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1.25rem;
+  gap: 1.5rem;
 }
 
 @media (min-width: 768px) {
@@ -30,41 +30,99 @@
 }
 
 .feature-card {
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 1.75rem 1.5rem;
-  text-align: center;
-  box-shadow: var(--shadow-card);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  text-align: left;
+  box-shadow: none;
 }
 
 .feature-icon {
-  width: 52px;
-  height: 52px;
-  margin: 0 auto 1rem;
-  background: var(--color-green-light);
-  border-radius: var(--radius-sm);
+  width: 4.5rem;
+  height: 4.5rem;
+  margin: 0;
+  background: #ffffff;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .feature-icon img {
-  width: 28px;
-  height: 28px;
+  width: 1.9rem;
+  height: 1.9rem;
   object-fit: contain;
 }
 
 .feature-card h3 {
-  font-size: 1.05rem;
-  font-weight: 600;
+  font-size: 1.45rem;
+  font-weight: 800;
   margin: 0 0 0.5rem;
   color: var(--color-text);
 }
 
 .feature-card p {
-  font-size: 0.9rem;
-  color: var(--color-text-muted);
+  font-size: 1rem;
+  color: #242424;
   line-height: 1.55;
   margin: 0;
+}
+
+.feature-text {
+  max-width: 16rem;
+}
+
+.team-section {
+  background: #d9d9d9;
+  padding: 5rem 1.5rem 6rem;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
+}
+
+.team-member {
+  text-align: center;
+}
+
+.team-photo {
+  display: block;
+  width: 100%;
+  max-width: 16rem;
+  aspect-ratio: 0.77;
+  margin: 0 auto 1.25rem;
+  border-radius: 2rem;
+  background: #414141;
+  object-fit: cover;
+}
+
+.team-member h3 {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.25rem, 2.2vw, 1.8rem);
+  line-height: 1.15;
+  font-weight: 500;
+}
+
+.team-member p {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+@media (max-width: 900px) {
+  .features-grid,
+  .team-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-card {
+    max-width: 28rem;
+    margin: 0 auto;
+  }
 }

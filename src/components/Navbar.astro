@@ -26,8 +26,8 @@ if (userIdCookie?.value) {
 
     <nav aria-label="Principal">
       <ul class="nav-links">
-        <li><a href="#metodologia">Metodología</a></li>
-        <li><a href="#precios">Precio</a></li>
+        <li><a href="#quienes-somos">Quienes Somos</a></li>
+        <li><a href="#sobre-tasaciones">Sobre las Tasaciones</a></li>
       </ul>
     </nav>
 
@@ -37,7 +37,7 @@ if (userIdCookie?.value) {
       ) : (
         <a href="/login" class="nav-login">Iniciar Sesión</a>
       )}
-      <a href={username ? "/tasacion" : "/login"} class="button-primary">Tasación Instantánea</a>
+      <a href={username ? "/tasacion" : "/login"} class="button-primary">Tasa tu propiedad</a>
     </div>
   </div>
 </header>
