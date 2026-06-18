@@ -1,5 +1,5 @@
 {
-  "name": "",
+  "name": "spatial-value",
   "type": "module",
   "version": "0.0.1",
   "engines": {
@@ -31,13 +31,16 @@
     "crawlee": "^3.16.0",
     "express": "^5.2.1",
     "hash-wasm": "^4.12.0",
-    "playwright": "^1.60.0",
+    "playwright": "^1.61.0",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "tailwindcss": "^4.2.4",
     "three": "^0.184.0"
   },
   "devDependencies": {
+    "tsx": "^4.22.4",
     "vercel": "^53.4.0"
   }
 }
