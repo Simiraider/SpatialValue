@@ -4,3 +4,4 @@ npx vercel link
 npm run dev 
 
 npx tsx .\LicenciadoScraper.js
+npx playwright install chromium
