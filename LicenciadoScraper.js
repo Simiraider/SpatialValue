@@ -7,275 +7,250 @@ const ARCHIVO_FINAL = path.join(process.cwd(), 'dataset_propiedades.json');
 const getProcessedIds = () => {
     if (!fs.existsSync(ARCHIVO_FINAL)) return new Set();
     try {
-        return new Set(JSON.parse(fs.readFileSync(ARCHIVO_FINAL, 'utf-8')).map((p) => p.id_propiedad));
+        return new Set(JSON.parse(fs.readFileSync(ARCHIVO_FINAL, 'utf-8')).map(p => p.id_propiedad));
     } catch { return new Set(); }
 };
 
 const idsProcesados = getProcessedIds();
 const nuevosResultados = [];
 
-// Helper: espera un selector de una lista, devuelve el primero que aparezca
 const waitForAny = async (page, selectors, timeout = 30000) => {
     return Promise.race(
         selectors.map(sel =>
             page.waitForSelector(sel, { timeout }).then(() => sel).catch(() => null)
         )
-    ).then(result => result ?? null);
+    ).then(r => r ?? null);
+};
+
+// Extrae solo el primer número USD de un texto, ignorando expensas
+// Ej: "Alquiler USD 1.800" → 1800
+const parsearPrecioUSD = (texto) => {
+    const match = texto.match(/USD\s*[\$]?\s*([\d.,]+)/i);
+    if (!match) return null;
+    // Eliminar puntos de miles y comas decimales
+    const limpio = match[1].replace(/\./g, '').replace(',', '.');
+    const valor = parseFloat(limpio);
+    // Sanity check: alquileres en CABA van de ~300 a ~20000 USD
+    return (valor >= 100 && valor <= 50000) ? Math.round(valor) : null;
 };
 
 (async () => {
-    console.log("🚀 Iniciando Scraper en entorno aislado...");
+    console.log("🚀 Conectando a Chrome...");
 
-    // Perfil dedicado para el scraper (separado de tu Chrome normal)
-    // Así no hay conflicto si tenés Chrome abierto
-    const rutaDataScraper = path.join(process.cwd(), 'chrome_scraper_data');
-
-    const context = await chromium.launchPersistentContext(rutaDataScraper, {
-        headless: false,
-        viewport: null,
-        channel: 'chrome',
-        ignoreDefaultArgs: true,
-        args: [
-            `--user-data-dir=${rutaDataScraper}`,  // perfil aislado, evita conflicto con Chrome abierto
-            '--start-maximized',
-            '--no-first-run',
-            '--no-default-browser-check',
-            '--no-service-autorun',
-            '--password-store=basic',
-        ]
-    });
-
-    // Stealth manual: inyectar en cada página antes de que cargue
-    await context.addInitScript(() => {
-        // Ocultar webdriver
-        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-
-        // Simular plugins reales de Chrome
-        Object.defineProperty(navigator, 'plugins', {
-            get: () => [1, 2, 3, 4, 5].map((i) => ({
-                name: `Plugin ${i}`, filename: `plugin${i}.dll`, description: '', length: 1
-            }))
-        });
-
-        // Simular idiomas
-        Object.defineProperty(navigator, 'languages', { get: () => ['es-AR', 'es', 'en-US', 'en'] });
-
-        // Eliminar rastros de automatización en chrome object
-        window.chrome = { runtime: {} };
-
-        // Permisos: no revelar que es headless/bot
-        const originalQuery = window.navigator.permissions?.query?.bind(window.navigator.permissions);
-        if (originalQuery) {
-            window.navigator.permissions.query = (params) =>
-                params.name === 'notifications'
-                    ? Promise.resolve({ state: Notification.permission })
-                    : originalQuery(params);
-        }
-    });
-
-    // Esperar que el contexto esté listo
-    await new Promise(r => setTimeout(r, 2000));
-
-    // Cerrar tabs extras si las hay, quedarse con una sola
-    const pages = context.pages();
-    for (let i = 1; i < pages.length; i++) await pages[i].close();
-    const page = pages[0] || await context.newPage();
-
-    console.log('🌐 Navegando a ZonaProp...');
-    await page.goto('https://www.zonaprop.com.ar/departamentos-alquiler-capital-federal.html', {
-        waitUntil: 'domcontentloaded',
-        timeout: 60000
-    });
-
-    // --- PASO 1: Esperar que cargue el listado ---
+    let browser;
     try {
-        console.log('⏳ Esperando al listado. Si aparece Cloudflare, completalo manualmente...');
+        browser = await chromium.connectOverCDP('http://localhost:9222');
+    } catch {
+        console.error('❌ No se pudo conectar. Abrí Chrome con:\n   & "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\\chrome-debug"');
+        process.exit(1);
+    }
 
-        // Selectores alternativos para el listado — ZonaProp cambia las clases dinámicamente
-        const selectorListado = await waitForAny(page, [
-            '[data-qa="posting-card"]',
-            '[data-posting-id]',
-            'article[data-id]',
-            'div[class*="PostingCard"]',
-            'div[class*="posting-card"]',
-            'ol[class*="postings-container"] li',
-            'section[class*="postings"] article',
-        ], 300000);
+    const context = browser.contexts()[0];
+    const page = context.pages()[0] || await context.newPage();
 
-        if (!selectorListado) throw new Error('No se encontró ningún card de propiedad en el listado.');
-        console.log(`✅ Listado detectado con selector: ${selectorListado}`);
+    await page.goto('https://www.zonaprop.com.ar/departamentos-alquiler-capital-federal.html', {
+        waitUntil: 'domcontentloaded', timeout: 60000
+    });
 
-    } catch (e) {
-        console.log('❌ El listado no cargó:', e.message);
-        await context.close();
+    console.log('⏳ Esperando listado...');
+    const selectorListado = await waitForAny(page, [
+        '[data-qa="posting-card"]',
+        '[data-posting-id]',
+        'div[class*="posting-card"]',
+        'ol[class*="postings"] li',
+        'article',
+    ], 300000);
+
+    if (!selectorListado) {
+        console.log('❌ Listado no encontrado.');
+        await browser.close();
         return;
     }
 
-    // --- PASO 2: Recolectar links ---
-    // ZonaProp usa /propiedades/ en las URLs de detalle
-    await page.waitForTimeout(2000); // pequeña pausa para que cargue todo el DOM
+    await page.waitForTimeout(2000);
 
-    const links = await page.evaluate(() => {
-        const anchors = Array.from(document.querySelectorAll('a[href]'));
-        const hrefs = anchors
-            .map(a => a.href)
-            .filter(href =>
-                href.includes('zonaprop.com.ar') &&
-                href.match(/\/propiedades\/.*\.html/) &&
-                !href.includes('#')
-            );
-        return [...new Set(hrefs)];
-    });
-
-    console.log(`🔎 Encontrados ${links.length} links de propiedades.`);
-
-    if (links.length === 0) {
-        // Debug: mostrar qué hay en la página
-        const allLinks = await page.evaluate(() =>
+    const links = await page.evaluate(() =>
+        [...new Set(
             Array.from(document.querySelectorAll('a[href]'))
                 .map(a => a.href)
-                .filter(h => h.includes('zonaprop'))
-                .slice(0, 20)
-        );
-        console.log('🔍 Links encontrados en la página (muestra):', allLinks);
-        await context.close();
-        return;
-    }
+                .filter(h => h.includes('zonaprop.com.ar') && h.match(/\/propiedades\/.*\.html/) && !h.includes('#'))
+        )]
+    );
 
-    // --- PASO 3: Scrapear cada propiedad ---
+    console.log(`🔎 ${links.length} propiedades encontradas.`);
+
     for (const link of links) {
         const idMatch = link.match(/-(\d+)\.html/);
         const id_propiedad = idMatch ? `zp-${idMatch[1]}` : null;
+        if (!id_propiedad || idsProcesados.has(id_propiedad)) continue;
 
-        if (!id_propiedad || idsProcesados.has(id_propiedad)) {
-            console.log(`⏭ Saltando ${id_propiedad || link} (ya procesado o sin ID)`);
-            continue;
-        }
-
-        console.log(`🏠 Procesando: ${id_propiedad} → ${link}`);
-
+        const detailPage = await context.newPage();
         try {
-            await page.goto(link, { waitUntil: 'domcontentloaded', timeout: 30000 });
+            await detailPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 45000 });
+            await waitForAny(detailPage, ['[class*="price"]', '[class*="Price"]', '[data-qa="price"]'], 15000);
 
-            // Esperar precio (selector amplio)
-            await waitForAny(page, [
-                '[class*="price"]',
-                '[class*="Price"]',
-                '[data-qa="price"]',
-                'span[class*="PriceValue"]',
-                'div[class*="PriceValue"]',
-            ], 15000);
+            // ── Precio ──────────────────────────────────────────────────────
+            // Buscar específicamente el elemento de precio del alquiler, no expensas
+            const precioUSD = await detailPage.evaluate(() => {
+                // Intentar data-qa primero
+                const byQa = document.querySelector('[data-qa="price"]');
+                if (byQa) return byQa.innerText.trim();
 
-            // --- Extraer precio ---
-            const precioTexto = await page.evaluate(() => {
-                const candidatos = [
-                    ...document.querySelectorAll('[class*="price"], [class*="Price"], [data-qa="price"]')
-                ];
-                for (const el of candidatos) {
+                // Buscar el h2/h3/span que contenga "USD" pero NO esté dentro de expensas
+                const todos = [...document.querySelectorAll('[class*="Price"],[class*="price"]')];
+                for (const el of todos) {
+                    const padre = el.closest('[class*="xpens"],[class*="Expens"]');
+                    if (padre) continue; // saltar si es expensas
                     const txt = el.innerText || el.textContent || '';
-                    if (txt.includes('USD') || txt.includes('$')) return txt.trim();
+                    if (txt.includes('USD')) return txt.trim();
+                }
+                // Fallback: primer elemento con USD en el body
+                const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+                let node;
+                while ((node = walker.nextNode())) {
+                    if (node.textContent.includes('USD')) {
+                        return node.parentElement.innerText?.trim() || '';
+                    }
                 }
                 return '';
             });
 
-            if (!precioTexto || !precioTexto.toUpperCase().includes('USD')) {
-                console.log(`  ⚠ Sin precio en USD, saltando.`);
+            const precio_real_usd = parsearPrecioUSD(precioUSD);
+            if (!precio_real_usd) {
+                console.log(`  ⚠ Sin precio USD válido (texto: "${precioUSD}"), saltando.`);
                 continue;
             }
 
-            // --- Extraer todo el texto de la página para análisis ---
-            const textoCompleto = await page.evaluate(() => document.body.innerText.toLowerCase());
-
-            // --- Título ---
-            const tituloTexto = await page.evaluate(() => {
-                const h1 = document.querySelector('h1, [class*="Title"], [data-qa="title"]');
-                return h1 ? (h1.innerText || h1.textContent || '').trim() : '';
-            });
-
-            // --- Expensas ---
-            const expensasTexto = await page.evaluate(() => {
-                const candidatos = [
-                    ...document.querySelectorAll('[class*="xpens"], [class*="Expens"], [data-qa="expenses"]')
-                ];
+            // ── Expensas ─────────────────────────────────────────────────────
+            const expensas_ars = await detailPage.evaluate(() => {
+                const candidatos = [...document.querySelectorAll('[class*="xpens"],[class*="Expens"],[data-qa="expenses"]')];
                 for (const el of candidatos) {
                     const txt = el.innerText || el.textContent || '';
-                    if (txt.match(/\d/)) return txt.trim();
+                    const m = txt.match(/[\d.,]+/);
+                    if (m) return parseInt(m[0].replace(/\./g, '').replace(',', ''), 10);
                 }
-                return '0';
+                return 0;
             });
 
-            // --- Features (superficie, dormitorios, baños) ---
-            const features = await page.evaluate(() => {
-                const items = [
-                    ...document.querySelectorAll(
-                        '[class*="feature"], [class*="Feature"], [class*="attribute"], [class*="Attribute"], [data-qa*="feature"]'
-                    )
-                ];
-                return items.map(el => (el.innerText || el.textContent || '').toLowerCase().trim()).filter(Boolean);
+            // ── Texto completo y título ───────────────────────────────────────
+            const textoCompleto = await detailPage.evaluate(() => document.body.innerText.toLowerCase());
+            const tituloTexto = await detailPage.evaluate(() => {
+                const el = document.querySelector('h1,[data-qa="title"],[class*="TitleContainer"]');
+                return el ? (el.innerText || el.textContent || '').trim().toLowerCase() : '';
             });
 
-            // También intentar extraer desde el texto general con regex
-            let superficie_total_m2 = null;
-            let dormitorios = null;
-            let banos = null;
-
-            for (const feat of features) {
-                const num = parseInt(feat.replace(/\D/g, ''), 10) || null;
-                if ((feat.includes('tot') || feat.includes('m²') || feat.includes('m2')) && num) superficie_total_m2 = num;
-                if ((feat.includes('dorm') || feat.includes('hab')) && num) dormitorios = num;
-                if (feat.includes('baño') && num) banos = num;
-            }
-
-            // Fallback: buscar en el texto completo con regex
+            // ── Superficie ───────────────────────────────────────────────────
+            // ZonaProp muestra "60m² · 1 ambiente" en el breadcrumb/header
+            let superficie_total_m2 = await detailPage.evaluate(() => {
+                // Buscar en el resumen superior "Xm²"
+                const resumen = document.querySelector('[class*="MainFeatures"],[class*="main-features"],[data-qa="main-features"]');
+                if (resumen) {
+                    const m = (resumen.innerText || '').match(/(\d+)\s*m²/i);
+                    if (m) return parseInt(m[1], 10);
+                }
+                // Buscar en features individuales
+                const items = [...document.querySelectorAll('[class*="feature"],[class*="Feature"]')];
+                for (const el of items) {
+                    const txt = el.innerText || '';
+                    if (txt.match(/m²|m2/i)) {
+                        const n = txt.match(/(\d+)/);
+                        if (n) return parseInt(n[1], 10);
+                    }
+                }
+                return null;
+            });
+            // Fallback regex en texto completo
             if (!superficie_total_m2) {
                 const m = textoCompleto.match(/(\d+)\s*m[²2]/);
                 if (m) superficie_total_m2 = parseInt(m[1], 10);
             }
+            // Sanity check superficie (evitar "1 ambiente" confundido con m²)
+            if (superficie_total_m2 && superficie_total_m2 < 15) superficie_total_m2 = null;
+
+            // ── Dormitorios y baños ───────────────────────────────────────────
+            let dormitorios = await detailPage.evaluate(() => {
+                const items = [...document.querySelectorAll('[class*="feature"],[class*="Feature"]')];
+                for (const el of items) {
+                    const txt = (el.innerText || '').toLowerCase();
+                    if (txt.match(/dorm|hab/)) {
+                        const n = txt.match(/(\d+)/);
+                        if (n) return parseInt(n[1], 10);
+                    }
+                }
+                return null;
+            });
             if (!dormitorios) {
-                const m = textoCompleto.match(/(\d+)\s*(?:dorm|dormitorio|habitac)/);
+                const m = textoCompleto.match(/(\d+)\s*(?:dormitorio|dorm|habitaci)/);
                 if (m) dormitorios = parseInt(m[1], 10);
             }
+
+            let banos = await detailPage.evaluate(() => {
+                const items = [...document.querySelectorAll('[class*="feature"],[class*="Feature"]')];
+                for (const el of items) {
+                    const txt = (el.innerText || '').toLowerCase();
+                    if (txt.includes('baño')) {
+                        const n = txt.match(/(\d+)/);
+                        if (n) return parseInt(n[1], 10);
+                    }
+                }
+                return null;
+            });
             if (!banos) {
                 const m = textoCompleto.match(/(\d+)\s*baño/);
                 if (m) banos = parseInt(m[1], 10);
             }
 
-            const check = (...words) => words.some(w => textoCompleto.includes(w));
+            // ── Ambientes ─────────────────────────────────────────────────────
+            let ambientes = await detailPage.evaluate(() => {
+                const items = [...document.querySelectorAll('[class*="feature"],[class*="Feature"]')];
+                for (const el of items) {
+                    const txt = (el.innerText || '').toLowerCase();
+                    if (txt.includes('ambiente')) {
+                        const n = txt.match(/(\d+)/);
+                        if (n) return parseInt(n[1], 10);
+                    }
+                }
+                return null;
+            });
+            if (!ambientes) {
+                const m = textoCompleto.match(/(\d+)\s*ambiente/);
+                if (m) ambientes = parseInt(m[1], 10);
+            }
+            if (!ambientes) ambientes = dormitorios ? dormitorios + 1 : 1;
 
+            const check = (...words) => words.some(w => textoCompleto.includes(w));
             const barrios = ['palermo', 'recoleta', 'belgrano', 'caballito', 'saavedra', 'san telmo',
-                'puerto madero', 'almagro', 'villa crespo', 'flores', 'floresta', 'villa urquiza',
-                'colegiales', 'chacarita', 'parque patricios', 'barracas', 'liniers', 'boedo'];
-            const barrioEncontrado = barrios.find(b =>
-                textoCompleto.includes(b) || tituloTexto.toLowerCase().includes(b)
-            );
+                'puerto madero', 'almagro', 'villa crespo', 'flores', 'villa urquiza', 'colegiales',
+                'chacarita', 'parque patricios', 'barracas', 'boedo', 'liniers', 'núñez', 'nunez',
+                'villa del parque', 'paternal', 'agronomia', 'devoto', 'versalles'];
+            const barrioEncontrado = barrios.find(b => textoCompleto.includes(b) || tituloTexto.includes(b));
 
             const propiedadData = {
                 tipo_propiedad: textoCompleto.includes('casa') ? 'Casa' : 'Departamento',
                 barrio_zona: barrioEncontrado
                     ? barrioEncontrado.charAt(0).toUpperCase() + barrioEncontrado.slice(1)
                     : 'Capital Federal',
-                ambientes: dormitorios ? dormitorios + 1 : 1,
+                ambientes,
                 dormitorios: dormitorios || 1,
                 banos: banos || 1,
-                superficie_total_m2: superficie_total_m2 || 45,
-                superficie_cubierta_m2: superficie_total_m2 ? Math.floor(superficie_total_m2 * 0.9) : 40,
-                estado: check('estrenar', 'a estrenar') ? 'Excellent' : 'Usado',
-                anios_de_antiguedad: check('estrenar') ? 0 : 10,
-                piso: parseInt(textoCompleto.match(/(?:piso|floor)\s*(\d+)/i)?.[1] || '1', 10),
+                superficie_total_m2: superficie_total_m2 || null,
+                superficie_cubierta_m2: superficie_total_m2 ? Math.floor(superficie_total_m2 * 0.9) : null,
+                estado: check('a estrenar', 'estrenar') ? 'A estrenar' : 'Usado',
+                anios_de_antiguedad: check('estrenar') ? 0 : null,
+                piso: parseInt(textoCompleto.match(/piso\s*(\d+)/i)?.[1] || '0', 10) || null,
                 orientacion: 'No especificada',
-                disposicion: textoCompleto.includes('frente') ? 'Frente'
-                    : textoCompleto.includes('contrafrente') ? 'Contrafrente' : 'No especificada',
+                disposicion: check('contrafrente') ? 'Contrafrente' : check('al frente', 'a la calle') ? 'Frente' : 'No especificada',
                 cochera: check('cochera', 'garage', 'estacionamiento'),
                 balcon: check('balcon', 'balcón'),
                 terraza: check('terraza'),
                 patio: check('patio'),
                 pileta: check('pileta', 'piscina'),
                 parrilla: check('parrilla'),
-                seguridad_24hs: check('seguridad', 'vigilancia'),
+                seguridad_24hs: check('seguridad 24', 'vigilancia 24'),
                 ascensor: check('ascensor', 'elevador'),
-                expensas_ars: parseInt(expensasTexto.replace(/\D/g, ''), 10) || 0,
+                expensas_ars,
                 baulera: check('baulera'),
-                sum: check('sum', 'usos múltiples', 'salón'),
+                sum: check('sum', 'salón de usos'),
                 seguridad_tipo: check('seguridad', 'vigilancia') ? 'Física' : 'Ninguno',
                 camara: check('camara', 'cámara', 'cctv'),
                 gym: check('gym', 'gimnasio'),
@@ -283,53 +258,38 @@ const waitForAny = async (page, selectors, timeout = 30000) => {
                 laundry: check('laundry', 'lavadero')
             };
 
-            // --- Llamada a la IA local (opcional) ---
             let resultadoIA = {};
             try {
                 const resIA = await fetch('http://127.0.0.1:8000/estimar-precio', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(propiedadData)
                 });
                 if (resIA.ok) resultadoIA = await resIA.json();
-            } catch {
-                // IA local no disponible, ignorar
-            }
+            } catch {}
 
-            const entrada = {
-                id_propiedad,
-                url: link,
-                ...propiedadData,
-                precio_real_usd: parseInt(precioTexto.replace(/\D/g, ''), 10),
+            nuevosResultados.push({
+                id_propiedad, url: link, ...propiedadData,
+                precio_real_usd,
                 precio_estimado_ia_usd: resultadoIA.precio_estimado_usd || null,
                 coordenadas_gps: resultadoIA.coordenadas || null,
                 fecha_publicacion: new Date().toISOString().split('T')[0]
-            };
-
-            nuevosResultados.push(entrada);
+            });
             idsProcesados.add(id_propiedad);
 
-            console.log(`  ✅ ${id_propiedad} | ${entrada.barrio_zona} | USD ${entrada.precio_real_usd} | ${entrada.superficie_total_m2}m²`);
-
-            // Pausa anti-ban
-            await page.waitForTimeout(2000 + Math.random() * 2000);
+            console.log(`✅ ${id_propiedad} | ${propiedadData.barrio_zona} | USD ${precio_real_usd} | ${superficie_total_m2 ?? '?'}m² | ${ambientes} amb`);
+            await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
 
         } catch (e) {
-            console.error(`❌ Error en ${id_propiedad}: ${e.message}`);
+            console.error(`❌ ${id_propiedad}: ${e.message}`);
+        } finally {
+            await detailPage.close().catch(() => {});
         }
     }
 
-    // --- Guardar resultados ---
     const dataExistente = fs.existsSync(ARCHIVO_FINAL)
-        ? JSON.parse(fs.readFileSync(ARCHIVO_FINAL, 'utf-8'))
-        : [];
-
+        ? JSON.parse(fs.readFileSync(ARCHIVO_FINAL, 'utf-8')) : [];
     const total = [...dataExistente, ...nuevosResultados];
     fs.writeFileSync(ARCHIVO_FINAL, JSON.stringify(total, null, 2));
-
-    console.log(`\n🏁 Scraping completado.`);
-    console.log(`   Nuevas propiedades: ${nuevosResultados.length}`);
-    console.log(`   Total en dataset:   ${total.length}`);
-
-    await context.close();
+    console.log(`\n🏁 Listo. Nuevas: ${nuevosResultados.length} | Total: ${total.length}`);
+    await browser.close();
 })();
