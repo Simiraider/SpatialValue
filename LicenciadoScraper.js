@@ -247,7 +247,7 @@ const parsearPrecioUSD = (texto) => {
             }
         }
 
-        console.log(`\n🏁 Finalizado. Nuevas guardadas en Neon: ${nuevos}`);
+        console.log(`\n Nuevas propiedades guardadas en Neon: ${nuevos}`);
 
         if (nuevos > 0) {
             try {
