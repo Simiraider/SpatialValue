@@ -1,0 +1,31 @@
+name: Ejecutar Scraper Automatico
+
+on:
+  schedule:
+    - cron: '0 */12 * * *'
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Clonar el repositorio
+      uses: actions/checkout@v4
+
+    - name: Configurar Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-on-version: '20'
+
+    - name: Instalar dependencias
+      run: npm install
+
+    - name: Instalar Navegador Playwright
+      run: npx playwright install chromium
+
+    - name: Correr el Scraper
+      env:
+        # Le pasamos la URL de tu base de datos de Neon de forma segura
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      run: node LicenciadoScraper.js

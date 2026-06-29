@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 from fastapi import FastAPI
 from pydantic import BaseModel
 import pandas as pd
@@ -8,15 +10,23 @@ from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 from geopy.geocoders import Nominatim
+import psycopg2
+from psycopg2 import pool
+from dotenv import load_dotenv
+
+base_path = Path(__file__).resolve().parent.parent.parent.parent
+env_path = base_path / ".env.local"
+load_dotenv(dotenv_path=env_path)
 
 app = FastAPI(title="API IA Estimador")
 geolocator = Nominatim(user_agent="estimador_propiedades_craigslist_bot")
 
-df = pd.read_csv("dataset_propiedades_200_completo (1).csv")
+DATABASE_URL = os.environ.get("SpatialValueStorage_DATABASE_URL")
 
-if "latitud" not in df.columns or "longitud" not in df.columns:
-    df["latitud"] = -34.6037
-    df["longitud"] = -58.3816
+if not DATABASE_URL:
+    raise ValueError("❌ Error: No se encontró DATABASE_URL. Verificá que exista el archivo .env.local en la raíz del proyecto.")
+
+db_pool = psycopg2.pool.SimpleConnectionPool(1, 10, dsn=DATABASE_URL)
 
 columnas_texto = [
     "tipo_propiedad",
@@ -53,37 +63,69 @@ columnas_numericas = [
     "latitud",
     "longitud"
 ]
-for col in columnas_texto:
-    if col not in df.columns:
-        df[col] = "No especificada"
-    df[col] = df[col].fillna("No especificada")
 
-for col in columnas_numericas:
-    if col not in df.columns:
-        df[col] = 0
-    df[col] = df[col].fillna(0)
+modelo_v4 = None
 
-X = df[columnas_texto + columnas_numericas]
-y = df["precio_usd"]
+def entrenar_modelo():
+    global modelo_v4
+    conn = db_pool.getconn()
+    try:
+        query = """
+            SELECT 
+                tipo_propiedad, barrio_zona, estado, orientacion, disposicion, seguridad_tipo,
+                ambientes, dormitorios, banos, superficie_total_m2, superficie_cubierta_m2,
+                anios_de_antiguedad, piso, cochera, balcon, terraza, patio, pileta,
+                parrilla, seguridad_24hs, ascensor, expensas_ars, baulera, sum,
+                camara, gym, lounge, laundry, precio_real_usd AS precio_usd
+            FROM propiedades 
+            WHERE precio_real_usd IS NOT NULL;
+        """
+        df = pd.read_sql(query, conn)
+    finally:
+        db_pool.putconn(conn)
 
-preprocesador = ColumnTransformer(
-    transformers=[
-        ("texto", OneHotEncoder(handle_unknown="ignore"), columnas_texto),
-        ("numeros", "passthrough", columnas_numericas)
-    ]
-)
+    # 🛡️ PROTECCIÓN: Si la base de datos está vacía, evitamos que la API se rompa al iniciar
+    if df.empty or len(df) < 2:
+        print("⚠️ Advertencia: La base de datos de Neon está vacía o tiene muy pocos datos. El modelo se entrenará automáticamente cuando el scraper guarde información.")
+        modelo_v4 = None
+        return
 
-modelo_v4 = Pipeline(steps=[
-    ("preprocesador", preprocesador),
-    ("modelo", RandomForestRegressor(n_estimators=100, random_state=42))
-])
+    if "latitud" not in df.columns or "longitud" not in df.columns:
+        df["latitud"] = -34.6037
+        df["longitud"] = -58.3816
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-modelo_v4.fit(X_train, y_train)
+    for col in columnas_texto:
+        if col not in df.columns:
+            df[col] = "No especificada"
+        df[col] = df[col].fillna("No especificada")
 
-predicciones = modelo_v4.predict(X_test)
-print("Error promedio en USD:", mean_absolute_error(y_test, predicciones))
-print("R2 Score:", r2_score(y_test, predicciones))
+    for col in columnas_numericas:
+        if col not in df.columns:
+            df[col] = 0
+        df[col] = df[col].fillna(0)
+
+    X = df[columnas_texto + columnas_numericas]
+    y = df["precio_usd"].fillna(df["precio_usd"].median())
+
+    preprocesador = ColumnTransformer(
+        transformers=[
+            ("texto", OneHotEncoder(handle_unknown="ignore"), columnas_texto),
+            ("numeros", "passthrough", columnas_numericas)
+        ]
+    )
+
+    nuevo_modelo = Pipeline(steps=[
+        ("preprocesador", preprocesador),
+        ("modelo", RandomForestRegressor(n_estimators=100, random_state=42))
+    ])
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    nuevo_modelo.fit(X_train, y_train)
+    
+    modelo_v4 = nuevo_modelo
+    print("✅ ¡Modelo entrenado con éxito con los datos actuales de Neon!")
+
+entrenar_modelo()
 
 class PropiedadInput(BaseModel):
     tipo_propiedad: str
@@ -133,6 +175,14 @@ def estimar_precio(propiedad: PropiedadInput):
         latitud = -34.6037
         longitud = -58.3816
 
+    if modelo_v4 is None:
+        return {
+            "status": "warning",
+            "coordenadas": {"lat": latitud, "lng": longitud},
+            "precio_estimado_usd": 450.0, 
+            "message": "Modelo en fase de acumulación de datos inicial."
+        }
+
     datos_entrada = {
         "tipo_propiedad": [propiedad.tipo_propiedad],
         "barrio_zona": [propiedad.barrio_zona],
@@ -177,6 +227,14 @@ def estimar_precio(propiedad: PropiedadInput):
         "precio_estimado_usd": float(precio_predicho)
     }
 
+@app.post("/reentrenar")
+def reentrenar_api():
+    try:
+        entrenar_modelo()
+        return {"status": "success", "message": "Modelo re-entrenado exitosamente."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run("API IA:app", host="127.0.0.1", port=8000, reload=True)
