@@ -9,7 +9,6 @@ const steps = [
   'Validando datos técnicos',
 ];
 
-/** Simula un valor de tasación basado en los datos del formulario */
 function simularTasacion(data: Record<string, string>) {
   const superficie = Number(data.superficieCubierta) || 80;
   const factorTipo: Record<string, number> = {
@@ -25,11 +24,11 @@ function simularTasacion(data: Record<string, string>) {
   };
   const tipo = (data.tipoUnidad || 'Departamento') as keyof typeof factorTipo;
   const conservacion = (data.conservacion || 'Bueno') as keyof typeof factorConservacion;
-  const precioM2Base = 1250; // USD/m² base para la zona
+  const precioM2Base = 1250;
 
   const valorM2Usd = Math.round(precioM2Base * factorTipo[tipo] * factorConservacion[conservacion]);
   const valorTotalUsd = Math.round(superficie * valorM2Usd);
-  const valorTotalArs = Math.round(valorTotalUsd * 1250); // TC estimado
+  const valorTotalArs = Math.round(valorTotalUsd * 1250);
 
   return {
     id: `SV-${Date.now().toString(36).toUpperCase()}`,
@@ -56,7 +55,6 @@ export const LoadingScreen = () => {
       window.setTimeout(() => setCompleted(i + 1), (i + 1) * 1200)
     );
 
-    // Procesar datos del formulario
     const redirect = window.setTimeout(() => {
       const draft = sessionStorage.getItem('tasacion-draft');
       if (draft) {
@@ -64,11 +62,17 @@ export const LoadingScreen = () => {
           const formData = JSON.parse(draft);
           const result = simularTasacion(formData);
           sessionStorage.setItem('tasacion-result', JSON.stringify(result));
-        } catch {
-          // Si falla, dejamos que reporte.astro use el fallback mock
-        }
+        } catch {}
       }
-      navigate('/reporte');
+
+      const redirectUrl = draft
+        ? (() => { try {
+            const parsed = JSON.parse(draft);
+            return parsed.id ? `/reporte?id=${parsed.id}` : '/reporte';
+          } catch { return '/reporte'; } })()
+        : '/reporte';
+
+      navigate(redirectUrl);
     }, 4500);
 
     return () => {

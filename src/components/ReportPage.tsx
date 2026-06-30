@@ -29,9 +29,7 @@ export const ReportPage = () => {
       if (stored) {
         setData(JSON.parse(stored));
       }
-    } catch {
-      // fallback al mock
-    }
+    } catch {}
   }, []);
 
   const report = data ?? reporteMock;

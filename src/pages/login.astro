@@ -14,14 +14,15 @@ import "../styles/login.css";
           <Logo />
         </a>
         <h1 class="LoginPage-title">Iniciar sesión</h1>
-        <p class="LoginPage-demoBadge" role="note">
-          ⚠ Modo demo — cualquier credencial redirige al dashboard
+        <p class="LoginPage-demoBadge" id="mensaje-estado" role="note">
+          Ingresá tus credenciales para conectar a la base de datos
         </p>
       </header>
 
       <div class="LoginPage-card">
-        <form class="LoginPage-form" action="/dashboard" method="POST">
+        <form class="LoginPage-form" id="loginForm">
           <Input
+            id="emailInput"
             label="Usuario / Mail"
             type="email"
             placeholder="usuario@gmail.com"
@@ -29,6 +30,7 @@ import "../styles/login.css";
             required
           />
           <Input
+            id="passwordInput"
             label="Contraseña"
             type="password"
             placeholder="••••••••"
@@ -58,4 +60,58 @@ import "../styles/login.css";
       </div>
     </div>
   </div>
+
+  <script>
+    const form = document.getElementById('loginForm') as HTMLFormElement;
+    const mensajeEstado = document.getElementById('mensaje-estado') as HTMLElement;
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const emailElement = document.getElementById('emailInput') as HTMLInputElement;
+      const passwordElement = document.getElementById('passwordInput') as HTMLInputElement;
+
+      const body = {
+        email: emailElement.value,
+        contraseña: passwordElement.value
+      };
+
+      try {
+        mensajeEstado.innerText = "Verificando credenciales...";
+        mensajeEstado.style.color = "#3b82f6";
+
+        const res = await fetch('/Apis/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        if (!res.ok) {
+          mensajeEstado.innerText = "⚠ Backend no disponible — modo demo: redirigiendo al dashboard";
+          mensajeEstado.style.color = "#f59e0b";
+          document.cookie = "usuario_id=demo-user; path=/";
+          setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
+          return;
+        }
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          mensajeEstado.innerText = "¡Éxito! Redirigiendo...";
+          mensajeEstado.style.color = "#10b981";
+          window.location.href = '/';
+        } else {
+          mensajeEstado.innerText = `❌ ${data.error || 'Error al iniciar sesión'}`;
+          mensajeEstado.style.color = "#ef4444";
+        }
+
+      } catch (error) {
+        console.error("Error en la petición:", error);
+        mensajeEstado.innerText = "⚠ Backend no disponible — modo demo: redirigiendo al dashboard";
+        mensajeEstado.style.color = "#f59e0b";
+        document.cookie = "usuario_id=demo-user; path=/";
+        setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
+      }
+    });
+  </script>
 </Layout>

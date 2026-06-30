@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Bell, User, Search } from 'lucide-react';
-import { tasacionesRecientes, borradores, type TasacionItem } from '../data/mock';
+import { useState, useEffect } from 'react';
+import { Bell, User, Search, Loader2 } from 'lucide-react';
+import { borradores, type TasacionItem } from '../data/mock';
 import '../styles/dashboard.css';
 
 type Section = 'tasaciones' | 'borradores' | 'indices' | 'config';
@@ -20,12 +20,51 @@ const statusLabel: Record<TasacionItem['status'], string> = {
 export const DashboardApp = () => {
   const [section, setSection] = useState<Section>('tasaciones');
   const [query, setQuery] = useState('');
+  const [tasacionesApi, setTasacionesApi] = useState<TasacionItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTasaciones = async () => {
+      setLoading(true);
+      try {
+        const getCookie = (name: string) => {
+          const value = `; ${document.cookie}`;
+          const parts = value.split(`; ${name}=`);
+          if (parts.length === 2) return parts.pop()?.split(';').shift();
+          return null;
+        };
+        const usuarioId = getCookie('usuario_id');
+        const url = usuarioId
+          ? `/Apis/ObtenerDatosPropiedades?usuario_id=${usuarioId}`
+          : `/Apis/ObtenerDatosPropiedades`;
+
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            const mapped: TasacionItem[] = data.map((p: any) => ({
+              id: String(p.id),
+              address: p.direccion || p.titulo,
+              value: p.precio ? `$${p.precio}` : '0 USD',
+              status: 'completada' as const
+            }));
+            setTasacionesApi(mapped);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching properties", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTasaciones();
+  }, []);
 
   const items =
     section === 'borradores'
       ? borradores
       : section === 'tasaciones'
-        ? tasacionesRecientes
+        ? tasacionesApi
         : [];
 
   const filtered = items.filter((t) =>
@@ -37,9 +76,6 @@ export const DashboardApp = () => {
   return (
     <div className="dashboard-layout">
       <aside className="dashboard-sidebar" aria-label="Menú principal">
-        <a href="/" className="dashboard-brand">
-          SpatialValue
-        </a>
         <nav aria-label="Secciones">
           {sidebarItems.map((item) => (
             <button
@@ -57,6 +93,9 @@ export const DashboardApp = () => {
 
       <div className="dashboard-main">
         <header className="dashboard-topbar">
+          <a href="/" className="dashboard-brand-topbar">
+            <span>SpatialValue</span>
+          </a>
           <div className="dashboard-search">
             <label className="sr-only" htmlFor="buscar-tasacion">
               Buscar tasación
@@ -92,7 +131,11 @@ export const DashboardApp = () => {
               <h1 className="dashboard-sectionTitle">
                 {section === 'borradores' ? 'Mis borradores' : 'Mis tasaciones'}
               </h1>
-              {filtered.length === 0 ? (
+              {loading && section === 'tasaciones' ? (
+                <div style={{display: 'flex', justifyContent: 'center', padding: '2rem'}}>
+                  <Loader2 style={{width: 32, height: 32, animation: 'spin 1s linear infinite', color: '#113a77'}} />
+                </div>
+              ) : filtered.length === 0 ? (
                 <p className="dashboard-empty">
                   {isSearching
                     ? 'No hay resultados para tu búsqueda.'

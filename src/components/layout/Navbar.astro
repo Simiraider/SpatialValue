@@ -1,0 +1,138 @@
+---
+const APP_NAME = 'SpatialValue';
+const NAV_ITEMS = [
+  { href: '/', label: 'Inicio' },
+  { href: '/#sobre-tasaciones', label: 'Sobre las Tasaciones' },
+  { href: '/#quienes-somos', label: 'Quiénes Somos' },
+];
+---
+
+<header class="navbar">
+  <div class="navbar-brand">
+    <a href="/" class="navbar-logo">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="32" rx="8" fill="currentColor" />
+        <path d="M8 24L16 8L24 24H8Z" stroke="white" stroke-width="2" fill="none" />
+      </svg>
+      <span class="navbar-title">{APP_NAME}</span>
+    </a>
+  </div>
+
+  <nav class="navbar-nav">
+    {NAV_ITEMS.map((item) => (
+      <a
+        href={item.href}
+        class:list={['navbar-link', { active: Astro.url.pathname === item.href }]}
+      >
+        {item.label}
+      </a>
+    ))}
+  </nav>
+
+  <div class="navbar-actions">
+    <a href="/login" class="navbar-login">Iniciar Sesión</a>
+    <a href="/login" class="nav-cta">Tasación Instantánea</a>
+  </div>
+</header>
+
+<style>
+  .navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    height: 4rem;
+    background: #594e4e;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .navbar-brand {
+    display: flex;
+    align-items: center;
+  }
+
+  .navbar-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: #ffffff;
+  }
+
+  .navbar-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .navbar-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .navbar-link {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #ffffff;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+
+  .navbar-link:hover {
+    color: #c9f4ff;
+  }
+
+  .navbar-link.active {
+    color: #c9f4ff;
+    background: rgba(255,255,255,0.1);
+  }
+
+  .navbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .navbar-login {
+    padding: 0.5rem 1.25rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #ffffff;
+    text-decoration: none;
+    transition: opacity 0.15s ease;
+  }
+
+  .navbar-login:hover {
+    color: #c9f4ff;
+  }
+
+  .nav-cta {
+    display: inline-block;
+    padding: 0.7rem 1.25rem;
+    background: #113a77;
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .nav-cta:hover {
+    background: #161fa3c0;
+  }
+
+  @media (max-width: 768px) {
+    .navbar-nav {
+      display: none;
+    }
+  }
+</style>
