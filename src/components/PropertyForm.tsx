@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { UploadBox } from './UploadBox';
+import { navigate } from '../lib/navigate';
 import '../styles/property-form.css';
 
 const TOTAL_STEPS = 4;
@@ -91,7 +92,7 @@ export const PropertyForm = () => {
       return;
     }
     sessionStorage.setItem('tasacion-draft', JSON.stringify(data));
-    window.location.href = '/cargando';
+    navigate('/cargando');
   };
 
   return (
@@ -335,7 +336,7 @@ export const PropertyForm = () => {
             Anterior
           </Button>
         ) : (
-          <Button type="button" variant="outline" onClick={() => (window.location.href = '/dashboard')}>
+          <Button type="button" variant="outline" onClick={() => navigate('/dashboard')}>
             Cancelar
           </Button>
         )}
