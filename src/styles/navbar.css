@@ -1,6 +1,6 @@
 .navbar {
-  background: var(--color-bg);
-  border-bottom: 1px solid var(--color-border);
+  background: #594e4e;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .navbar-inner {
@@ -18,7 +18,7 @@
   align-items: center;
   gap: 0.5rem;
   text-decoration: none;
-  color: var(--color-text);
+  color: #ffffff;
   font-weight: 700;
   font-size: 1.05rem;
 }
@@ -46,14 +46,14 @@
 }
 
 .nav-links a {
-  color: var(--color-text);
+  color: #ffffff;
   text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .nav-links a:hover {
-  color: var(--color-green-dark);
+  color: #c9f4ff;
 }
 
 .nav-right {
@@ -65,12 +65,12 @@
 .nav-login {
   font-size: 0.9rem;
   font-weight: 500;
-  color: var(--color-text);
+  color: #ffffff;
   text-decoration: none;
 }
 
 .nav-login:hover {
-  color: var(--color-green-dark);
+  color: #c9f4ff;
 }
 
 @media (max-width: 768px) {
