@@ -1,13 +1,13 @@
 import { Download, ArrowLeft } from 'lucide-react';
 import { Button } from './ui/Button';
-import { navigate } from '../lib/navigate';
+
 
 export const ReportActions = () => {
   return (
     <div className="ReportePage-actions">
       <Button
         variant="outline"
-        onClick={() => navigate('/dashboard')}
+        onClick={() => (window.location.href = '/dashboard')}
         id="btn-volver-dashboard"
       >
         <ArrowLeft className="ReportePage-downloadIcon" aria-hidden />

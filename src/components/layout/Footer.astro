@@ -1,5 +1,5 @@
 ---
-const APP_NAME = 'SpatialValue';
+import { APP_NAME } from '../../constants';
 const year = new Date().getFullYear();
 ---
 
@@ -12,8 +12,8 @@ const year = new Date().getFullYear();
 <style>
   .footer {
     padding: 1.5rem 2rem;
-    border-top: 1px solid #e4e4e7;
-    background: #fafafa;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
   }
 
   .footer-content {
@@ -26,6 +26,6 @@ const year = new Date().getFullYear();
 
   .footer-copy {
     font-size: 0.8125rem;
-    color: #71717a;
+    color: var(--color-text-tertiary);
   }
 </style>

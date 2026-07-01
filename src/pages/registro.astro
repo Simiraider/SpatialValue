@@ -131,19 +131,14 @@ import "../styles/registro.css";
         body: JSON.stringify(body)
       });
 
-      if (!res.ok) {
-        mensajeEstado.innerText = "⚠ Backend no disponible — modo demo: cuenta creada localmente";
-        mensajeEstado.style.color = "#f59e0b";
-        setTimeout(() => { window.location.href = '/login'; }, 1500);
-        return;
-      }
-
       const data = await res.json();
 
       if (res.ok && data.success) {
         mensajeEstado.innerText = "¡Cuenta creada con éxito! Redirigiendo al login...";
         mensajeEstado.style.color = "#10b981";
-        setTimeout(() => { window.location.href = '/login'; }, 1500);
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 1500);
       } else {
         mensajeEstado.innerText = `❌ ${data.error || 'Error al crear la cuenta'}`;
         mensajeEstado.style.color = "#ef4444";
@@ -152,9 +147,8 @@ import "../styles/registro.css";
     } catch (error) {
       console.error("Error en la petición:", error);
       if (mensajeEstado) {
-        mensajeEstado.innerText = "⚠ Backend no disponible — modo demo: cuenta creada localmente";
-        mensajeEstado.style.color = "#f59e0b";
-        setTimeout(() => { window.location.href = '/login'; }, 1500);
+        mensajeEstado.innerText = "❌ Error de conexión con el servidor.";
+        mensajeEstado.style.color = "#ef4444";
       }
     }
   });

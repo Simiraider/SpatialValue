@@ -1,10 +1,5 @@
 ---
-const APP_NAME = 'SpatialValue';
-const NAV_ITEMS = [
-  { href: '/', label: 'Inicio' },
-  { href: '/#sobre-tasaciones', label: 'Sobre las Tasaciones' },
-  { href: '/#quienes-somos', label: 'Quiénes Somos' },
-];
+import { APP_NAME, NAV_ITEMS } from '../../constants';
 ---
 
 <header class="navbar">
@@ -30,8 +25,7 @@ const NAV_ITEMS = [
   </nav>
 
   <div class="navbar-actions">
-    <a href="/login" class="navbar-login">Iniciar Sesión</a>
-    <a href="/login" class="nav-cta">Tasación Instantánea</a>
+    <a href="/login" class="navbar-login">Iniciar Sesion</a>
   </div>
 </header>
 
@@ -42,8 +36,8 @@ const NAV_ITEMS = [
     justify-content: space-between;
     padding: 0 2rem;
     height: 4rem;
-    background: #594e4e;
-    border-bottom: 1px solid rgba(255,255,255,0.12);
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
     position: sticky;
     top: 0;
     z-index: 50;
@@ -59,7 +53,7 @@ const NAV_ITEMS = [
     align-items: center;
     gap: 0.75rem;
     text-decoration: none;
-    color: #ffffff;
+    color: var(--color-primary);
   }
 
   .navbar-title {
@@ -78,19 +72,20 @@ const NAV_ITEMS = [
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
     font-size: 0.875rem;
-    font-weight: 700;
-    color: #ffffff;
+    font-weight: 500;
+    color: var(--color-text-secondary);
     text-decoration: none;
     transition: all 0.15s ease;
   }
 
   .navbar-link:hover {
-    color: #c9f4ff;
+    color: var(--color-text);
+    background: var(--color-surface-hover);
   }
 
   .navbar-link.active {
-    color: #c9f4ff;
-    background: rgba(255,255,255,0.1);
+    color: var(--color-primary);
+    background: var(--color-primary-soft);
   }
 
   .navbar-actions {
@@ -104,30 +99,14 @@ const NAV_ITEMS = [
     border-radius: 0.5rem;
     font-size: 0.875rem;
     font-weight: 600;
-    color: #ffffff;
+    color: white;
+    background: var(--color-primary);
     text-decoration: none;
     transition: opacity 0.15s ease;
   }
 
   .navbar-login:hover {
-    color: #c9f4ff;
-  }
-
-  .nav-cta {
-    display: inline-block;
-    padding: 0.7rem 1.25rem;
-    background: #113a77;
-    color: #ffffff;
-    text-decoration: none;
-    font-size: 0.9rem;
-    font-weight: 600;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.15s ease;
-  }
-
-  .nav-cta:hover {
-    background: #161fa3c0;
+    opacity: 0.9;
   }
 
   @media (max-width: 768px) {
