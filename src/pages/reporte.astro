@@ -1,8 +1,9 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import { ReportPage } from "../components/ReportPage";
+import "../styles/reporte.css";
 ---
 
 <Layout title="Reporte de tasación">
-  <ReportPage client:only="react" />
+  <ReportPage client:load />
 </Layout>

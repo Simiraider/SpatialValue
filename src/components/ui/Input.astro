@@ -1,7 +1,7 @@
 ---
 interface Props {
   type?: string;
-  name: string;
+  name?: string;
   id: string;
   label?: string;
   placeholder?: string;
@@ -24,24 +24,21 @@ const {
 } = Astro.props;
 ---
 
-<div class:list={['input-group', { 'input-error': error }]}>
-  {label && (
-    <label for={id} class="input-label">
-      {label}
-      {required && <span class="input-required">*</span>}
-    </label>
-  )}
+<div class="input-group">
+  {label && <label for={id} class="input-label">{label}</label>}
   <input
-    type={type}
-    id={id}
-    name={name}
-    placeholder={placeholder}
+    {id}
+    {name}
+    {type}
+    {placeholder}
+    {value}
     required={required}
     disabled={disabled}
-    value={value}
-    class="input-field"
+    class:list={['input', { 'input-error': error }]}
+    aria-invalid={error ? 'true' : undefined}
+    aria-describedby={error ? `${id}-error` : undefined}
   />
-  {error && <span class="input-error-text">{error}</span>}
+  {error && <span id={`${id}-error`} class="input-error-msg" role="alert">{error}</span>}
 </div>
 
 <style>
@@ -54,46 +51,45 @@ const {
   .input-label {
     font-size: 0.875rem;
     font-weight: 500;
-    color: var(--color-text);
+    color: #18181b;
   }
 
-  .input-required {
-    color: var(--color-error);
-    margin-left: 0.125rem;
-  }
-
-  .input-field {
-    padding: 0.625rem 0.75rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    font-size: 0.9375rem;
-    font-family: var(--font-sans);
-    background: var(--color-bg);
-    color: var(--color-text);
+  .input {
+    padding: 0.625rem 0.875rem;
+    border: 1px solid #d4d4d8;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    color: #18181b;
+    background: #ffffff;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
     outline: none;
-    transition: border-color var(--transition-base), box-shadow var(--transition-base);
   }
 
-  .input-field:focus {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px var(--color-primary-soft);
+  .input::placeholder {
+    color: #a1a1aa;
   }
 
-  .input-field:disabled {
-    opacity: 0.5;
+  .input:focus {
+    border-color: #113a77;
+    box-shadow: 0 0 0 2px rgba(17, 58, 119, 0.15);
+  }
+
+  .input:disabled {
+    background: #f4f4f5;
+    color: #a1a1aa;
     cursor: not-allowed;
   }
 
-  .input-error .input-field {
-    border-color: var(--color-error);
+  .input.input-error {
+    border-color: #dc2626;
   }
 
-  .input-error .input-field:focus {
-    box-shadow: 0 0 0 3px var(--color-error-soft);
+  .input.input-error:focus {
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15);
   }
 
-  .input-error-text {
-    font-size: 0.8125rem;
-    color: var(--color-error);
+  .input-error-msg {
+    font-size: 0.75rem;
+    color: #dc2626;
   }
 </style>

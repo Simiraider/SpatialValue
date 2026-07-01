@@ -129,6 +129,42 @@
   border-radius: 0.5rem;
 }
 
+.ReportePage-subtitle {
+  margin-top: 0.15rem;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.ReportePage-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.ReportePage-detailRow {
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border-radius: 0.5rem;
+}
+
+.ReportePage-detailRow dt {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ReportePage-detailRow dd {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
 .ReportePage-actions {
   display: flex;
   justify-content: center;
