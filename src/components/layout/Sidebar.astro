@@ -1,9 +1,5 @@
 ---
-const NAV_ITEMS = [
-  { href: '/', label: 'Inicio', icon: 'home' },
-  { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-  { href: '/tasacion', label: 'Nueva Tasación', icon: 'valuation' },
-];
+import { NAV_ITEMS } from '../../constants';
 ---
 
 <aside class="sidebar">
@@ -47,8 +43,8 @@ const NAV_ITEMS = [
     width: 15rem;
     min-height: calc(100vh - 4rem);
     padding: 1.5rem 0.75rem;
-    background: #fafafa;
-    border-right: 1px solid #e4e4e7;
+    background: var(--color-surface);
+    border-right: 1px solid var(--color-border);
   }
 
   .sidebar-nav {
@@ -65,19 +61,19 @@ const NAV_ITEMS = [
     border-radius: 0.5rem;
     font-size: 0.875rem;
     font-weight: 500;
-    color: #71717a;
+    color: var(--color-text-secondary);
     text-decoration: none;
     transition: all 0.15s ease;
   }
 
   .sidebar-link:hover {
-    color: #18181b;
-    background: #f4f4f5;
+    color: var(--color-text);
+    background: var(--color-surface-hover);
   }
 
   .sidebar-link.active {
-    color: #113a77;
-    background: #dcfce7;
+    color: var(--color-primary);
+    background: var(--color-primary-soft);
   }
 
   .sidebar-icon {

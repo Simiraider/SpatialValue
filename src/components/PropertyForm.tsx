@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { UploadBox } from './UploadBox';
-import { navigate } from '../lib/navigate';
 import '../styles/property-form.css';
 
 const TOTAL_STEPS = 4;
@@ -99,7 +98,7 @@ export const PropertyForm = () => {
         if (parts.length === 2) return parts.pop()?.split(';').shift();
         return null;
       };
-
+      
       const usuarioId = getCookie('usuario_id');
       if (!usuarioId) {
         alert("Debes iniciar sesión para tasar una propiedad.");
@@ -126,10 +125,10 @@ export const PropertyForm = () => {
       });
 
       const resData = await res.json();
-
+      
       if (res.ok && resData.success) {
         sessionStorage.setItem('tasacion-draft', JSON.stringify({ ...data, id: resData.data.id }));
-        navigate('/cargando');
+        window.location.href = '/cargando';
       } else {
         alert(`Error al guardar: ${resData.error || 'Error desconocido'}`);
       }
@@ -380,7 +379,7 @@ export const PropertyForm = () => {
             Anterior
           </Button>
         ) : (
-          <Button type="button" variant="outline" onClick={() => navigate('/dashboard')}>
+          <Button type="button" variant="outline" onClick={() => (window.location.href = '/dashboard')}>
             Cancelar
           </Button>
         )}

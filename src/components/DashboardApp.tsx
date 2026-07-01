@@ -34,10 +34,8 @@ export const DashboardApp = () => {
           return null;
         };
         const usuarioId = getCookie('usuario_id');
-        const url = usuarioId
-          ? `/Apis/ObtenerDatosPropiedades?usuario_id=${usuarioId}`
-          : `/Apis/ObtenerDatosPropiedades`;
-
+        const url = usuarioId ? `/Apis/ObtenerDatosPropiedades?usuario_id=${usuarioId}` : `/Apis/ObtenerDatosPropiedades`;
+        
         const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
@@ -133,7 +131,7 @@ export const DashboardApp = () => {
               </h1>
               {loading && section === 'tasaciones' ? (
                 <div style={{display: 'flex', justifyContent: 'center', padding: '2rem'}}>
-                  <Loader2 style={{width: 32, height: 32, animation: 'spin 1s linear infinite', color: '#113a77'}} />
+                  <Loader2 className="LoadingScreen-spinner" style={{width: 32, height: 32, animation: 'spin 1s linear infinite', color: 'var(--color-primary)'}} />
                 </div>
               ) : filtered.length === 0 ? (
                 <p className="dashboard-empty">

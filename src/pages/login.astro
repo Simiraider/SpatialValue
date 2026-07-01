@@ -86,20 +86,12 @@ import "../styles/login.css";
           body: JSON.stringify(body)
         });
 
-        if (!res.ok) {
-          mensajeEstado.innerText = "⚠ Backend no disponible — modo demo: redirigiendo al dashboard";
-          mensajeEstado.style.color = "#f59e0b";
-          document.cookie = "usuario_id=demo-user; path=/";
-          setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
-          return;
-        }
-
         const data = await res.json();
 
         if (res.ok && data.success) {
           mensajeEstado.innerText = "¡Éxito! Redirigiendo...";
           mensajeEstado.style.color = "#10b981";
-          window.location.href = '/';
+          window.location.href = '/'; 
         } else {
           mensajeEstado.innerText = `❌ ${data.error || 'Error al iniciar sesión'}`;
           mensajeEstado.style.color = "#ef4444";
@@ -107,10 +99,8 @@ import "../styles/login.css";
 
       } catch (error) {
         console.error("Error en la petición:", error);
-        mensajeEstado.innerText = "⚠ Backend no disponible — modo demo: redirigiendo al dashboard";
-        mensajeEstado.style.color = "#f59e0b";
-        document.cookie = "usuario_id=demo-user; path=/";
-        setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
+        mensajeEstado.innerText = "❌ Error de conexión con el servidor.";
+        mensajeEstado.style.color = "#ef4444";
       }
     });
   </script>

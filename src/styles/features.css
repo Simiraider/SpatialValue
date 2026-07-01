@@ -4,7 +4,7 @@
 }
 
 .features-inner {
-  max-width: 1120px;
+  max-width: var(--max-width);
   margin: 0 auto;
 }
 
@@ -13,7 +13,7 @@
   font-size: clamp(2.4rem, 5vw, 4.5rem);
   font-weight: 800;
   margin: 0 0 3rem;
-  color: #18181b;
+  color: var(--color-text);
   letter-spacing: 0;
 }
 
@@ -63,7 +63,7 @@
   font-size: 1.45rem;
   font-weight: 800;
   margin: 0 0 0.5rem;
-  color: #18181b;
+  color: var(--color-text);
 }
 
 .feature-card p {
