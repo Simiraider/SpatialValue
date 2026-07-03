@@ -1,4 +1,3 @@
-//configuracion inicial
 import { chromium } from 'playwright';
 import { Pool } from '@neondatabase/serverless';
 
@@ -19,14 +18,14 @@ const parsearPrecioUSD = (texto) => {
     const valor = parseFloat(match[1].replace(/\./g, '').replace(',', '.'));
     return (valor >= 100 && valor <= 50000) ? Math.round(valor) : null;
 };
-// Va a la sesion de google en el puerto 9222 y a zonaprop 
+
 (async () => {
-    console.log("🚀 Iniciando scraper...");
+    console.log("Iniciando scraper");
     let browser;
     try {
         browser = await chromium.connectOverCDP('http://localhost:9222');
     } catch {
-        console.error('❌ Error CDP localhost:9222');
+        console.error(' Error CDP localhost:9222');
         process.exit(1);
     }
 
@@ -34,29 +33,46 @@ const parsearPrecioUSD = (texto) => {
     const page = context.pages()[0] || await context.newPage();
 
     try {
-        await page.goto('https://www.zonaprop.com.ar/departamentos-alquiler-capital-federal.html', {
-            waitUntil: 'domcontentloaded', timeout: 60000
-        });
+        const PAGINAS_MAXIMAS = 10; 
+        let linksTotales = [];
 
-        const selectorListado = await waitForAny(page, [
-            '[data-qa="posting-card"]', '[data-posting-id]', 'div[class*="posting-card"]', 'ol[class*="postings"] li', 'article'
-        ], 300000);
+        for (let pagina = 1; pagina <= PAGINAS_MAXIMAS; pagina++) {
+            const urlPagina = pagina === 1 
+                ? 'https://www.zonaprop.com.ar/departamentos-alquiler-capital-federal.html'
+                : `https://www.zonaprop.com.ar/departamentos-alquiler-capital-federal-pagina-${pagina}.html`;
 
-        if (!selectorListado) {
+            try {
+                await page.goto(urlPagina, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+                const selectorListado = await waitForAny(page, [
+                    '[data-qa="posting-card"]', '[data-posting-id]', 'div[class*="posting-card"]', 'ol[class*="postings"] li', 'article'
+                ], 30000);
+
+                if (!selectorListado) break;
+
+                await page.waitForTimeout(1500);
+
+                const linksPagina = await page.evaluate(() =>
+                    Array.from(document.querySelectorAll('a[href]'))
+                        .map(a => a.href)
+                        .filter(h => h.includes('zonaprop.com.ar') && h.match(/\/propiedades\/.*\.html/) && !h.includes('#'))
+                );
+
+                linksTotales.push(...linksPagina);
+                await page.waitForTimeout(1000); 
+
+            } catch {
+                continue;
+            }
+        }
+
+        const links = [...new Set(linksTotales)];
+
+        if (links.length === 0) {
             await browser.disconnect();
             return;
         }
 
-        await page.waitForTimeout(2000);
-
-        const links = await page.evaluate(() =>
-            [...new Set(
-                Array.from(document.querySelectorAll('a[href]'))
-                    .map(a => a.href)
-                    .filter(h => h.includes('zonaprop.com.ar') && h.match(/\/propiedades\/.*\.html/) && !h.includes('#'))
-            )]
-        );
-//busca propiedades en la base de datos ya escaneadas para saltearlas 
         const { rows } = await pool.query('SELECT id_propiedad FROM propiedades');
         const idsProcesados = new Set(rows.map(r => r.id_propiedad));
         let nuevos = 0;
@@ -71,7 +87,6 @@ const parsearPrecioUSD = (texto) => {
                 await detailPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 45000 });
                 await waitForAny(detailPage, ['[class*="price"]', '[class*="Price"]', '[data-qa="price"]'], 15000);
 
-                // saca los datos mediante la busqueda de palabras claves 
                 const data = await detailPage.evaluate(() => {
                     const textoCompleto = document.body.innerText.toLowerCase();
                     const elTitulo = document.querySelector('h1,[data-qa="title"],[class*="TitleContainer"]');
@@ -241,7 +256,7 @@ const parsearPrecioUSD = (texto) => {
                 nuevos++;
                 await new Promise(r => setTimeout(r, 1500 + Math.random() * 1500));
 
-            } catch (e) {
+            } catch {
             } finally {
                 await detailPage.close().catch(() => {});
             }

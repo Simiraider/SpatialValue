@@ -1,4 +1,5 @@
 import os
+import json
 from pathlib import Path
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -8,8 +9,6 @@ from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error, r2_score
-from geopy.geocoders import Nominatim
 import psycopg2
 from psycopg2 import pool
 from dotenv import load_dotenv
@@ -19,14 +18,13 @@ env_path = base_path / ".env.local"
 load_dotenv(dotenv_path=env_path)
 
 app = FastAPI(title="API IA Estimador")
-geolocator = Nominatim(user_agent="estimador_propiedades_craigslist_bot")
 
 DATABASE_URL = os.environ.get("SpatialValueStorage_DATABASE_URL")
 
 if not DATABASE_URL:
     raise ValueError("❌ Error: No se encontró DATABASE_URL. Verificá que exista el archivo .env.local en la raíz del proyecto.")
 
-db_pool = psycopg2.pool.SimpleConnectionPool(1, 10, dsn=DATABASE_URL)
+db_pool = psycopg2.pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
 
 columnas_texto = [
     "tipo_propiedad",
@@ -76,7 +74,7 @@ def entrenar_modelo():
                 ambientes, dormitorios, banos, superficie_total_m2, superficie_cubierta_m2,
                 anios_de_antiguedad, piso, cochera, balcon, terraza, patio, pileta,
                 parrilla, seguridad_24hs, ascensor, expensas_ars, baulera, sum,
-                camara, gym, lounge, laundry, precio_real_usd AS precio_usd
+                camara, gym, lounge, laundry, coordenadas_gps, precio_real_usd AS precio_usd
             FROM propiedades 
             WHERE precio_real_usd IS NOT NULL;
         """
@@ -84,15 +82,21 @@ def entrenar_modelo():
     finally:
         db_pool.putconn(conn)
 
-    # 🛡️ PROTECCIÓN: Si la base de datos está vacía, evitamos que la API se rompa al iniciar
     if df.empty or len(df) < 2:
-        print("⚠️ Advertencia: La base de datos de Neon está vacía o tiene muy pocos datos. El modelo se entrenará automáticamente cuando el scraper guarde información.")
+        print("⚠️ Advertencia: La base de datos de Neon está vacía o tiene muy pocos datos.")
         modelo_v4 = None
         return
 
-    if "latitud" not in df.columns or "longitud" not in df.columns:
-        df["latitud"] = -34.6037
-        df["longitud"] = -58.3816
+    def extraer_coordenadas(row):
+        try:
+            if row['coordenadas_gps']:
+                coords = json.loads(row['coordenadas_gps'])
+                return pd.Series([coords.get('lat', -34.6037), coords.get('lng', -58.3816)])
+        except:
+            pass
+        return pd.Series([-34.6037, -58.3816])
+
+    df[['latitud', 'longitud']] = df.apply(extraer_coordenadas, axis=1)
 
     for col in columnas_texto:
         if col not in df.columns:
@@ -125,7 +129,10 @@ def entrenar_modelo():
     modelo_v4 = nuevo_modelo
     print("✅ ¡Modelo entrenado con éxito con los datos actuales de Neon!")
 
-entrenar_modelo()
+try:
+    entrenar_modelo()
+except Exception as e:
+    print(f"⚠️ Error al entrenar el modelo inicial: {e}")
 
 class PropiedadInput(BaseModel):
     tipo_propiedad: str
@@ -159,21 +166,9 @@ class PropiedadInput(BaseModel):
 
 @app.post("/estimar-precio")
 def estimar_precio(propiedad: PropiedadInput):
-    direccion_busqueda = f"{propiedad.barrio_zona}, Buenos Aires, Argentina"
-    latitud = None
-    longitud = None
-    
-    try:
-        location = geolocator.geocode(direccion_busqueda, timeout=10)
-        if location:
-            latitud = location.latitude
-            longitud = location.longitude
-    except:
-        pass
-    
-    if latitud is None or longitud is None:
-        latitud = -34.6037
-        longitud = -58.3816
+    # Coordenadas por defecto (Obelisco, Buenos Aires)
+    latitud = -34.6037
+    longitud = -58.3816
 
     if modelo_v4 is None:
         return {
