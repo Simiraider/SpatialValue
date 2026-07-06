@@ -22,7 +22,7 @@ app = FastAPI(title="API IA Estimador")
 DATABASE_URL = os.environ.get("SpatialValueStorage_DATABASE_URL")
 
 if not DATABASE_URL:
-    raise ValueError("❌ Error: No se encontró DATABASE_URL. Verificá que exista el archivo .env.local en la raíz del proyecto.")
+    raise ValueError("Error: No se encontró DATABASE_URL. Verificá que exista el archivo .env.local en la raíz del proyecto.")
 
 db_pool = psycopg2.pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
 
@@ -82,8 +82,8 @@ def entrenar_modelo():
     finally:
         db_pool.putconn(conn)
 
-    if df.empty or len(df) < 2:
-        print("⚠️ Advertencia: La base de datos de Neon está vacía o tiene muy pocos datos.")
+    if df.empty:
+        print("La base de datos de Neon está vacía")
         modelo_v4 = None
         return
 
@@ -127,7 +127,7 @@ def entrenar_modelo():
     nuevo_modelo.fit(X_train, y_train)
     
     modelo_v4 = nuevo_modelo
-    print("✅ ¡Modelo entrenado con éxito con los datos actuales de Neon!")
+    print("Modelo entrenado con éxito con los datos actuales de Neon")
 
 try:
     entrenar_modelo()
@@ -166,7 +166,6 @@ class PropiedadInput(BaseModel):
 
 @app.post("/estimar-precio")
 def estimar_precio(propiedad: PropiedadInput):
-    # Coordenadas por defecto (Obelisco, Buenos Aires)
     latitud = -34.6037
     longitud = -58.3816
 
