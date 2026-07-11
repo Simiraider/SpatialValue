@@ -1,24 +1,164 @@
 ---
 import Logo from "./Logo.astro";
+
+const pathname = Astro.url.pathname;
+
+const menuItems = [
+  { href: '/dashboard', label: 'Dashboard' },
+  { href: '/tasacion', label: 'Tasá tu Propiedad' },
+  { href: '/sobre-tasaciones', label: 'Sobre Las Tasaciones' },
+  { href: '/quienes-somos', label: '¿Quiénes Somos?' },
+];
 ---
 
 <header class="navbar">
   <div class="navbar-inner">
     <a href="/" class="logo">
       <Logo />
-      <span>SpatialValue</span>
+      <span class="logo-text">SpatialValue</span>
     </a>
 
     <nav aria-label="Principal">
       <ul class="nav-links">
-        <li><a href="#metodologia">Metodología</a></li>
-        <li><a href="#precios">Precio</a></li>
+        {menuItems.map((item) => (
+          <li>
+            <a
+              href={item.href}
+              class:list={{
+                'nav-link': true,
+                'nav-link--active': pathname === item.href || (item.href === '/dashboard' && pathname === '/'),
+              }}
+            >
+              {item.label}
+            </a>
+          </li>
+        ))}
       </ul>
     </nav>
 
     <div class="nav-right">
-      <a href="/login" class="nav-login">Iniciar Sesión</a>
-      <a href="/login" class="button-primary">Tasación Instantánea</a>
+      <div class="user-avatar" id="user-avatar">
+        <div class="avatar-circle">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+        </div>
+        <span class="user-name" id="user-name">Usuario Loggeado</span>
+      </div>
     </div>
   </div>
 </header>
+
+<script>
+  const avatar = document.getElementById('user-avatar');
+  const userName = document.getElementById('user-name');
+  const cookieValue = document.cookie.split('; ').find(row => row.startsWith('usuario_id='));
+  const isLoggedIn = cookieValue && cookieValue.split('=')[1];
+  if (!isLoggedIn || isLoggedIn === '') {
+    if (avatar) avatar.style.display = 'none';
+  }
+</script>
+
+<style>
+  .navbar {
+    background: #ffffff;
+    border-bottom: 1px solid #E5E7EB;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .navbar-inner {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+  }
+
+  .logo-text {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #0F172A;
+  }
+
+  .logo :deep(.logo-img) {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 1.75rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .nav-link {
+    color: #0F172A;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: color 0.15s ease;
+    padding: 0.25rem 0;
+  }
+
+  .nav-link:hover {
+    color: #2563eb;
+  }
+
+  .nav-link--active {
+    color: #2563eb;
+    font-weight: 600;
+  }
+
+  .nav-right {
+    display: flex;
+    align-items: center;
+  }
+
+  .user-avatar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .avatar-circle {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    background: #E5E7EB;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+  }
+
+  .user-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #6b7280;
+  }
+
+  @media (max-width: 768px) {
+    .nav-links {
+      display: none;
+    }
+
+    .user-name {
+      display: none;
+    }
+  }
+</style>

@@ -1,17 +1,16 @@
-import { Download, ArrowLeft } from 'lucide-react';
+import { Download, Plus } from 'lucide-react';
 import { Button } from './ui/Button';
 import { navigate } from '../lib/navigate';
 
 export const ReportActions = () => {
   return (
-    <div className="ReportePage-actions">
+    <div className="rpt-actions">
       <Button
         variant="outline"
-        onClick={() => navigate('/dashboard')}
-        id="btn-volver-dashboard"
+        onClick={() => navigate('/formulario')}
       >
-        <ArrowLeft className="ReportePage-downloadIcon" aria-hidden />
-        Volver al Dashboard
+        <Plus size={16} style={{marginRight: '0.4rem'}} />
+        Nueva Tasación
       </Button>
     </div>
   );
@@ -23,8 +22,12 @@ export const ReportDownloadButton = () => {
   };
 
   return (
-    <Button variant="outline" onClick={handleDownload} id="btn-descargar-pdf">
-      <Download className="ReportePage-downloadIcon" aria-hidden />
+    <Button
+      variant="outline"
+      onClick={handleDownload}
+      style={{width: '100%', justifyContent: 'center'}}
+    >
+      <Download size={16} style={{marginRight: '0.4rem'}} />
       Descargar PDF
     </Button>
   );

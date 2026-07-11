@@ -1,105 +1,79 @@
 import { useState } from 'react';
-import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { UploadBox } from './UploadBox';
 import { navigate } from '../lib/navigate';
-import '../styles/property-form.css';
+import { getCookie } from '../lib/utils';
+const unitTypes = ['Casa', 'Departamento', 'PH', 'Terreno'];
 
-const TOTAL_STEPS = 4;
+const servicesList = [
+  'Seguridad 24hs', 'Gas', 'Luz', 'Agua', 'Internet', 'Cochera'
+];
 
-const unitTypes = ['Casa', 'Departamento', 'Local', 'Terreno'];
-
-const conservationOptions = [
-  { label: 'Bueno', className: 'PropertyForm-conservationOption--good' },
-  { label: 'Regular', className: 'PropertyForm-conservationOption--regular' },
-  { label: 'Malo', className: 'PropertyForm-conservationOption--bad' },
-] as const;
+const TOTAL_STEPS = 3;
 
 type FormData = {
-  direccion: string;
-  ciudad: string;
-  codigoPostal: string;
-  tipoUnidad: string;
-  superficieCubierta: string;
-  superficieSemiCubierta: string;
-  descubierta: string;
-  ambientes: string;
-  dormitorios: string;
-  banos: string;
-  cocheras: string;
-  conservacion: 'Bueno' | 'Regular' | 'Malo';
-  calidad: string;
-  calefaccion: string;
-  antiguedadCanherias: string;
-  comentarios: string;
+  ambientes: number;
+  dormitorios: number;
+  banos: number;
+  cocheras: number;
+  antiguedad: number;
+  tipoPropiedad: string;
+  piso: number;
+  precio: string;
+  moneda: string;
+  ubicacion: string;
+  servicios: string[];
 };
-
-type StepErrors = Partial<Record<keyof FormData, string>>;
 
 const initialData: FormData = {
-  direccion: '',
-  ciudad: '',
-  codigoPostal: '',
-  tipoUnidad: 'Departamento',
-  superficieCubierta: '',
-  superficieSemiCubierta: '',
-  descubierta: '',
-  ambientes: '3',
-  dormitorios: '2',
-  banos: '1',
-  cocheras: '0',
-  conservacion: 'Bueno',
-  calidad: 'Buena',
-  calefaccion: 'Central',
-  antiguedadCanherias: 'Menos de 10 años',
-  comentarios: '',
+  ambientes: 0,
+  dormitorios: 0,
+  banos: 0,
+  cocheras: 0,
+  antiguedad: 0,
+  tipoPropiedad: 'Casa',
+  piso: 0,
+  precio: '',
+  moneda: 'ARS',
+  ubicacion: '',
+  servicios: ['Seguridad 24hs', 'Gas', 'Luz'],
 };
 
-function validateStep(step: number, data: FormData): StepErrors {
-  const errors: StepErrors = {};
-  if (step === 1) {
-    if (!data.direccion.trim()) errors.direccion = 'La dirección es obligatoria.';
-    if (!data.ciudad.trim()) errors.ciudad = 'La ciudad es obligatoria.';
-    if (!data.codigoPostal.trim()) errors.codigoPostal = 'El código postal es obligatorio.';
-  }
-  if (step === 2) {
-    if (!data.superficieCubierta || Number(data.superficieCubierta) <= 0)
-      errors.superficieCubierta = 'Ingresá la superficie cubierta.';
-  }
-  return errors;
-}
+const CounterField = ({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) => (
+  <div className="pf-field">
+    <label className="pf-label">{label}</label>
+    <div className="pf-counter">
+      <button type="button" className="pf-counter-btn" onClick={() => onChange(Math.max(0, value - 1))}>−</button>
+      <span className="pf-counter-value">{value}</span>
+      <button type="button" className="pf-counter-btn" onClick={() => onChange(value + 1)}>+</button>
+    </div>
+  </div>
+);
 
 export const PropertyForm = () => {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<FormData>(initialData);
-  const [errors, setErrors] = useState<StepErrors>({});
-
-  const progress = (step / TOTAL_STEPS) * 100;
 
   const update = <K extends keyof FormData>(field: K, value: FormData[K]) =>
     setData((prev) => ({ ...prev, [field]: value }));
 
+  const toggleService = (svc: string) => {
+    setData((prev) => ({
+      ...prev,
+      servicios: prev.servicios.includes(svc)
+        ? prev.servicios.filter((s) => s !== svc)
+        : [...prev.servicios, svc],
+    }));
+  };
+
   const handleNext = async (e: React.FormEvent) => {
     e.preventDefault();
-    const stepErrors = validateStep(step, data);
-    if (Object.keys(stepErrors).length > 0) {
-      setErrors(stepErrors);
-      return;
-    }
-    setErrors({});
     if (step < TOTAL_STEPS) {
       setStep((s) => s + 1);
       return;
     }
 
     try {
-      const getCookie = (name: string) => {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop()?.split(';').shift();
-        return null;
-      };
-
       const usuarioId = getCookie('usuario_id');
       if (!usuarioId) {
         alert("Debes iniciar sesión para tasar una propiedad.");
@@ -107,15 +81,13 @@ export const PropertyForm = () => {
       }
 
       const body = {
-        titulo: `${data.tipoUnidad} en ${data.direccion}`,
-        descripcion: data.comentarios || "Sin descripción",
-        precio: 0,
-        direccion: data.direccion,
-        ciudad: data.ciudad,
-        barrio: data.ciudad,
-        habitaciones: Number(data.ambientes),
-        baños: Number(data.banos),
-        area_m2: Number(data.superficieCubierta),
+        titulo: `${data.tipoPropiedad} en ${data.ubicacion || 'sin dirección'}`,
+        descripcion: `Ambientes: ${data.ambientes}, Dorm: ${data.dormitorios}, Baños: ${data.banos}`,
+        precio: Number(data.precio) || 0,
+        direccion: data.ubicacion,
+        habitaciones: data.ambientes,
+        baños: data.banos,
+        area_m2: 0,
         usuario_id: usuarioId
       };
 
@@ -128,7 +100,7 @@ export const PropertyForm = () => {
       const resData = await res.json();
 
       if (res.ok && resData.success) {
-        sessionStorage.setItem('tasacion-draft', JSON.stringify({ ...data, id: resData.data.id }));
+        sessionStorage.setItem('tasacion-draft', JSON.stringify(data));
         navigate('/cargando');
       } else {
         alert(`Error al guardar: ${resData.error || 'Error desconocido'}`);
@@ -140,254 +112,146 @@ export const PropertyForm = () => {
   };
 
   return (
-    <form className="PropertyForm" onSubmit={handleNext} noValidate>
-      <section className="PropertyForm-progress" aria-label="Progreso">
-        <p className="PropertyForm-progressLabel">
-          Paso {step}/{TOTAL_STEPS}
-        </p>
-        <div className="PropertyForm-progressTrack">
-          <div
-            className="PropertyForm-progressBar"
-            style={{ width: `${progress}%` }}
-          />
+    <div className="pf-wrap">
+      <div className="pf-header">
+        <button type="button" className="pf-back" onClick={() => step > 1 ? setStep(s => s - 1) : navigate('/tasacion')}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Volver
+        </button>
+        <span className="pf-logo">
+          <img src="/logo.svg" alt="SpatialValue" width="28" height="28" />
+        </span>
+      </div>
+
+      <div className="pf-progress">
+        <div className={`pf-progress-node ${step >= 1 ? 'pf-progress-node--active' : ''}`}>
+          <span>1</span>
         </div>
-      </section>
+        <div className={`pf-progress-line ${step >= 2 ? 'pf-progress-line--active' : ''}`}></div>
+        <div className={`pf-progress-node ${step >= 2 ? 'pf-progress-node--active' : ''}`}>
+          <span>2</span>
+        </div>
+        <div className={`pf-progress-line ${step >= 3 ? 'pf-progress-line--active' : ''}`}></div>
+        <div className={`pf-progress-node ${step >= 3 ? 'pf-progress-node--active' : ''}`}>
+          <span>3</span>
+        </div>
+      </div>
 
-      {step === 1 && (
-        <fieldset className="PropertyForm-fieldset">
-          <legend className="sr-only">Ubicación</legend>
-          <Input
-            label="Dirección Exacta"
-            placeholder="Ej. Av. Corrientes 1234"
-            value={data.direccion}
-            onChange={(e) => update('direccion', e.target.value)}
-            error={errors.direccion}
-            required
-          />
-          <Input
-            label="Ciudad"
-            placeholder="Ej. Buenos Aires"
-            value={data.ciudad}
-            onChange={(e) => update('ciudad', e.target.value)}
-            error={errors.ciudad}
-            required
-          />
-          <Input
-            label="Código Postal"
-            placeholder="Ej. 1425"
-            value={data.codigoPostal}
-            onChange={(e) => update('codigoPostal', e.target.value)}
-            error={errors.codigoPostal}
-            required
-          />
-          <div>
-            <label className="PropertyForm-label">Tipo de Unidad</label>
-            <select
-              className="PropertyForm-select"
-              value={data.tipoUnidad}
-              onChange={(e) => update('tipoUnidad', e.target.value)}
-            >
-              {unitTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="PropertyForm-mapPlaceholder">
-            Mapa interactivo — se integrará con API de mapas en un sprint posterior.
-          </div>
-        </fieldset>
-      )}
-
-      {step === 2 && (
-        <fieldset className="PropertyForm-fieldset PropertyForm-fieldset--grid">
-          <legend className="sr-only">Medidas y estructura</legend>
-          <Input
-            label="Superficie Cubierta (m²)"
-            type="number"
-            placeholder="Ej. 80"
-            value={data.superficieCubierta}
-            onChange={(e) => update('superficieCubierta', e.target.value)}
-            error={errors.superficieCubierta}
-            required
-          />
-          <Input
-            label="Superficie Semi-Cubierta (m²)"
-            type="number"
-            placeholder="Ej. 10"
-            value={data.superficieSemiCubierta}
-            onChange={(e) => update('superficieSemiCubierta', e.target.value)}
-          />
-          <Input
-            label="Descubierta (m²)"
-            type="number"
-            placeholder="Ej. 15"
-            value={data.descubierta}
-            onChange={(e) => update('descubierta', e.target.value)}
-          />
-          <div>
-            <label className="PropertyForm-label">Cantidad de Ambientes</label>
-            <select
-              className="PropertyForm-select"
-              value={data.ambientes}
-              onChange={(e) => update('ambientes', e.target.value)}
-            >
-              {[1, 2, 3, 4, 5, 6].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="PropertyForm-label">Dormitorios</label>
-            <select
-              className="PropertyForm-select"
-              value={data.dormitorios}
-              onChange={(e) => update('dormitorios', e.target.value)}
-            >
-              {[0, 1, 2, 3, 4, 5].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="PropertyForm-label">Baños</label>
-            <select
-              className="PropertyForm-select"
-              value={data.banos}
-              onChange={(e) => update('banos', e.target.value)}
-            >
-              {[1, 2, 3, 4].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="PropertyForm-label">Cocheras</label>
-            <select
-              className="PropertyForm-select"
-              value={data.cocheras}
-              onChange={(e) => update('cocheras', e.target.value)}
-            >
-              {[0, 1, 2, 3].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
-        </fieldset>
-      )}
-
-      {step === 3 && (
-        <fieldset className="PropertyForm-fieldset PropertyForm-fieldset--spaced">
-          <legend className="sr-only">Peritaje técnico</legend>
-          <div>
-            <label className="PropertyForm-label PropertyForm-label--group">
-              Estado de Conservación
-            </label>
-            <div className="PropertyForm-conservationGroup">
-              {conservationOptions.map((opt) => (
-                <label
-                  key={opt.label}
-                  className={`PropertyForm-conservationOption ${opt.className}${data.conservacion === opt.label ? ' PropertyForm-conservationOption--selected' : ''
-                    }`}
-                >
-                  <input
-                    type="radio"
-                    name="conservacion"
-                    value={opt.label}
-                    className="sr-only"
-                    checked={data.conservacion === opt.label}
-                    onChange={() =>
-                      update('conservacion', opt.label as FormData['conservacion'])
-                    }
-                  />
-                  {opt.label}
-                </label>
-              ))}
+      <form className="pf-form" onSubmit={handleNext}>
+        {step === 1 && (
+          <div className="pf-step">
+            <div className="pf-grid-2">
+              <CounterField label="Número de ambientes" value={data.ambientes} onChange={(v) => update('ambientes', v)} />
+              <CounterField label="Cantidad de dormitorios" value={data.dormitorios} onChange={(v) => update('dormitorios', v)} />
+              <CounterField label="Cantidad de baños" value={data.banos} onChange={(v) => update('banos', v)} />
+              <CounterField label="Cantidad de cocheras" value={data.cocheras} onChange={(v) => update('cocheras', v)} />
+            </div>
+            <div className="pf-grid-2">
+              <div className="pf-field">
+                <label className="pf-label">Antigüedad (años)</label>
+                <div className="pf-counter pf-counter--inline">
+                  <button type="button" className="pf-counter-btn" onClick={() => update('antiguedad', Math.max(0, data.antiguedad - 1))}>−</button>
+                  <span className="pf-counter-value">{data.antiguedad}</span>
+                  <button type="button" className="pf-counter-btn" onClick={() => update('antiguedad', data.antiguedad + 1)}>+</button>
+                </div>
+              </div>
+              <div className="pf-field">
+                <label className="pf-label">Tipo de propiedad</label>
+                <select className="pf-select" value={data.tipoPropiedad} onChange={(e) => update('tipoPropiedad', e.target.value)}>
+                  {unitTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
             </div>
           </div>
-          <div>
-            <label className="PropertyForm-label">Calidad de aberturas</label>
-            <select
-              className="PropertyForm-select"
-              value={data.calidad}
-              onChange={(e) => update('calidad', e.target.value)}
-            >
-              <option>Buena</option>
-              <option>Regular</option>
-              <option>Mala</option>
-            </select>
-          </div>
-          <div>
-            <label className="PropertyForm-label">Tipo de Calefacción</label>
-            <select
-              className="PropertyForm-select"
-              value={data.calefaccion}
-              onChange={(e) => update('calefaccion', e.target.value)}
-            >
-              <option>Central</option>
-              <option>Individual</option>
-              <option>Sin calefacción</option>
-              <option>Aire acondicionado</option>
-            </select>
-          </div>
-          <div>
-            <label className="PropertyForm-label">Antigüedad de Cañerías</label>
-            <select
-              className="PropertyForm-select"
-              value={data.antiguedadCanherias}
-              onChange={(e) => update('antiguedadCanherias', e.target.value)}
-            >
-              <option>Menos de 10 años</option>
-              <option>10–20 años</option>
-              <option>Más de 20 años</option>
-            </select>
-          </div>
-          <div>
-            <label className="PropertyForm-label">Comentarios Adicionales</label>
-            <textarea
-              className="PropertyForm-textarea"
-              placeholder="Observaciones sobre la estructura..."
-              value={data.comentarios}
-              onChange={(e) => update('comentarios', e.target.value)}
-            />
-          </div>
-        </fieldset>
-      )}
-
-      {step === 4 && (
-        <fieldset className="PropertyForm-fieldset">
-          <legend className="sr-only">Multimedia</legend>
-          <p className="PropertyForm-hint">
-            Fotos de fachada o ambientes (opcional). Subir imágenes mejora la precisión del algoritmo en futuros
-            sprints.
-          </p>
-          <UploadBox />
-        </fieldset>
-      )}
-
-      <div className="PropertyForm-actions">
-        {step > 1 ? (
-          <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
-            Anterior
-          </Button>
-        ) : (
-          <Button type="button" variant="outline" onClick={() => navigate('/dashboard')}>
-            Cancelar
-          </Button>
         )}
-        <Button type="submit" className="PropertyForm-submit">
-          {step === TOTAL_STEPS ? 'Finalizar y Calcular' : 'Siguiente'}
-        </Button>
-      </div>
-    </form>
+
+        {step === 2 && (
+          <div className="pf-step">
+            <div className="pf-grid-3">
+              <div className="pf-field">
+                <label className="pf-label">Piso</label>
+                <div className="pf-counter pf-counter--inline">
+                  <button type="button" className="pf-counter-btn" onClick={() => update('piso', Math.max(0, data.piso - 1))}>−</button>
+                  <span className="pf-counter-value">{data.piso}</span>
+                  <button type="button" className="pf-counter-btn" onClick={() => update('piso', data.piso + 1)}>+</button>
+                </div>
+              </div>
+
+              <div className="pf-field pf-field--price">
+                <label className="pf-label">Precio</label>
+                <div className="pf-price-input">
+                  <span className="pf-currency-symbol">$</span>
+                  <input
+                    type="text"
+                    className="pf-text-input"
+                    placeholder="0"
+                    value={data.precio}
+                    onChange={(e) => update('precio', e.target.value)}
+                  />
+                  <select className="pf-currency-select" value={data.moneda} onChange={(e) => update('moneda', e.target.value)}>
+                    <option>ARS</option>
+                    <option>USD</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pf-field">
+                <label className="pf-label">Ubicación / Dirección</label>
+                <div className="pf-input-with-icon">
+                  <input
+                    type="text"
+                    className="pf-text-input"
+                    placeholder="Ej. Av. Corrientes 1234"
+                    value={data.ubicacion}
+                    onChange={(e) => update('ubicacion', e.target.value)}
+                  />
+                  <svg className="pf-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                </div>
+              </div>
+            </div>
+
+            <div className="pf-services">
+              <label className="pf-label">Servicios</label>
+              <div className="pf-checkbox-grid">
+                {servicesList.map((svc) => (
+                  <label key={svc} className={`pf-checkbox ${data.servicios.includes(svc) ? 'pf-checkbox--checked' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={data.servicios.includes(svc)}
+                      onChange={() => toggleService(svc)}
+                      className="sr-only"
+                    />
+                    <span className="pf-checkbox-box">
+                      {data.servicios.includes(svc) && (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      )}
+                    </span>
+                    {svc}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="pf-step">
+            <div className="pf-upload-area">
+              <UploadBox />
+            </div>
+          </div>
+        )}
+
+        <div className="pf-actions">
+          <div></div>
+          <Button type="submit">
+            {step === TOTAL_STEPS ? 'Tasar' : 'Siguiente'}
+            {step < TOTAL_STEPS && (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style={{marginLeft: '0.4rem'}}><polyline points="9 18 15 12 9 6"/></svg>
+            )}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 };
