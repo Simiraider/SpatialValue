@@ -35,105 +35,101 @@ export const ReportPage = () => {
   const report = data ?? reporteMock;
 
   return (
-    <div className="rpt-wrap">
-      <div className="rpt-header">
-        <button className="rpt-back" onClick={() => window.history.back()}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          Volver
-        </button>
-        <div className="rpt-header-center">
-          <span className="rpt-prop-name">
-            {data ? `Propiedad ${data.direccion}` : 'Reporte de tasación'}
-          </span>
-          <span className="rpt-prop-id">{report.id}</span>
-        </div>
-        <span className="rpt-header-logo">
-          <img src="/logo.svg" alt="SpatialValue" width="28" height="28" />
-        </span>
-      </div>
-
-      <div className="rpt-columns">
-        <div className="rpt-col-left">
-          <div className="rpt-value-card">
-            <p className="rpt-value-label">Valor Estimado de la propiedad:</p>
-            <p className="rpt-value-amount">{report.valorUsd} USD</p>
-          </div>
-
-          <div className="rpt-info-card">
-            <p className="rpt-info-text">
-              Superficie útil: {data?.superficieCubierta || '—'} m²
-              {' · '}Depreciación aplicada: {data?.conservacion === 'Bueno' ? '0%' : data?.conservacion === 'Regular' ? '15%' : '30%'}
-              {' · '}Coeficiente de entorno: 1.0
+    <div className="ReportePage">
+      <header className="ReportePage-header">
+        <div className="ReportePage-headerInner">
+          <div>
+            <p className="ReportePage-meta">
+              ID: {report.id} · {report.fecha}
             </p>
+            <h1 className="ReportePage-title">
+              {data ? `Reporte — ${data.direccion}` : 'Reporte final'}
+            </h1>
+            {data && (
+              <p className="ReportePage-subtitle">
+                {data.tipoUnidad} · {data.superficieCubierta} m² · {data.dormitorios} dorm. · {data.banos} baños
+              </p>
+            )}
+            {!data && (
+              <p className="ReportePage-demoBadge" aria-label="Modo demostración">
+                ⚠ Datos de demostración
+              </p>
+            )}
           </div>
-
           <ReportDownloadButton />
         </div>
+      </header>
 
-        <div className="rpt-col-right">
-          <div className="rpt-chart-card">
-            <h3 className="rpt-chart-title">Valor de m² / Mercado</h3>
-            <ValorM2CacChart />
+      <main className="ReportePage-main">
+        <section className="ReportePage-valueCard">
+          <p className="ReportePage-valueLabel">Valor total</p>
+          <p className="ReportePage-valueUsd">
+            {report.valorUsd} USD
+          </p>
+          <p className="ReportePage-valueArs">
+            {report.valorArs} ARS
+          </p>
+        </section>
+
+        <section className="ReportePage-section">
+          <h2 className="ReportePage-sectionTitle">
+            Valor de m² / Comparación con CAC
+          </h2>
+          <p className="ReportePage-sectionSubtitle">
+            {report.valorM2Usd} USD/m² estimado
+          </p>
+          <ValorM2CacChart />
+        </section>
+
+        {data && (
+          <section className="ReportePage-section">
+            <h2 className="ReportePage-sectionTitle">Detalles de la propiedad</h2>
+            <dl className="ReportePage-details">
+              <div className="ReportePage-detailRow">
+                <dt>Dirección</dt>
+                <dd>{data.direccion}</dd>
+              </div>
+              <div className="ReportePage-detailRow">
+                <dt>Ciudad</dt>
+                <dd>{data.ciudad}</dd>
+              </div>
+              <div className="ReportePage-detailRow">
+                <dt>Tipo</dt>
+                <dd>{data.tipoUnidad}</dd>
+              </div>
+              <div className="ReportePage-detailRow">
+                <dt>Superficie</dt>
+                <dd>{data.superficieCubierta} m²</dd>
+              </div>
+              <div className="ReportePage-detailRow">
+                <dt>Conservación</dt>
+                <dd>{data.conservacion}</dd>
+              </div>
+              <div className="ReportePage-detailRow">
+                <dt>Dormitorios</dt>
+                <dd>{data.dormitorios}</dd>
+              </div>
+              <div className="ReportePage-detailRow">
+                <dt>Baños</dt>
+                <dd>{data.banos}</dd>
+              </div>
+              <div className="ReportePage-detailRow">
+                <dt>Cañerías</dt>
+                <dd>{data.antiguedadCanherias}</dd>
+              </div>
+            </dl>
+          </section>
+        )}
+
+        <section className="ReportePage-section">
+          <h2 className="ReportePage-sectionTitle">Propiedades similares</h2>
+          <div className="ReportePage-mapPlaceholder">
+            Mapa con comparables — integración en sprint posterior (scraping / API).
           </div>
+        </section>
 
-          <ReportActions />
-        </div>
-      </div>
-
-      <div className="rpt-images-section">
-        <div className="rpt-images-header">
-          <button className="rpt-back" onClick={() => window.history.back()}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-            Volver
-          </button>
-          <h2 className="rpt-images-title">Análisis de Imágenes</h2>
-          <span className="rpt-header-logo">
-            <img src="/logo.svg" alt="SpatialValue" width="28" height="28" />
-          </span>
-        </div>
-
-        <div className="rpt-images-grid">
-          <div className="rpt-image-card">
-            <div className="rpt-image-placeholder">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            </div>
-            <div className="rpt-image-status-list">
-              <div className="rpt-status-item">
-                <span className="rpt-status-dot rpt-status-dot--green"></span>
-                <span>Estado de Inmueble: Excelente estado</span>
-              </div>
-              <div className="rpt-status-item">
-                <span className="rpt-status-dot rpt-status-dot--green"></span>
-                <span>Estado de Paredes: Buen estado</span>
-              </div>
-              <div className="rpt-status-item">
-                <span className="rpt-status-dot rpt-status-dot--green"></span>
-                <span>Estado de Pisos y Techos: Muy buen estado</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="rpt-image-card">
-            <div className="rpt-image-placeholder">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            </div>
-            <div className="rpt-image-status-list">
-              <div className="rpt-status-item">
-                <span className="rpt-status-dot rpt-status-dot--green"></span>
-                <span>Estado de Inmueble: Excelente estado</span>
-              </div>
-              <div className="rpt-status-item">
-                <span className="rpt-status-dot rpt-status-dot--green"></span>
-                <span>Estado de Paredes: Buen estado</span>
-              </div>
-              <div className="rpt-status-item">
-                <span className="rpt-status-dot rpt-status-dot--red"></span>
-                <span>Estado de Pisos y Techos: Daños visibles / Mal estado</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+        <ReportActions />
+      </main>
     </div>
   );
 };

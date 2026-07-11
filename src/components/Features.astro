@@ -1,0 +1,79 @@
+---
+const features = [
+  {
+    iconSrc: "/icons/inspeccion.svg",
+    title: "Preguntas enfocadas",
+    description:
+      "Recolectamos datos clave de la propiedad para reducir sesgos y ordenar la tasacion.",
+  },
+  {
+    iconSrc: "/icons/macro.svg",
+    title: "Analisis de imagenes",
+    description:
+      "Procesamos fotos para entender estado, terminaciones y condiciones visibles.",
+  },
+  {
+    iconSrc: "/icons/gemelo.svg",
+    title: "Resultado trazable",
+    description:
+      "Combinamos mercado, ubicacion y caracteristicas para entregar una estimacion clara.",
+  },
+];
+
+const team = [
+  {
+    name: "Manuel Smulovitz",
+    role: "UX/UI",
+    imageSrc: "/quienes-somos/manuel-smulovitz.png",
+  },
+  {
+    name: "Liam Lutteral",
+    role: "IA",
+    imageSrc: "/quienes-somos/liam-lutteral.png",
+  },
+  {
+    name: "Jonas Leiserson",
+    role: "Back-End",
+    imageSrc: "/quienes-somos/jonas-leiserson.png",
+  },
+  {
+    name: "Simon Flomenboim",
+    role: "Front-End",
+    imageSrc: "/quienes-somos/simon-flomenboim.png",
+  },
+];
+---
+
+<section id="sobre-tasaciones" class="features">
+  <div class="features-inner">
+    <h2 class="features-title">Sobre Las Tasaciones</h2>
+    <div class="features-grid">
+      {features.map((feature) => (
+        <article class="feature-card">
+          <div class="feature-icon">
+            <img src={feature.iconSrc} alt="" width="28" height="28" />
+          </div>
+          <div class="feature-text">
+            <h3>{feature.title}</h3>
+            <p>{feature.description}</p>
+          </div>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
+
+<section id="quienes-somos" class="team-section">
+  <div class="features-inner">
+    <h2 class="features-title">¿Quienes Somos?</h2>
+    <div class="team-grid">
+      {team.map((person) => (
+        <article class="team-member">
+          <img class="team-photo" src={person.imageSrc} alt={person.name} />
+          <h3>{person.name}</h3>
+          <p>{person.role}</p>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
