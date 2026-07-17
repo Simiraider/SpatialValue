@@ -3,26 +3,24 @@ import Layout from "../layouts/Layout.astro";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import Logo from "../components/Logo.astro";
-import "../styles/registro.css";
-
 ---
 
 <Layout title="Crear cuenta">
-  <div class="RegisterPage">
-    <div class="RegisterPage-inner">
-      <header class="RegisterPage-header">
-        <a href="/" class="RegisterPage-logo">
+  <div class="min-h-screen flex items-center justify-center p-4 bg-[#F5F5F5] bg-[url('/bg-logo.png')] bg-center bg-no-repeat bg-cover">
+    <div class="w-full max-w-md bg-[#575656] text-white rounded-[2rem] p-8 sm:p-10 shadow-2xl relative overflow-hidden my-8">
+      <header class="mb-8 text-center flex flex-col items-center">
+        <a href="/" class="text-white mb-4 block scale-125">
           <Logo />
         </a>
-        <h1 class="RegisterPage-title">Crear cuenta</h1>
-        <p class="RegisterPage-subtitle" id="mensaje-estado">
+        <h1 class="text-2xl font-bold text-white mb-2">Crear cuenta</h1>
+        <p class="text-slate-400 text-sm" id="mensaje-estado">
           Empezá a tasar propiedades en segundos
         </p>
       </header>
 
-      <div class="RegisterPage-card">
-        <form class="RegisterPage-form" id="register-form">
-          <div class="RegisterPage-row">
+      <form class="flex flex-col gap-5" id="register-form">
+        <div class="flex gap-4">
+          <div class="text-slate-300 w-1/2">
             <Input
               label="Nombre"
               type="text"
@@ -31,7 +29,11 @@ import "../styles/registro.css";
               placeholder="Juan"
               autoComplete="given-name"
               required
+              client:load
+              className="text-slate-900"
             />
+          </div>
+          <div class="text-slate-300 w-1/2">
             <Input
               label="Apellido"
               type="text"
@@ -40,9 +42,13 @@ import "../styles/registro.css";
               placeholder="García"
               autoComplete="family-name"
               required
+              client:load
+              className="text-slate-900"
             />
           </div>
+        </div>
 
+        <div class="text-slate-300">
           <Input
             label="Email"
             type="email"
@@ -51,8 +57,12 @@ import "../styles/registro.css";
             placeholder="usuario@gmail.com"
             autoComplete="email"
             required
+            client:load
+            className="text-slate-900"
           />
+        </div>
 
+        <div class="text-slate-300">
           <Input
             label="Contraseña"
             type="password"
@@ -61,8 +71,12 @@ import "../styles/registro.css";
             placeholder="Mínimo 8 caracteres"
             autoComplete="new-password"
             required
+            client:load
+            className="text-slate-900"
           />
+        </div>
 
+        <div class="text-slate-300">
           <Input
             label="Confirmar contraseña"
             type="password"
@@ -71,25 +85,29 @@ import "../styles/registro.css";
             placeholder="Repetí tu contraseña"
             autoComplete="new-password"
             required
+            client:load
+            className="text-slate-900"
           />
+        </div>
 
-          <p class="RegisterPage-terms">
-            Al registrarte aceptás nuestros{" "}
-            <a href="#" class="RegisterPage-link">Términos de uso</a>
-            {" "}y{" "}
-            <a href="#" class="RegisterPage-link">Política de privacidad</a>.
-          </p>
+        <p class="text-slate-400 text-xs text-center mt-2">
+          Al registrarte aceptás nuestros{" "}
+          <a href="#" class="text-cyan-400 hover:text-cyan-300 transition-colors">Términos de uso</a>
+          {" "}y{" "}
+          <a href="#" class="text-cyan-400 hover:text-cyan-300 transition-colors">Política de privacidad</a>.
+        </p>
 
-          <Button type="submit" fullWidth client:load id="register-submit">
+        <div class="mt-2">
+          <Button type="submit" fullWidth variant="secondary" client:load id="register-submit">
             Crear cuenta
           </Button>
-        </form>
+        </div>
+      </form>
 
-        <p class="RegisterPage-footer">
-          ¿Ya tenés cuenta?{" "}
-          <a href="/login" class="RegisterPage-link">Iniciá sesión</a>
-        </p>
-      </div>
+      <p class="mt-8 text-center text-slate-400 text-sm">
+        ¿Ya tenés cuenta?{" "}
+        <a href="/login" class="text-cyan-400 font-medium hover:text-cyan-300 transition-colors">Iniciá sesión</a>
+      </p>
     </div>
   </div>
 </Layout>
@@ -117,7 +135,7 @@ import "../styles/registro.css";
 
     try {
       mensajeEstado.innerText = "Registrando usuario...";
-      mensajeEstado.style.color = "#3b82f6";
+      mensajeEstado.style.color = "#06b6d4";
 
       const body = {
         usuario: `${nombre.value} ${apellido.value}`.trim(),
@@ -141,7 +159,7 @@ import "../styles/registro.css";
       const data = await res.json();
 
       if (res.ok && data.success) {
-        mensajeEstado.innerText = "¡Cuenta creada con éxito! Redirigiendo al login...";
+        mensajeEstado.innerText = "¡Cuenta creada con éxito! Redirigiendo...";
         mensajeEstado.style.color = "#10b981";
         setTimeout(() => { window.location.href = '/login'; }, 1500);
       } else {

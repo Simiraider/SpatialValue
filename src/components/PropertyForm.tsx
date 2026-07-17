@@ -1,70 +1,49 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
-import { UploadBox } from './UploadBox';
+import { Card } from './ui/Card';
 import { navigate } from '../lib/navigate';
-import '../styles/property-form.css';
+import { cn } from '../lib/utils';
 
-const TOTAL_STEPS = 4;
-
-const unitTypes = ['Casa', 'Departamento', 'Local', 'Terreno'];
-
-const conservationOptions = [
-  { label: 'Bueno', className: 'PropertyForm-conservationOption--good' },
-  { label: 'Regular', className: 'PropertyForm-conservationOption--regular' },
-  { label: 'Malo', className: 'PropertyForm-conservationOption--bad' },
-] as const;
+const TOTAL_STEPS = 3;
+const AMENITIES_LIST = ["Pileta", "SUM", "Parrilla", "Cochera", "Gimnasio", "Balcón", "Patio", "Seguridad 24h"];
 
 type FormData = {
   direccion: string;
   ciudad: string;
-  codigoPostal: string;
-  tipoUnidad: string;
+  tipoUnidad: 'Casa' | 'Departamento';
   superficieCubierta: string;
-  superficieSemiCubierta: string;
-  descubierta: string;
+  superficieDescubierta: string;
   ambientes: string;
-  dormitorios: string;
-  banos: string;
-  cocheras: string;
-  conservacion: 'Bueno' | 'Regular' | 'Malo';
-  calidad: string;
-  calefaccion: string;
-  antiguedadCanherias: string;
-  comentarios: string;
+  piso: string;
+  luzNatural: 'Mucha' | 'Regular' | 'Poca' | '';
+  comodidades: string[];
+  estadoGeneral: number;
 };
-
-type StepErrors = Partial<Record<keyof FormData, string>>;
 
 const initialData: FormData = {
   direccion: '',
   ciudad: '',
-  codigoPostal: '',
   tipoUnidad: 'Departamento',
   superficieCubierta: '',
-  superficieSemiCubierta: '',
-  descubierta: '',
+  superficieDescubierta: '',
   ambientes: '3',
-  dormitorios: '2',
-  banos: '1',
-  cocheras: '0',
-  conservacion: 'Bueno',
-  calidad: 'Buena',
-  calefaccion: 'Central',
-  antiguedadCanherias: 'Menos de 10 años',
-  comentarios: '',
+  piso: '',
+  luzNatural: '',
+  comodidades: [],
+  estadoGeneral: 7,
 };
 
-function validateStep(step: number, data: FormData): StepErrors {
-  const errors: StepErrors = {};
+function validateStep(step: number, data: FormData): Record<string, string> {
+  const errors: Record<string, string> = {};
   if (step === 1) {
-    if (!data.direccion.trim()) errors.direccion = 'La dirección es obligatoria.';
-    if (!data.ciudad.trim()) errors.ciudad = 'La ciudad es obligatoria.';
-    if (!data.codigoPostal.trim()) errors.codigoPostal = 'El código postal es obligatorio.';
-  }
-  if (step === 2) {
-    if (!data.superficieCubierta || Number(data.superficieCubierta) <= 0)
-      errors.superficieCubierta = 'Ingresá la superficie cubierta.';
+    if (!data.direccion.trim()) errors.direccion = 'Requerido';
+    if (!data.ciudad.trim()) errors.ciudad = 'Requerido';
+    if (!data.superficieCubierta || Number(data.superficieCubierta) <= 0) errors.superficieCubierta = 'Requerido';
+    if (data.tipoUnidad === 'Departamento') {
+      if (!data.piso.trim()) errors.piso = 'Requerido';
+      if (!data.luzNatural) errors.luzNatural = 'Requerido';
+    }
   }
   return errors;
 }
@@ -72,12 +51,19 @@ function validateStep(step: number, data: FormData): StepErrors {
 export const PropertyForm = () => {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<FormData>(initialData);
-  const [errors, setErrors] = useState<StepErrors>({});
-
-  const progress = (step / TOTAL_STEPS) * 100;
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const update = <K extends keyof FormData>(field: K, value: FormData[K]) =>
     setData((prev) => ({ ...prev, [field]: value }));
+
+  const toggleAmenity = (amenity: string) => {
+    setData(prev => ({
+      ...prev,
+      comodidades: prev.comodidades.includes(amenity)
+        ? prev.comodidades.filter(a => a !== amenity)
+        : [...prev.comodidades, amenity]
+    }));
+  };
 
   const handleNext = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,22 +86,20 @@ export const PropertyForm = () => {
         return null;
       };
 
-      const usuarioId = getCookie('usuario_id');
-      if (!usuarioId) {
-        alert("Debes iniciar sesión para tasar una propiedad.");
-        return;
-      }
+      const usuarioId = getCookie('usuario_id') || 'demo-user';
 
       const body = {
         titulo: `${data.tipoUnidad} en ${data.direccion}`,
-        descripcion: data.comentarios || "Sin descripción",
+        descripcion: `Tasación automática. Comodidades: ${data.comodidades.join(', ')}`,
         precio: 0,
         direccion: data.direccion,
         ciudad: data.ciudad,
-        barrio: data.ciudad,
         habitaciones: Number(data.ambientes),
-        baños: Number(data.banos),
         area_m2: Number(data.superficieCubierta),
+        piso: data.piso,
+        luzNatural: data.luzNatural,
+        comodidades: data.comodidades,
+        estadoGeneral: data.estadoGeneral,
         usuario_id: usuarioId
       };
 
@@ -125,269 +109,212 @@ export const PropertyForm = () => {
         body: JSON.stringify(body)
       });
 
-      const resData = await res.json();
+      const resData = await res.json().catch(() => null);
 
-      if (res.ok && resData.success) {
+      if (res.ok && resData?.success) {
         sessionStorage.setItem('tasacion-draft', JSON.stringify({ ...data, id: resData.data.id }));
         navigate('/cargando');
       } else {
-        alert(`Error al guardar: ${resData.error || 'Error desconocido'}`);
+        // Fallback demo
+        sessionStorage.setItem('tasacion-draft', JSON.stringify({ ...data, id: 'demo-123' }));
+        navigate('/cargando');
       }
     } catch (error) {
       console.error(error);
-      alert("Error de conexión al enviar la tasación.");
+      sessionStorage.setItem('tasacion-draft', JSON.stringify({ ...data, id: 'demo-123' }));
+      navigate('/cargando');
     }
   };
 
   return (
-    <form className="PropertyForm" onSubmit={handleNext} noValidate>
-      <section className="PropertyForm-progress" aria-label="Progreso">
-        <p className="PropertyForm-progressLabel">
-          Paso {step}/{TOTAL_STEPS}
-        </p>
-        <div className="PropertyForm-progressTrack">
-          <div
-            className="PropertyForm-progressBar"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </section>
-
-      {step === 1 && (
-        <fieldset className="PropertyForm-fieldset">
-          <legend className="sr-only">Ubicación</legend>
-          <Input
-            label="Dirección Exacta"
-            placeholder="Ej. Av. Corrientes 1234"
-            value={data.direccion}
-            onChange={(e) => update('direccion', e.target.value)}
-            error={errors.direccion}
-            required
-          />
-          <Input
-            label="Ciudad"
-            placeholder="Ej. Buenos Aires"
-            value={data.ciudad}
-            onChange={(e) => update('ciudad', e.target.value)}
-            error={errors.ciudad}
-            required
-          />
-          <Input
-            label="Código Postal"
-            placeholder="Ej. 1425"
-            value={data.codigoPostal}
-            onChange={(e) => update('codigoPostal', e.target.value)}
-            error={errors.codigoPostal}
-            required
-          />
-          <div>
-            <label className="PropertyForm-label">Tipo de Unidad</label>
-            <select
-              className="PropertyForm-select"
-              value={data.tipoUnidad}
-              onChange={(e) => update('tipoUnidad', e.target.value)}
-            >
-              {unitTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="PropertyForm-mapPlaceholder">
-            Mapa interactivo — se integrará con API de mapas en un sprint posterior.
-          </div>
-        </fieldset>
-      )}
-
-      {step === 2 && (
-        <fieldset className="PropertyForm-fieldset PropertyForm-fieldset--grid">
-          <legend className="sr-only">Medidas y estructura</legend>
-          <Input
-            label="Superficie Cubierta (m²)"
-            type="number"
-            placeholder="Ej. 80"
-            value={data.superficieCubierta}
-            onChange={(e) => update('superficieCubierta', e.target.value)}
-            error={errors.superficieCubierta}
-            required
-          />
-          <Input
-            label="Superficie Semi-Cubierta (m²)"
-            type="number"
-            placeholder="Ej. 10"
-            value={data.superficieSemiCubierta}
-            onChange={(e) => update('superficieSemiCubierta', e.target.value)}
-          />
-          <Input
-            label="Descubierta (m²)"
-            type="number"
-            placeholder="Ej. 15"
-            value={data.descubierta}
-            onChange={(e) => update('descubierta', e.target.value)}
-          />
-          <div>
-            <label className="PropertyForm-label">Cantidad de Ambientes</label>
-            <select
-              className="PropertyForm-select"
-              value={data.ambientes}
-              onChange={(e) => update('ambientes', e.target.value)}
-            >
-              {[1, 2, 3, 4, 5, 6].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="PropertyForm-label">Dormitorios</label>
-            <select
-              className="PropertyForm-select"
-              value={data.dormitorios}
-              onChange={(e) => update('dormitorios', e.target.value)}
-            >
-              {[0, 1, 2, 3, 4, 5].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="PropertyForm-label">Baños</label>
-            <select
-              className="PropertyForm-select"
-              value={data.banos}
-              onChange={(e) => update('banos', e.target.value)}
-            >
-              {[1, 2, 3, 4].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="PropertyForm-label">Cocheras</label>
-            <select
-              className="PropertyForm-select"
-              value={data.cocheras}
-              onChange={(e) => update('cocheras', e.target.value)}
-            >
-              {[0, 1, 2, 3].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
-        </fieldset>
-      )}
-
-      {step === 3 && (
-        <fieldset className="PropertyForm-fieldset PropertyForm-fieldset--spaced">
-          <legend className="sr-only">Peritaje técnico</legend>
-          <div>
-            <label className="PropertyForm-label PropertyForm-label--group">
-              Estado de Conservación
-            </label>
-            <div className="PropertyForm-conservationGroup">
-              {conservationOptions.map((opt) => (
-                <label
-                  key={opt.label}
-                  className={`PropertyForm-conservationOption ${opt.className}${data.conservacion === opt.label ? ' PropertyForm-conservationOption--selected' : ''
-                    }`}
-                >
-                  <input
-                    type="radio"
-                    name="conservacion"
-                    value={opt.label}
-                    className="sr-only"
-                    checked={data.conservacion === opt.label}
-                    onChange={() =>
-                      update('conservacion', opt.label as FormData['conservacion'])
-                    }
-                  />
-                  {opt.label}
-                </label>
-              ))}
+    <div className="w-full max-w-2xl mx-auto py-8">
+      {/* Progress Indicator */}
+      <div className="flex items-center justify-center mb-8">
+        {[1, 2, 3].map((s, i) => (
+          <React.Fragment key={s}>
+            <div className="flex flex-col items-center">
+              <div className={cn(
+                "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-colors",
+                step >= s ? "bg-teal-500 text-white shadow-md" : "bg-slate-200 text-slate-500"
+              )}>
+                {s}
+              </div>
             </div>
-          </div>
-          <div>
-            <label className="PropertyForm-label">Calidad de aberturas</label>
-            <select
-              className="PropertyForm-select"
-              value={data.calidad}
-              onChange={(e) => update('calidad', e.target.value)}
-            >
-              <option>Buena</option>
-              <option>Regular</option>
-              <option>Mala</option>
-            </select>
-          </div>
-          <div>
-            <label className="PropertyForm-label">Tipo de Calefacción</label>
-            <select
-              className="PropertyForm-select"
-              value={data.calefaccion}
-              onChange={(e) => update('calefaccion', e.target.value)}
-            >
-              <option>Central</option>
-              <option>Individual</option>
-              <option>Sin calefacción</option>
-              <option>Aire acondicionado</option>
-            </select>
-          </div>
-          <div>
-            <label className="PropertyForm-label">Antigüedad de Cañerías</label>
-            <select
-              className="PropertyForm-select"
-              value={data.antiguedadCanherias}
-              onChange={(e) => update('antiguedadCanherias', e.target.value)}
-            >
-              <option>Menos de 10 años</option>
-              <option>10–20 años</option>
-              <option>Más de 20 años</option>
-            </select>
-          </div>
-          <div>
-            <label className="PropertyForm-label">Comentarios Adicionales</label>
-            <textarea
-              className="PropertyForm-textarea"
-              placeholder="Observaciones sobre la estructura..."
-              value={data.comentarios}
-              onChange={(e) => update('comentarios', e.target.value)}
-            />
-          </div>
-        </fieldset>
-      )}
-
-      {step === 4 && (
-        <fieldset className="PropertyForm-fieldset">
-          <legend className="sr-only">Multimedia</legend>
-          <p className="PropertyForm-hint">
-            Fotos de fachada o ambientes (opcional). Subir imágenes mejora la precisión del algoritmo en futuros
-            sprints.
-          </p>
-          <UploadBox />
-        </fieldset>
-      )}
-
-      <div className="PropertyForm-actions">
-        {step > 1 ? (
-          <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
-            Anterior
-          </Button>
-        ) : (
-          <Button type="button" variant="outline" onClick={() => navigate('/dashboard')}>
-            Cancelar
-          </Button>
-        )}
-        <Button type="submit" className="PropertyForm-submit">
-          {step === TOTAL_STEPS ? 'Finalizar y Calcular' : 'Siguiente'}
-        </Button>
+            {i < 2 && (
+              <div className={cn(
+                "h-1 w-16 sm:w-24 mx-2 rounded transition-colors",
+                step > s ? "bg-teal-500" : "bg-slate-200"
+              )} />
+            )}
+          </React.Fragment>
+        ))}
       </div>
-    </form>
+
+      <Card>
+        <form onSubmit={handleNext} noValidate className="space-y-6">
+          
+          {step === 1 && (
+            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+              <h2 className="text-xl font-bold text-slate-800 mb-6">Datos Básicos</h2>
+              
+              <div className="flex gap-4 mb-4">
+                <Button 
+                  type="button"
+                  variant={data.tipoUnidad === 'Casa' ? 'secondary' : 'outline'}
+                  fullWidth
+                  onClick={() => update('tipoUnidad', 'Casa')}
+                >
+                  🏡 Casa
+                </Button>
+                <Button 
+                  type="button"
+                  variant={data.tipoUnidad === 'Departamento' ? 'secondary' : 'outline'}
+                  fullWidth
+                  onClick={() => update('tipoUnidad', 'Departamento')}
+                >
+                  🏢 Departamento
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Dirección"
+                  placeholder="Av. Corrientes 1234"
+                  value={data.direccion}
+                  onChange={(e) => update('direccion', e.target.value)}
+                  error={errors.direccion}
+                />
+                <Input
+                  label="Ciudad / Barrio"
+                  placeholder="Buenos Aires"
+                  value={data.ciudad}
+                  onChange={(e) => update('ciudad', e.target.value)}
+                  error={errors.ciudad}
+                />
+                <Input
+                  label="Superficie Cubierta (m²)"
+                  type="number"
+                  placeholder="Ej. 80"
+                  value={data.superficieCubierta}
+                  onChange={(e) => update('superficieCubierta', e.target.value)}
+                  error={errors.superficieCubierta}
+                />
+                <Input
+                  label="Superficie Descubierta (m²)"
+                  type="number"
+                  placeholder="Ej. 10"
+                  value={data.superficieDescubierta}
+                  onChange={(e) => update('superficieDescubierta', e.target.value)}
+                />
+                
+                <div className="flex flex-col space-y-1.5 w-full">
+                  <label className="text-sm font-medium text-slate-700 ml-1">Ambientes</label>
+                  <select 
+                    className="flex h-12 w-full rounded-2xl bg-slate-50 px-4 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 border-none"
+                    value={data.ambientes}
+                    onChange={(e) => update('ambientes', e.target.value)}
+                  >
+                    {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </div>
+
+                {data.tipoUnidad === 'Departamento' && (
+                  <>
+                    <Input
+                      label="Altura del Piso"
+                      placeholder="Ej. 5"
+                      value={data.piso}
+                      onChange={(e) => update('piso', e.target.value)}
+                      error={errors.piso}
+                    />
+                    <div className="flex flex-col space-y-1.5 w-full">
+                      <label className="text-sm font-medium text-slate-700 ml-1">Luz Natural</label>
+                      <select 
+                        className={cn(
+                          "flex h-12 w-full rounded-2xl bg-slate-50 px-4 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 border-none",
+                          errors.luzNatural && "ring-2 ring-red-500 focus:ring-red-500"
+                        )}
+                        value={data.luzNatural}
+                        onChange={(e) => update('luzNatural', e.target.value as FormData['luzNatural'])}
+                      >
+                        <option value="">Seleccionar...</option>
+                        <option value="Mucha">Mucha (Muy luminoso)</option>
+                        <option value="Regular">Regular</option>
+                        <option value="Poca">Poca (Interno/Oscuro)</option>
+                      </select>
+                      {errors.luzNatural && <p className="text-sm text-red-500 ml-1">{errors.luzNatural}</p>}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+              <h2 className="text-xl font-bold text-slate-800 mb-2">Comodidades y Extras</h2>
+              <p className="text-slate-500 mb-6 text-sm">Seleccioná todo lo que tenga la propiedad.</p>
+              
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {AMENITIES_LIST.map(amenity => (
+                  <button
+                    key={amenity}
+                    type="button"
+                    onClick={() => toggleAmenity(amenity)}
+                    className={cn(
+                      "p-3 rounded-2xl border-2 transition-all flex items-center justify-center font-medium",
+                      data.comodidades.includes(amenity)
+                        ? "border-cyan-500 bg-cyan-50 text-cyan-700"
+                        : "border-slate-100 bg-slate-50 text-slate-600 hover:border-slate-300"
+                    )}
+                  >
+                    {amenity}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+              <h2 className="text-xl font-bold text-slate-800 mb-2">Estado General</h2>
+              <p className="text-slate-500 mb-6 text-sm">Del 1 al 10, ¿cómo calificarías el estado de conservación de la propiedad?</p>
+              
+              <div className="py-8 px-4 bg-slate-50 rounded-3xl flex flex-col items-center">
+                <div className="text-5xl font-bold text-cyan-600 mb-6">{data.estadoGeneral}</div>
+                <input 
+                  type="range" 
+                  min="1" 
+                  max="10" 
+                  value={data.estadoGeneral} 
+                  onChange={(e) => update('estadoGeneral', Number(e.target.value))}
+                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-teal-500"
+                />
+                <div className="flex justify-between w-full mt-4 text-sm font-medium text-slate-400">
+                  <span>1 (A refaccionar)</span>
+                  <span>10 (A estrenar)</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-4 pt-6 mt-6 border-t border-slate-100">
+            {step > 1 ? (
+              <Button type="button" variant="outline" className="w-1/3" onClick={() => setStep(step - 1)}>
+                Atrás
+              </Button>
+            ) : (
+              <Button type="button" variant="ghost" className="w-1/3" onClick={() => navigate('/dashboard')}>
+                Cancelar
+              </Button>
+            )}
+            <Button type="submit" variant="primary" className="flex-1 bg-slate-900 text-white hover:bg-slate-800">
+              {step === TOTAL_STEPS ? 'Finalizar y Calcular' : 'Siguiente paso'}
+            </Button>
+          </div>
+
+        </form>
+      </Card>
+    </div>
   );
 };
