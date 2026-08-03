@@ -6,7 +6,7 @@ export async function POST({ request }) {
     const { usuario, contraseña, email } = await request.json();
 
     if (!usuario || !contraseña || !email) {
-      return new Response(
+      return new Response( 
         JSON.stringify({ error: "Datos incompletos" }), 
         { status: 400, headers: { "Content-Type": "application/json" } }
       );

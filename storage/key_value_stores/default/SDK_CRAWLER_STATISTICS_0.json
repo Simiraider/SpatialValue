@@ -1,0 +1,35 @@
+{
+  "requestsFinished": 0,
+  "requestsFailed": 0,
+  "requestsRetries": 0,
+  "requestsFailedPerMinute": 0,
+  "requestsFinishedPerMinute": 0,
+  "requestMinDurationMillis": null,
+  "requestMaxDurationMillis": 0,
+  "requestTotalFailedDurationMillis": 0,
+  "requestTotalFinishedDurationMillis": 0,
+  "crawlerStartedAt": "2026-06-18T11:04:27.515Z",
+  "crawlerFinishedAt": null,
+  "statsPersistedAt": "2026-06-18T11:04:31.210Z",
+  "crawlerRuntimeMillis": 4065,
+  "crawlerLastStartTimestamp": 1781780667145,
+  "requestRetryHistogram": [],
+  "statsId": 0,
+  "requestAvgFailedDurationMillis": null,
+  "requestAvgFinishedDurationMillis": null,
+  "requestTotalDurationMillis": 0,
+  "requestsTotal": 0,
+  "requestsWithStatusCode": {},
+  "errors": {},
+  "retryErrors": {
+    "C:\\Users\\49516747\\Documents\\GitHub\\SpatialValue\\node_modules\\src\\fingerprint-injector.ts:109:30": {
+      "missing error code": {
+        "Error": {
+          "browserContext.setExtraHTTPHeaders: Target page, context or browser has been closed": {
+            "count": 1
+          }
+        }
+      }
+    }
+  }
+}

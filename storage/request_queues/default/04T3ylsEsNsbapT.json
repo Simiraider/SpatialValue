@@ -1,0 +1,9 @@
+{
+	"id": "04T3ylsEsNsbapT",
+	"json": "{\"id\":\"04T3ylsEsNsbapT\",\"url\":\"https://www.zonaprop.com.ar/departamentos-alquiler-capital-federal.html\",\"uniqueKey\":\"https://www.zonaprop.com.ar/departamentos-alquiler-capital-federal.html\",\"method\":\"GET\",\"noRetry\":false,\"retryCount\":1,\"errorMessages\":[\"browserContext.setExtraHTTPHeaders: Target page, context or browser has been closed\\n    at FingerprintInjector.attachFingerprintToPlaywright (C:\\\\Users\\\\49516747\\\\Documents\\\\GitHub\\\\SpatialValue\\\\node_modules\\\\src\\\\fingerprint-injector.ts:109:30)\\n    at <anonymous> (C:\\\\Users\\\\49516747\\\\Documents\\\\GitHub\\\\SpatialValue\\\\node_modules\\\\@crawlee\\\\src\\\\fingerprinting\\\\hooks.ts:96:39)\\n    at BrowserPool._executeHooks (C:\\\\Users\\\\49516747\\\\Documents\\\\GitHub\\\\SpatialValue\\\\node_modules\\\\@crawlee\\\\src\\\\browser-pool.ts:818:19)\\n    at BrowserPool._createPageForBrowser (C:\\\\Users\\\\49516747\\\\Documents\\\\GitHub\\\\SpatialValue\\\\node_modules\\\\@crawlee\\\\src\\\\browser-pool.ts:600:20)\\n    at async <anonymous> (C:\\\\Users\\\\49516747\\\\Documents\\\\GitHub\\\\SpatialValue\\\\node_modules\\\\@crawlee\\\\src\\\\browser-pool.ts:456:20)\"],\"headers\":{},\"userData\":{\"__crawlee\":{\"state\":5}}}",
+	"method": "GET",
+	"orderNo": 1781780670965,
+	"retryCount": 1,
+	"uniqueKey": "https://www.zonaprop.com.ar/departamentos-alquiler-capital-federal.html",
+	"url": "https://www.zonaprop.com.ar/departamentos-alquiler-capital-federal.html"
+}
