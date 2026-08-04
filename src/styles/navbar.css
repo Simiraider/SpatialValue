@@ -73,6 +73,13 @@
   color: var(--color-green-dark);
 }
 
+.nav-user {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
 @media (max-width: 768px) {
   .nav-links {
     display: none;

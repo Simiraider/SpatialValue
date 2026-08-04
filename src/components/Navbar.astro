@@ -22,3 +22,43 @@ import Logo from "./Logo.astro";
     </div>
   </div>
 </header>
+
+<script>
+  const navRight = document.querySelector('.nav-right');
+
+  const aplicarSesion = () => {
+    if (!navRight) return;
+    try {
+      const raw = localStorage.getItem('sv_user');
+      if (!raw) return;
+      const user = JSON.parse(raw);
+      if (!user?.nombre) return;
+
+      const saludo = document.createElement('span');
+      saludo.className = 'nav-user';
+      saludo.textContent = `Hola, ${user.nombre}`;
+
+      const dashboardLink = document.createElement('a');
+      dashboardLink.href = '/dashboard';
+      dashboardLink.className = 'button-primary';
+      dashboardLink.textContent = 'Ir al dashboard';
+
+      const logoutLink = document.createElement('a');
+      logoutLink.href = '/';
+      logoutLink.className = 'nav-login';
+      logoutLink.textContent = 'Salir';
+      logoutLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        localStorage.removeItem('sv_user');
+        document.cookie = 'usuario_id=; Max-Age=0; path=/';
+        window.location.href = '/';
+      });
+
+      navRight.replaceChildren(saludo, dashboardLink, logoutLink);
+    } catch {
+      // Sesión corrupta o ausente: se muestra el estado de invitado
+    }
+  };
+
+  aplicarSesion();
+</script>

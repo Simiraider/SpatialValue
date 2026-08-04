@@ -18,15 +18,42 @@ const statusLabel: Record<TasacionItem['status'], string> = {
   borrador: 'Borrador',
 };
 
+const getInitials = (nombre: string) =>
+  nombre
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() ?? '')
+    .join('');
+
+interface SesionUsuario {
+  nombre: string;
+  id?: string;
+}
+
 export const DashboardApp = () => {
   const [section, setSection] = useState<Section>('tasaciones');
   const [query, setQuery] = useState('');
   const [tasacionesApi, setTasacionesApi] = useState<TasacionItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<SesionUsuario | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('sv_user');
+      if (raw) setUser(JSON.parse(raw));
+    } catch {
+      // Sesión corrupta o ausente: el header muestra la inicial genérica
+    }
+  }, []);
 
   useEffect(() => {
     const fetchTasaciones = async () => {
       setLoading(true);
+      // Timeout para que el dashboard nunca quede trabado en el spinner
+      // si el endpoint no responde (p. ej. Jonas todavía no lo creó).
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
       try {
         const getCookie = (name: string) => {
           const value = `; ${document.cookie}`;
@@ -39,7 +66,7 @@ export const DashboardApp = () => {
           ? `/Apis/ObtenerDatosPropiedades?usuario_id=${usuarioId}`
           : `/Apis/ObtenerDatosPropiedades`;
 
-        const res = await fetch(url);
+        const res = await fetch(url, { signal: controller.signal });
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {
@@ -53,8 +80,13 @@ export const DashboardApp = () => {
           }
         }
       } catch (error) {
-        console.error("Error fetching properties", error);
+        if ((error as Error)?.name === 'AbortError') {
+          console.warn('ObtenerDatosPropiedades tardó demasiado; mostrando estado vacío');
+        } else {
+          console.error("Error fetching properties", error);
+        }
       } finally {
+        clearTimeout(timeoutId);
         setLoading(false);
       }
     };
@@ -73,6 +105,12 @@ export const DashboardApp = () => {
   );
 
   const isSearching = query.trim().length > 0;
+
+  const cerrarSesion = () => {
+    localStorage.removeItem('sv_user');
+    document.cookie = 'usuario_id=; Max-Age=0; path=/';
+    window.location.href = '/';
+  };
 
   return (
     <div className="flex h-screen bg-[#F5F5F5] font-sans overflow-hidden">
@@ -118,11 +156,25 @@ export const DashboardApp = () => {
             <button type="button" className="p-2 text-slate-400 hover:text-slate-600 transition-colors" aria-label="Notificaciones">
               <Bell className="w-6 h-6" />
             </button>
-            <button type="button" className="p-2 transition-colors" aria-label="Perfil">
+            {user && (
+              <button
+                type="button"
+                onClick={cerrarSesion}
+                className="text-sm font-medium text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                Salir
+              </button>
+            )}
+            <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center text-cyan-700 font-bold">
-                U
+                {user ? getInitials(user.nombre) : 'U'}
               </div>
-            </button>
+              {user && (
+                <span className="text-sm font-semibold text-slate-700 hidden sm:block">
+                  {user.nombre}
+                </span>
+              )}
+            </div>
           </div>
         </header>
 

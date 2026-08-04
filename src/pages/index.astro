@@ -1,0 +1,28 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Navbar from "../components/Navbar.astro";
+import Hero from "../components/Hero.astro";
+import SocialProof from "../components/SocialProof.astro";
+import Features from "../components/Features.astro";
+import Footer from "../components/Footer.astro";
+import "../styles/variables.css";
+import "../styles/buttons.css";
+import "../styles/navbar.css";
+import "../styles/hero.css";
+import "../styles/social-proof.css";
+import "../styles/features.css";
+import "../styles/footer.css";
+import "../styles/landing-page.css";
+---
+
+<Layout title="Inicio">
+  <div class="landing-page">
+    <Navbar />
+    <main>
+      <Hero />
+      <SocialProof />
+      <Features />
+    </main>
+    <Footer />
+  </div>
+</Layout>

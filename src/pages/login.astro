@@ -73,6 +73,14 @@ import Logo from "../components/Logo.astro";
     const form = document.getElementById('loginForm') as HTMLFormElement;
     const mensajeEstado = document.getElementById('mensaje-estado') as HTMLElement;
 
+    const entrarDemo = () => {
+      mensajeEstado.innerText = "⚠ Backend no disponible — modo demo: redirigiendo...";
+      mensajeEstado.style.color = "#f59e0b";
+      document.cookie = "usuario_id=demo-user; path=/";
+      localStorage.setItem('sv_user', JSON.stringify({ nombre: 'Demo', id: 'demo-user' }));
+      setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
+    };
+
     form?.addEventListener('submit', async (e) => {
       e.preventDefault();
 
@@ -94,31 +102,21 @@ import Logo from "../components/Logo.astro";
           body: JSON.stringify(body)
         });
 
-        if (!res.ok) {
-          mensajeEstado.innerText = "⚠ Backend no disponible — modo demo: redirigiendo...";
-          mensajeEstado.style.color = "#f59e0b";
-          document.cookie = "usuario_id=demo-user; path=/";
-          setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
-          return;
-        }
+        const data = await res.json().catch(() => null);
 
-        const data = await res.json();
-
-        if (res.ok && data.success) {
+        if (res.ok && data?.success) {
           mensajeEstado.innerText = "¡Éxito! Redirigiendo...";
           mensajeEstado.style.color = "#10b981";
-          window.location.href = '/';
+          localStorage.setItem('sv_user', JSON.stringify({ nombre: data.username, id: data.id }));
+          window.location.href = '/dashboard';
         } else {
-          mensajeEstado.innerText = `❌ ${data.error || 'Error al iniciar sesión'}`;
+          mensajeEstado.innerText = `❌ ${data?.error || 'Error al iniciar sesión'}`;
           mensajeEstado.style.color = "#ef4444";
         }
 
       } catch (error) {
         console.error("Error en la petición:", error);
-        mensajeEstado.innerText = "⚠ Backend no disponible — modo demo: redirigiendo...";
-        mensajeEstado.style.color = "#f59e0b";
-        document.cookie = "usuario_id=demo-user; path=/";
-        setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
+        entrarDemo();
       }
     });
   </script>

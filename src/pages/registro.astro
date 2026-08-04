@@ -154,8 +154,9 @@ import Logo from "../components/Logo.astro";
       if (res.ok && data.success) {
         mensajeEstado.innerText = "¡Cuenta creada con éxito! Redirigiendo...";
         mensajeEstado.style.color = "#10b981";
+        localStorage.setItem('sv_user', JSON.stringify({ nombre: data.username, id: data.id }));
         setTimeout(() => {
-          window.location.href = '/login';
+          window.location.href = '/dashboard';
         }, 1500);
       } else {
         mensajeEstado.innerText = `❌ ${data.error || 'Error al crear la cuenta'}`;
