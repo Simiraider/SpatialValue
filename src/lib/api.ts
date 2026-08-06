@@ -25,6 +25,7 @@ export async function apiFetch<T = unknown>(
   }
 
   try {
+    const res = await fetch(path, {
       ...restOptions,
       signal: controller.signal,
       headers: {
