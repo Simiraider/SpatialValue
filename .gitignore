@@ -16,6 +16,7 @@ pnpm-debug.log*
 # environment variables
 .env
 .env.production
+.env*.local
 
 # macOS-specific files
 .DS_Store
@@ -23,5 +24,12 @@ pnpm-debug.log*
 # jetbrains setting folder
 .idea/
 .vercel
-.env*.local
-.env*
+
+# python
+__pycache__/
+*.pyc
+
+# chrome scraper profile (junk)
+chrome_scraper_data/
+
+/chrome_scraper_data
