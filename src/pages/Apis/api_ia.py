@@ -26,7 +26,8 @@ DATABASE_URL = os.environ.get("SpatialValueStorage_DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError(
         "Error: No se encontró DATABASE_URL. Verificá que exista el archivo "
-        ".env.local en la raíz del proyecto."
+        ".env.local en la raíz del proyecto o que la variable esté configurada "
+        "en el host (Render/Vercel)."
     )
 COORDENADAS_DEFAULT = {"lat": -34.6037, "lng": -58.3816}
 
@@ -202,6 +203,16 @@ class PropiedadInput(BaseModel):
 
 # Endpoints
 
+@app.get("/")
+def health():
+    """Endpoint de salud. Útil para el keep-alive y para verificar el deploy."""
+    return {
+        "status": "ok",
+        "servicio": "API IA Estimador SpatialValue",
+        "modelo": "listo" if modelo_v4 is not None else "sin datos",
+    }
+
+
 @app.post("/estimar-precio")
 def estimar_precio(propiedad: PropiedadInput):
     latitud = propiedad.latitud if propiedad.latitud is not None else COORDENADAS_DEFAULT["lat"]
@@ -272,4 +283,11 @@ def reentrenar_api():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("api_ia:app", host="127.0.0.1", port=8000, reload=True)
+    # En Render (y otros hosts), el puerto llega por la variable PORT.
+    uvicorn.run(
+        "api_ia:app",
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 8000)),
+        # Auto-reload solo en desarrollo local (Render setea RENDER=true)
+        reload=os.environ.get("RENDER") != "true",
+    )

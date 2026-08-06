@@ -2,7 +2,7 @@ export const prerender = false;
 import sql from '../../Backend/carga.js';
 
 const IA_URL = import.meta.env.IA_URL || process.env.IA_URL || 'http://127.0.0.1:8000';
-const IA_TIMEOUT_MS = 8000;
+const IA_TIMEOUT_MS = 15000;
 
 const tiene = (comodidades, nombre) =>
   Array.isArray(comodidades) &&
