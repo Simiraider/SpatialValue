@@ -1,41 +1,45 @@
+
+
 import os
 import json
 from pathlib import Path
-from fastapi import FastAPI
-from pydantic import BaseModel
+
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.pipeline import Pipeline
-from sklearn.ensemble import RandomForestRegressor
 import psycopg2
 from psycopg2 import pool
 from dotenv import load_dotenv
+from fastapi import FastAPI
+from pydantic import BaseModel
+from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder
 
-base_path = Path(__file__).resolve().parent.parent.parent.parent
-env_path = base_path / ".env.local"
-load_dotenv(dotenv_path=env_path)
+# CONFIGURACIÓN
 
-app = FastAPI(title="API IA Estimador")
+BASE_PATH = Path(__file__).resolve().parent.parent.parent.parent
+ENV_PATH = BASE_PATH / ".env.local"
+load_dotenv(dotenv_path=ENV_PATH)
 
 DATABASE_URL = os.environ.get("SpatialValueStorage_DATABASE_URL")
-
 if not DATABASE_URL:
-    raise ValueError("Error: No se encontró DATABASE_URL. Verificá que exista el archivo .env.local en la raíz del proyecto.")
+    raise ValueError(
+        "Error: No se encontró DATABASE_URL. Verificá que exista el archivo "
+        ".env.local en la raíz del proyecto."
+    )
+COORDENADAS_DEFAULT = {"lat": -34.6037, "lng": -58.3816}
 
-db_pool = psycopg2.pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
-
-columnas_texto = [
+COLUMNAS_TEXTO = [
     "tipo_propiedad",
     "barrio_zona",
     "estado",
     "orientacion",
     "disposicion",
-    "seguridad_tipo"
+    "seguridad_tipo",
 ]
 
-columnas_numericas = [
+COLUMNAS_NUMERICAS = [
     "ambientes",
     "dormitorios",
     "banos",
@@ -59,80 +63,110 @@ columnas_numericas = [
     "lounge",
     "laundry",
     "latitud",
-    "longitud"
+    "longitud",
 ]
+
+# CONEXIÓN A BASE DE DATOS
+
+app = FastAPI(title="API IA Estimador")
+db_pool = psycopg2.pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
 
 modelo_v4 = None
 
-def entrenar_modelo():
-    global modelo_v4
+# Entrenamiento
+
+def _extraer_coordenadas(row):
+    try:
+        if row["coordenadas_gps"]:
+            coords = json.loads(row["coordenadas_gps"])
+            return pd.Series([
+                coords.get("lat", COORDENADAS_DEFAULT["lat"]),
+                coords.get("lng", COORDENADAS_DEFAULT["lng"]),
+            ])
+    except (json.JSONDecodeError, TypeError, AttributeError):
+        pass
+    return pd.Series([COORDENADAS_DEFAULT["lat"], COORDENADAS_DEFAULT["lng"]])
+
+
+def _cargar_datos_entrenamiento():
     conn = db_pool.getconn()
     try:
         query = """
-            SELECT 
+            SELECT
                 tipo_propiedad, barrio_zona, estado, orientacion, disposicion, seguridad_tipo,
                 ambientes, dormitorios, banos, superficie_total_m2, superficie_cubierta_m2,
                 anios_de_antiguedad, piso, cochera, balcon, terraza, patio, pileta,
                 parrilla, seguridad_24hs, ascensor, expensas_ars, baulera, sum,
                 camara, gym, lounge, laundry, coordenadas_gps, precio_real_usd AS precio_usd
-            FROM propiedades 
+            FROM propiedades
             WHERE precio_real_usd IS NOT NULL;
         """
-        df = pd.read_sql(query, conn)
+        return pd.read_sql(query, conn)
     finally:
         db_pool.putconn(conn)
+
+
+def _preparar_features(df: pd.DataFrame) -> pd.DataFrame:
+    df[["latitud", "longitud"]] = df.apply(_extraer_coordenadas, axis=1)
+
+    for col in COLUMNAS_TEXTO:
+        if col not in df.columns:
+            df[col] = "No especificada"
+        df[col] = df[col].fillna("No especificada")
+
+    for col in COLUMNAS_NUMERICAS:
+        if col not in df.columns:
+            df[col] = 0
+        df[col] = df[col].fillna(0)
+
+    return df
+
+
+def entrenar_modelo():
+    """Entrena (o re-entrena) el modelo con todos los datos disponibles en Neon."""
+    global modelo_v4
+
+    df = _cargar_datos_entrenamiento()
 
     if df.empty:
         print("La base de datos de Neon está vacía")
         modelo_v4 = None
         return
 
-    def extraer_coordenadas(row):
-        try:
-            if row['coordenadas_gps']:
-                coords = json.loads(row['coordenadas_gps'])
-                return pd.Series([coords.get('lat', -34.6037), coords.get('lng', -58.3816)])
-        except:
-            pass
-        return pd.Series([-34.6037, -58.3816])
+    df = _preparar_features(df)
 
-    df[['latitud', 'longitud']] = df.apply(extraer_coordenadas, axis=1)
-
-    for col in columnas_texto:
-        if col not in df.columns:
-            df[col] = "No especificada"
-        df[col] = df[col].fillna("No especificada")
-
-    for col in columnas_numericas:
-        if col not in df.columns:
-            df[col] = 0
-        df[col] = df[col].fillna(0)
-
-    X = df[columnas_texto + columnas_numericas]
+    X = df[COLUMNAS_TEXTO + COLUMNAS_NUMERICAS]
     y = df["precio_usd"].fillna(df["precio_usd"].median())
 
     preprocesador = ColumnTransformer(
         transformers=[
-            ("texto", OneHotEncoder(handle_unknown="ignore"), columnas_texto),
-            ("numeros", "passthrough", columnas_numericas)
+            ("texto", OneHotEncoder(handle_unknown="ignore"), COLUMNAS_TEXTO),
+            ("numeros", "passthrough", COLUMNAS_NUMERICAS),
         ]
     )
 
-    nuevo_modelo = Pipeline(steps=[
-        ("preprocesador", preprocesador),
-        ("modelo", RandomForestRegressor(n_estimators=100, random_state=42))
-    ])
+    nuevo_modelo = Pipeline(
+        steps=[
+            ("preprocesador", preprocesador),
+            ("modelo", RandomForestRegressor(n_estimators=100, random_state=42)),
+        ]
+    )
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
     nuevo_modelo.fit(X_train, y_train)
-    
+
     modelo_v4 = nuevo_modelo
     print("Modelo entrenado con éxito con los datos actuales de Neon")
+
 
 try:
     entrenar_modelo()
 except Exception as e:
-    print(f"⚠️ Error al entrenar el modelo inicial: {e}")
+    print(f"Error al entrenar el modelo inicial: {e}")
+
+# Plantilla 
 
 class PropiedadInput(BaseModel):
     tipo_propiedad: str
@@ -163,18 +197,22 @@ class PropiedadInput(BaseModel):
     gym: bool
     lounge: bool
     laundry: bool
+    latitud: float | None = None
+    longitud: float | None = None
+
+# Endpoints
 
 @app.post("/estimar-precio")
 def estimar_precio(propiedad: PropiedadInput):
-    latitud = -34.6037
-    longitud = -58.3816
+    latitud = propiedad.latitud if propiedad.latitud is not None else COORDENADAS_DEFAULT["lat"]
+    longitud = propiedad.longitud if propiedad.longitud is not None else COORDENADAS_DEFAULT["lng"]
 
     if modelo_v4 is None:
         return {
             "status": "warning",
             "coordenadas": {"lat": latitud, "lng": longitud},
-            "precio_estimado_usd": 450.0, 
-            "message": "Modelo en fase de acumulación de datos inicial."
+            "precio_estimado_usd": 450.0,
+            "message": "Modelo en fase de acumulación de datos inicial.",
         }
 
     datos_entrada = {
@@ -207,19 +245,20 @@ def estimar_precio(propiedad: PropiedadInput):
         "lounge": [int(propiedad.lounge)],
         "laundry": [int(propiedad.laundry)],
         "latitud": [latitud],
-        "longitud": [longitud]
+        "longitud": [longitud],
     }
-    
+
     df_input = pd.DataFrame(datos_entrada)
-    df_input = df_input[columnas_texto + columnas_numericas]
-    
+    df_input = df_input[COLUMNAS_TEXTO + COLUMNAS_NUMERICAS]
+
     precio_predicho = modelo_v4.predict(df_input)[0]
-    
+
     return {
         "status": "success",
         "coordenadas": {"lat": latitud, "lng": longitud},
-        "precio_estimado_usd": float(precio_predicho)
+        "precio_estimado_usd": float(precio_predicho),
     }
+
 
 @app.post("/reentrenar")
 def reentrenar_api():
@@ -229,6 +268,8 @@ def reentrenar_api():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("API IA:app", host="127.0.0.1", port=8000, reload=True)
+
+    uvicorn.run("API_IA:app", host="127.0.0.1", port=8000, reload=True)

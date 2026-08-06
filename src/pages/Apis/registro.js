@@ -11,7 +11,7 @@ export async function POST({ request }) {
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
-    const existe = await sql`SELECT "id" FROM "usuarios" WHERE "nombre" = ${usuario}`;
+    const existe = await sql`SELECT "id_usuario" FROM "usuarios" WHERE "nombre" = ${usuario}`;
     if (existe.length > 0) {
       return new Response(
         JSON.stringify({ error: "El nombre de usuario ya está en uso" }), 
@@ -19,7 +19,7 @@ export async function POST({ request }) {
       );
     }
 
-    const existeMail = await sql`SELECT "id" FROM "usuarios" WHERE "email" = ${email}`;
+    const existeMail = await sql`SELECT "id_usuario" FROM "usuarios" WHERE "email" = ${email}`;
     if (existeMail.length > 0) {
       return new Response(
         JSON.stringify({ error: "El correo electrónico ya está registrado" }), 
@@ -35,7 +35,7 @@ export async function POST({ request }) {
     const nuevoUsuario = await sql`
       INSERT INTO "usuarios" ("nombre", "contraseña", "email") 
       VALUES (${usuario}, ${hash}, ${email})
-      RETURNING "id"
+      RETURNING "id_usuario"
     `;
     
     const usuarioId = nuevoUsuario[0].id;
