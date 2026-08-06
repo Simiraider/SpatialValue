@@ -143,7 +143,7 @@ import Logo from "../components/Logo.astro";
         email: email.value
       };
 
-      const res = await fetch('/Apis/registro', {
+      const res = await fetch('/Apis/Registro', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
