@@ -7,7 +7,7 @@ import Logo from "../components/Logo.astro";
 
 <Layout title="Crear cuenta">
   <div class="min-h-screen flex items-center justify-center p-4 bg-[#F5F5F5] bg-[url('/bg-logo.png')] bg-center bg-no-repeat bg-cover">
-    <div class="w-full max-w-md bg-[#575656] text-white rounded-[2rem] p-8 sm:p-10 shadow-2xl relative overflow-hidden my-8">
+    <div class="w-full max-w-md bg-[#575656] text-white rounded- p-8 sm:p-10 shadow-2xl relative overflow-hidden my-8">
       <header class="mb-8 text-center flex flex-col items-center">
         <a href="/" class="text-white mb-4 block scale-125">
           <Logo />
@@ -18,7 +18,7 @@ import Logo from "../components/Logo.astro";
         </p>
       </header>
 
-      <form class="flex flex-col gap-5" id="register-form">
+      <form class="flex flex-col gap-5" id="register-form" novalidate>
         <div class="flex gap-4">
           <div class="text-slate-300 w-1/2">
             <Input
@@ -110,9 +110,9 @@ import Logo from "../components/Logo.astro";
       </p>
     </div>
   </div>
-</Layout>
+</Layout>  <script>
+  import { setUser } from '../lib/session';
 
-<script>
   const form = document.getElementById("register-form") as HTMLFormElement | null;
   const pwd = document.getElementById("register-password") as HTMLInputElement | null;
   const pwdConfirm = document.getElementById("register-password-confirm") as HTMLInputElement | null;
@@ -121,53 +121,88 @@ import Logo from "../components/Logo.astro";
   const email = document.getElementById("register-email") as HTMLInputElement | null;
   const mensajeEstado = document.getElementById("mensaje-estado") as HTMLElement | null;
 
+
+  const setMensaje = (texto: string, color: string) => {
+    if (!mensajeEstado) return;
+    mensajeEstado.innerText = texto;
+    mensajeEstado.style.color = color;
+  };
+
+  const validar = (): boolean => {
+    if (!nombre || !apellido || !email || !pwd || !pwdConfirm) return false;
+
+    if (!nombre.value.trim() || !apellido.value.trim()) {
+      setMensaje("Completá nombre y apellido.", "#ef4444");
+      return false;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {
+      setMensaje("Ingresá un email válido.", "#ef4444");
+      return false;
+    }
+    if (pwd.value.length < 8) {
+      setMensaje("La contraseña debe tener al menos 8 caracteres.", "#ef4444");
+      return false;
+    }
+    if (pwd.value !== pwdConfirm.value) {
+      pwdConfirm.setCustomValidity("Las contraseñas no coinciden");
+      setMensaje("Las contraseñas no coinciden.", "#ef4444");
+      return false;
+    }
+    pwdConfirm.setCustomValidity("");
+    return true;
+  };
+
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (pwd && pwdConfirm && pwd.value !== pwdConfirm.value) {
-      pwdConfirm.setCustomValidity("Las contraseñas no coinciden");
-      pwdConfirm.reportValidity();
-      return;
-    } else {
-      pwdConfirm?.setCustomValidity("");
+    if (!validar()) return;
+    const submitBtn = document.getElementById("register-submit") as HTMLButtonElement | null;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Creando cuenta...";
     }
 
-    if (!nombre || !apellido || !email || !pwd || !mensajeEstado) return;
-
     try {
-      mensajeEstado.innerText = "Registrando usuario...";
-      mensajeEstado.style.color = "#06b6d4";
+      setMensaje("Registrando usuario...", "#06b6d4");
 
       const body = {
-        usuario: `${nombre.value} ${apellido.value}`.trim(),
-        contraseña: pwd.value,
-        email: email.value
+        usuario: `${nombre!.value} ${apellido!.value}`.trim(),
+        contraseña: pwd!.value,
+        email: email!.value.trim()
       };
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const res = await fetch('/Apis/registro', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
+      let res: Response;
+      try {
+        res = await fetch('/Apis/registro', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: controller.signal
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
 
-      if (res.ok && data.success) {
-        mensajeEstado.innerText = "¡Cuenta creada con éxito! Redirigiendo...";
-        mensajeEstado.style.color = "#10b981";
-        localStorage.setItem('sv_user', JSON.stringify({ nombre: data.username, id: data.id }));
+      if (res.ok && data?.success) {
+        setMensaje("¡Cuenta creada con éxito! Redirigiendo...", "#10b981");
+        setUser({ nombre: data.username, id: data.id });
         setTimeout(() => {
           window.location.href = '/dashboard';
         }, 1500);
       } else {
-        mensajeEstado.innerText = `❌ ${data.error || 'Error al crear la cuenta'}`;
-        mensajeEstado.style.color = "#ef4444";
+        setMensaje(`${data?.error || 'Error al crear la cuenta'}`, "#ef4444");
       }
 
     } catch (error) {
       console.error("Error en la petición:", error);
-      if (mensajeEstado) {
-        mensajeEstado.innerText = "❌ Error de conexión con el servidor.";
-        mensajeEstado.style.color = "#ef4444";
+      setMensaje("Error de conexión con el servidor.", "#ef4444");
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Crear cuenta";
       }
     }
   });
