@@ -56,9 +56,14 @@ import Logo from "./Logo.astro";
 
       navRight.replaceChildren(saludo, dashboardLink, logoutLink);
     } catch {
-      // Sesión corrupta o ausente: se muestra el estado de invitado
     }
   };
 
   aplicarSesion();
+
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'sv_user' && !e.newValue) {
+      window.location.href = '/';
+    }
+  });
 </script>

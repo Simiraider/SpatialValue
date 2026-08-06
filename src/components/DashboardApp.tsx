@@ -1,10 +1,14 @@
-import { useState, useEffect } from 'react';
-import { Bell, Search, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Bell, Search, Loader2, RefreshCw } from 'lucide-react';
 import { borradores, type TasacionItem } from '../data/mock';
 import { Card } from './ui/Card';
+import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
+import { apiFetch, getCookie } from '../lib/api';
+import { getUser, getUsuarioId, cerrarSesion, syncSessionAcrossTabs, type SesionUsuario } from '../lib/session';
 
 type Section = 'tasaciones' | 'borradores' | 'indices' | 'config';
+type CargaStatus = 'loading' | 'error' | 'ready';
 
 const sidebarItems: { id: Section; label: string }[] = [
   { id: 'tasaciones', label: 'Mis tasaciones' },
@@ -26,72 +30,78 @@ const getInitials = (nombre: string) =>
     .map((word) => word[0]?.toUpperCase() ?? '')
     .join('');
 
-interface SesionUsuario {
-  nombre: string;
-  id?: string;
-}
-
 export const DashboardApp = () => {
   const [section, setSection] = useState<Section>('tasaciones');
   const [query, setQuery] = useState('');
   const [tasacionesApi, setTasacionesApi] = useState<TasacionItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<CargaStatus>('loading');
   const [user, setUser] = useState<SesionUsuario | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
+    setUser(getUser());
+    if (!getCookie('usuario_id') && !getUser()) {
+      window.location.href = '/login';
+      return;
+    }
+
+    setCheckingSession(false);
+
+    return syncSessionAcrossTabs(() => {
+      window.location.href = '/';
+    });
+  }, []);
+
+  const fetchTasaciones = useCallback(async () => {
+    setStatus('loading');
     try {
-      const raw = localStorage.getItem('sv_user');
-      if (raw) setUser(JSON.parse(raw));
-    } catch {
-      // Sesión corrupta o ausente: el header muestra la inicial genérica
+      const usuarioId = getUsuarioId();
+      const url = usuarioId
+        ? `/Apis/ObtenerDatosPropiedades?usuario_id=${usuarioId}`
+        : '/Apis/ObtenerDatosPropiedades';
+
+      const { ok, data } = await apiFetch(url, {}, 8000);
+
+      if (ok && Array.isArray(data)) {
+        const mapped: TasacionItem[] = data
+          .filter((p: any) => p && p.id !== undefined && p.id !== null)
+          .map((p: any) => ({
+            id: String(p.id),
+            address: p.direccion || p.titulo || 'Sin dirección',
+            value:
+              typeof p.precio === 'number' && p.precio > 0
+                ? `$${p.precio.toLocaleString('es-AR')}`
+                : 'A tasar',
+            status: 'completada' as const,
+          }));
+        setTasacionesApi(mapped);
+        setStatus('ready');
+      } else {
+        console.warn('ObtenerDatosPropiedades: respuesta inesperada', { ok, status: (data as any)?.status, data });
+        setStatus('error');
+      }
+    } catch (error) {
+      if ((error as Error)?.name === 'AbortError') {
+        console.warn('ObtenerDatosPropiedades tardó demasiado');
+      } else {
+        console.error('Error fetching properties', error);
+      }
+      setStatus('error');
     }
   }, []);
 
   useEffect(() => {
-    const fetchTasaciones = async () => {
-      setLoading(true);
-      // Timeout para que el dashboard nunca quede trabado en el spinner
-      // si el endpoint no responde (p. ej. Jonas todavía no lo creó).
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-      try {
-        const getCookie = (name: string) => {
-          const value = `; ${document.cookie}`;
-          const parts = value.split(`; ${name}=`);
-          if (parts.length === 2) return parts.pop()?.split(';').shift();
-          return null;
-        };
-        const usuarioId = getCookie('usuario_id');
-        const url = usuarioId
-          ? `/Apis/ObtenerDatosPropiedades?usuario_id=${usuarioId}`
-          : `/Apis/ObtenerDatosPropiedades`;
-
-        const res = await fetch(url, { signal: controller.signal });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            const mapped: TasacionItem[] = data.map((p: any) => ({
-              id: String(p.id),
-              address: p.direccion || p.titulo,
-              value: p.precio ? `$${p.precio}` : '0 USD',
-              status: 'completada' as const
-            }));
-            setTasacionesApi(mapped);
-          }
-        }
-      } catch (error) {
-        if ((error as Error)?.name === 'AbortError') {
-          console.warn('ObtenerDatosPropiedades tardó demasiado; mostrando estado vacío');
-        } else {
-          console.error("Error fetching properties", error);
-        }
-      } finally {
-        clearTimeout(timeoutId);
-        setLoading(false);
-      }
-    };
+    if (checkingSession) return;
     fetchTasaciones();
-  }, []);
+  }, [fetchTasaciones, checkingSession]);
+
+  if (checkingSession) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#F5F5F5]">
+        <Loader2 className="w-10 h-10 animate-spin text-cyan-500" />
+      </div>
+    );
+  }
 
   const items =
     section === 'borradores'
@@ -106,12 +116,6 @@ export const DashboardApp = () => {
 
   const isSearching = query.trim().length > 0;
 
-  const cerrarSesion = () => {
-    localStorage.removeItem('sv_user');
-    document.cookie = 'usuario_id=; Max-Age=0; path=/';
-    window.location.href = '/';
-  };
-
   return (
     <div className="flex h-screen bg-[#F5F5F5] font-sans overflow-hidden">
       <aside className="w-64 bg-slate-900 text-white flex flex-col" aria-label="Menú principal">
@@ -125,8 +129,8 @@ export const DashboardApp = () => {
               type="button"
               className={cn(
                 "w-full flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-colors",
-                section === item.id 
-                  ? "bg-slate-800 text-white" 
+                section === item.id
+                  ? "bg-slate-800 text-white"
                   : "text-slate-400 hover:bg-slate-800 hover:text-white"
               )}
               onClick={() => setSection(item.id)}
@@ -159,7 +163,7 @@ export const DashboardApp = () => {
             {user && (
               <button
                 type="button"
-                onClick={cerrarSesion}
+                onClick={() => cerrarSesion('/')}
                 className="text-sm font-medium text-slate-400 hover:text-slate-600 transition-colors"
               >
                 Salir
@@ -179,6 +183,12 @@ export const DashboardApp = () => {
         </header>
 
         <main className="flex-1 overflow-y-auto p-8 relative z-0 pb-24">
+          {user?.demo && (
+            <div className="mb-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700">
+              <strong>Modo demo:</strong> no se pudo conectar con el servidor. Estás viendo datos de ejemplo.
+            </div>
+          )}
+
           {section === 'indices' && (
             <Card className="text-center py-12">
               <p className="text-slate-500 text-lg">Índices de mercado — disponible en un próximo sprint.</p>
@@ -189,18 +199,35 @@ export const DashboardApp = () => {
               <p className="text-slate-500 text-lg">Configuración — disponible en un próximo sprint.</p>
             </Card>
           )}
-          
+
           {(section === 'tasaciones' || section === 'borradores') && (
             <>
               <h1 className="text-3xl font-bold text-slate-900 mb-8">
                 {section === 'borradores' ? 'Mis borradores' : 'Mis tasaciones'}
               </h1>
-              
-              {loading && section === 'tasaciones' ? (
+
+              {section === 'tasaciones' && status === 'loading' && (
                 <div className="flex justify-center py-12">
                   <Loader2 className="w-10 h-10 animate-spin text-cyan-500" />
                 </div>
-              ) : filtered.length === 0 ? (
+              )}
+
+              {section === 'tasaciones' && status === 'error' && !user?.demo && (
+                <Card className="text-center py-12">
+                  <p className="text-slate-500 text-lg mb-1">
+                    No pudimos conectar con el servidor para cargar tus tasaciones.
+                  </p>
+                  <p className="text-slate-400 text-sm mb-6">
+                    Revisá tu conexión o intentá de nuevo en unos segundos.
+                  </p>
+                  <Button type="button" variant="outline" onClick={fetchTasaciones} id="btn-reintentar">
+                    <RefreshCw className="w-4 h-4 mr-2" aria-hidden />
+                    Reintentar
+                  </Button>
+                </Card>
+              )}
+
+              {(section === 'borradores' || status === 'ready' || (status === 'error' && user?.demo)) && (filtered.length === 0 ? (
                 <Card className="text-center py-12">
                   <p className="text-slate-500 text-lg">
                     {isSearching
@@ -235,14 +262,14 @@ export const DashboardApp = () => {
                     </a>
                   ))}
                 </div>
-              )}
+              ))}
             </>
           )}
 
-          <a 
-            href="/tasacion" 
+          <a
+            href="/tasacion"
             className="fixed bottom-8 right-8 w-16 h-16 bg-cyan-500 hover:bg-cyan-600 text-white rounded-full flex items-center justify-center text-4xl font-light shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 z-50"
-            aria-label="Nueva tasación" 
+            aria-label="Nueva tasación"
             title="Nueva tasación"
           >
             +

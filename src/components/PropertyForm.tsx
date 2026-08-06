@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { navigate } from '../lib/navigate';
 import { cn } from '../lib/utils';
+import { apiFetch } from '../lib/api';
+import { getUsuarioId } from '../lib/session';
 
 const TOTAL_STEPS = 3;
 const AMENITIES_LIST = ["Pileta", "SUM", "Parrilla", "Cochera", "Gimnasio", "Balcón", "Patio", "Seguridad 24h"];
@@ -52,6 +54,11 @@ export const PropertyForm = () => {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<FormData>(initialData);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    sessionStorage.removeItem('tasacion-draft');
+  }, []);
 
   const update = <K extends keyof FormData>(field: K, value: FormData[K]) =>
     setData((prev) => ({ ...prev, [field]: value }));
@@ -78,15 +85,9 @@ export const PropertyForm = () => {
       return;
     }
 
+    setSubmitting(true);
     try {
-      const getCookie = (name: string) => {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop()?.split(';').shift();
-        return null;
-      };
-
-      const usuarioId = getCookie('usuario_id') || 'demo-user';
+      const usuarioId = getUsuarioId() || 'demo-user';
 
       const body = {
         titulo: `${data.tipoUnidad} en ${data.direccion}`,
@@ -103,26 +104,30 @@ export const PropertyForm = () => {
         usuario_id: usuarioId
       };
 
-      const res = await fetch('/Apis/PublicarPropiedad', {
+      const { ok, data: resData } = await apiFetch('/Apis/PublicarPropiedad', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
 
-      const resData = await res.json().catch(() => null);
-
-      if (res.ok && resData?.success) {
-        sessionStorage.setItem('tasacion-draft', JSON.stringify({ ...data, id: resData.data.id }));
-        navigate('/cargando');
+      if (ok && resData?.success && resData?.data?.id) {
+        sessionStorage.setItem('tasacion-draft', JSON.stringify({ ...data, id: resData.data.id, demo: false }));
       } else {
-        // Fallback demo
-        sessionStorage.setItem('tasacion-draft', JSON.stringify({ ...data, id: 'demo-123' }));
-        navigate('/cargando');
+        console.warn('[demo] PublicarPropiedad no disponible; tasación guardada solo localmente');
+        sessionStorage.setItem(
+          'tasacion-draft',
+          JSON.stringify({ ...data, id: `demo-${Date.now()}`, demo: true })
+        );
       }
+      navigate('/cargando');
     } catch (error) {
       console.error(error);
-      sessionStorage.setItem('tasacion-draft', JSON.stringify({ ...data, id: 'demo-123' }));
+      sessionStorage.setItem(
+        'tasacion-draft',
+        JSON.stringify({ ...data, id: `demo-${Date.now()}`, demo: true })
+      );
       navigate('/cargando');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -164,7 +169,7 @@ export const PropertyForm = () => {
                   fullWidth
                   onClick={() => update('tipoUnidad', 'Casa')}
                 >
-                  🏡 Casa
+                  Casa
                 </Button>
                 <Button 
                   type="button"
@@ -172,7 +177,7 @@ export const PropertyForm = () => {
                   fullWidth
                   onClick={() => update('tipoUnidad', 'Departamento')}
                 >
-                  🏢 Departamento
+                  Departamento
                 </Button>
               </div>
 
@@ -300,16 +305,16 @@ export const PropertyForm = () => {
 
           <div className="flex gap-4 pt-6 mt-6 border-t border-slate-100">
             {step > 1 ? (
-              <Button type="button" variant="outline" className="w-1/3" onClick={() => setStep(step - 1)}>
+              <Button type="button" variant="outline" className="w-1/3" disabled={submitting} onClick={() => setStep(step - 1)}>
                 Atrás
               </Button>
             ) : (
-              <Button type="button" variant="ghost" className="w-1/3" onClick={() => navigate('/dashboard')}>
+              <Button type="button" variant="ghost" className="w-1/3" disabled={submitting} onClick={() => navigate('/dashboard')}>
                 Cancelar
               </Button>
             )}
-            <Button type="submit" variant="primary" className="flex-1 bg-slate-900 text-white hover:bg-slate-800">
-              {step === TOTAL_STEPS ? 'Finalizar y Calcular' : 'Siguiente paso'}
+            <Button type="submit" variant="primary" className="flex-1 bg-slate-900 text-white hover:bg-slate-800" isLoading={submitting} disabled={submitting}>
+              {step === TOTAL_STEPS ? (submitting ? 'Calculando...' : 'Finalizar y Calcular') : 'Siguiente paso'}
             </Button>
           </div>
 

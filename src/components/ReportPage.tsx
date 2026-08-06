@@ -1,21 +1,49 @@
 import { useEffect, useState } from 'react';
 import { ValorM2CacChart } from './ReportCharts';
 import { ReportActions, ReportDownloadButton } from './ReportActions';
+import { Button } from './ui/Button';
 import '../styles/reporte.css';
 
 export const ReportPage = () => {
   const [data, setData] = useState<any>(null);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     try {
+      const params = new URLSearchParams(window.location.search);
+      const urlId = params.get('id');
+
       const draftStr = sessionStorage.getItem('tasacion-draft');
       if (draftStr) {
-        setData(JSON.parse(draftStr));
+        const draft = JSON.parse(draftStr);
+        if (!urlId || urlId === draft.id) {
+          setData(draft);
+          return;
+        }
       }
+
+      setNotFound(true);
     } catch (e) {
       console.error(e);
+      setNotFound(true);
     }
   }, []);
+
+  if (notFound) {
+    return (
+      <div className="ReportePage" style={{ padding: '2rem', textAlign: 'center' }}>
+        <p style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+          No encontramos los datos de esta tasación.
+        </p>
+        <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>
+          Puede que haya sido creada en otro dispositivo o que el servidor no esté disponible.
+        </p>
+        <Button type="button" variant="outline" onClick={() => (window.location.href = '/dashboard')}>
+          Volver al Dashboard
+        </Button>
+      </div>
+    );
+  }
 
   if (!data) return <div className="ReportePage" style={{padding: '2rem', textAlign: 'center'}}>Cargando reporte...</div>;
 
@@ -32,7 +60,7 @@ export const ReportPage = () => {
             </p>
             <h1 className="ReportePage-title">Reporte final - {data.direccion}</h1>
             <p className="ReportePage-demoBadge" aria-label="Modo demostración">
-              Estimación basada en datos proporcionados
+              {data.demo ? 'Modo demo: tasación no guardada en el servidor' : 'Estimación basada en datos proporcionados'}
             </p>
           </div>
           <ReportDownloadButton />

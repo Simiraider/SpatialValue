@@ -7,7 +7,7 @@ import Logo from "../components/Logo.astro";
 
 <Layout title="Iniciar Sesión">
   <div class="min-h-screen flex items-center justify-center p-4 bg-[#F8FAFC] bg-[url('/bg-logo.png')] bg-center bg-no-repeat bg-cover">
-    <div class="w-full max-w-md bg-[#575656] text-white rounded-[2rem] p-8 sm:p-10 shadow-2xl relative overflow-hidden">
+    <div class="w-full max-w-md bg-[#575656] text-white rounded- p-8 sm:p-10 shadow-2xl relative overflow-hidden">
       <header class="mb-8 text-center flex flex-col items-center">
         <a href="/" class="text-white mb-4 block scale-125">
           <Logo />
@@ -18,7 +18,7 @@ import Logo from "../components/Logo.astro";
         </p>
       </header>
 
-      <form class="flex flex-col gap-5" id="loginForm">
+      <form class="flex flex-col gap-5" id="loginForm" novalidate>
         <div class="text-slate-300">
           <Input
             id="emailInput"
@@ -45,9 +45,22 @@ import Logo from "../components/Logo.astro";
         </div>
 
         <div class="mt-2">
-          <Button type="submit" fullWidth variant="secondary" client:load>Ingresar</Button>
+          <Button type="submit" fullWidth variant="secondary" client:load id="login-submit">Ingresar</Button>
         </div>
       </form>
+
+      <!-- Fallback demo: solo se muestra si el usuario elige entrar -->
+      <div id="demo-fallback" class="hidden mt-6">
+        <div class="border border-amber-500/40 bg-amber-500/10 rounded-2xl p-4 text-left">
+          <p class="text-sm text-amber-300 font-medium mb-1">No se pudo conectar con el servidor</p>
+          <p class="text-xs text-slate-300 mb-3">
+            Podés explorar la app en <strong>modo demo</strong> con datos de ejemplo. Tu cuenta real no se verá afectada.
+          </p>
+          <Button variant="outline" fullWidth type="button" client:load id="btn-modo-demo" className="text-white border-slate-700 bg-slate-800/50 hover:bg-slate-800 hover:text-white">
+            Continuar en modo demo
+          </Button>
+        </div>
+      </div>
 
       <p class="mt-8 text-center text-slate-400 text-sm">
         ¿No tenés cuenta?{" "}
@@ -70,53 +83,99 @@ import Logo from "../components/Logo.astro";
   </div>
 
   <script>
+    import { setUser } from '../lib/session';
+
     const form = document.getElementById('loginForm') as HTMLFormElement;
     const mensajeEstado = document.getElementById('mensaje-estado') as HTMLElement;
+    const demoFallback = document.getElementById('demo-fallback') as HTMLElement | null;
+
+    const setMensaje = (texto: string, color: string) => {
+      mensajeEstado.innerText = texto;
+      mensajeEstado.style.color = color;
+    };
 
     const entrarDemo = () => {
-      mensajeEstado.innerText = "⚠ Backend no disponible — modo demo: redirigiendo...";
-      mensajeEstado.style.color = "#f59e0b";
+      setMensaje("Modo demo activado — redirigiendo...", "#f59e0b");
       document.cookie = "usuario_id=demo-user; path=/";
-      localStorage.setItem('sv_user', JSON.stringify({ nombre: 'Demo', id: 'demo-user' }));
-      setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
+      setUser({ nombre: 'Demo', id: 'demo-user', demo: true });
+      setTimeout(() => { window.location.href = '/dashboard'; }, 800);
     };
+
+    const validar = (): boolean => {
+      const email = (document.getElementById('emailInput') as HTMLInputElement).value.trim();
+      const password = (document.getElementById('passwordInput') as HTMLInputElement).value;
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setMensaje("Ingresá un email válido.", "#ef4444");
+        return false;
+      }
+      if (password.length < 8) {
+        setMensaje("La contraseña debe tener al menos 8 caracteres.", "#ef4444");
+        return false;
+      }
+      return true;
+    };
+
+    demoFallback?.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('#btn-modo-demo')) entrarDemo();
+    });
 
     form?.addEventListener('submit', async (e) => {
       e.preventDefault();
 
+      if (!validar()) return;
+
       const emailElement = document.getElementById('emailInput') as HTMLInputElement;
       const passwordElement = document.getElementById('passwordInput') as HTMLInputElement;
+      const submitBtn = document.getElementById('login-submit') as HTMLButtonElement | null;
 
       const body = {
-        email: emailElement.value,
+        email: emailElement.value.trim(),
         contraseña: passwordElement.value
       };
 
-      try {
-        mensajeEstado.innerText = "Verificando credenciales...";
-        mensajeEstado.style.color = "#06b6d4"; // cyan-500
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Ingresando...";
+      }
 
-        const res = await fetch('/Apis/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
+      try {
+        setMensaje("Verificando credenciales...", "#06b6d4");
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+        let res: Response;
+        try {
+          res = await fetch('/Apis/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal: controller.signal
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
 
         const data = await res.json().catch(() => null);
 
         if (res.ok && data?.success) {
-          mensajeEstado.innerText = "¡Éxito! Redirigiendo...";
-          mensajeEstado.style.color = "#10b981";
-          localStorage.setItem('sv_user', JSON.stringify({ nombre: data.username, id: data.id }));
+          setMensaje("¡Éxito! Redirigiendo...", "#10b981");
+          setUser({ nombre: data.username, id: data.id });
           window.location.href = '/dashboard';
         } else {
-          mensajeEstado.innerText = `❌ ${data?.error || 'Error al iniciar sesión'}`;
-          mensajeEstado.style.color = "#ef4444";
+          setMensaje(`${data?.error || 'Error al iniciar sesión'}`, "#ef4444");
+          if (demoFallback) demoFallback.classList.remove('hidden');
         }
-
       } catch (error) {
         console.error("Error en la petición:", error);
-        entrarDemo();
+        setMensaje("No se pudo conectar con el servidor.", "#ef4444");
+        if (demoFallback) demoFallback.classList.remove('hidden');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Ingresar";
+        }
       }
     });
   </script>
