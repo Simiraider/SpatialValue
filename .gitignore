@@ -25,3 +25,4 @@ pnpm-debug.log*
 .vercel
 .env*.local
 .env*
+/src/pages/Apis/__pycache__

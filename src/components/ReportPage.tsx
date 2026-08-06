@@ -47,8 +47,12 @@ export const ReportPage = () => {
 
   if (!data) return <div className="ReportePage" style={{padding: '2rem', textAlign: 'center'}}>Cargando reporte...</div>;
 
-  const valorEstimadoUsd = (Number(data.superficieCubierta) * 2500) || 0;
+  const precioIA = Number(data.precioEstimadoUsd);
+  const superficieM2 = Number(data.superficieCubierta) || 0;
+  const esIA = precioIA > 0;
+  const valorEstimadoUsd = esIA ? precioIA : (superficieM2 * 2500) || 0;
   const valorEstimadoArs = valorEstimadoUsd * 1000;
+  const valorM2 = superficieM2 > 0 ? Math.round(valorEstimadoUsd / superficieM2) : 2500;
 
   return (
     <div className="ReportePage">
@@ -59,8 +63,12 @@ export const ReportPage = () => {
               ID: {data.id || 'N/A'} · {new Date().toLocaleDateString('es-AR')}
             </p>
             <h1 className="ReportePage-title">Reporte final - {data.direccion}</h1>
-            <p className="ReportePage-demoBadge" aria-label="Modo demostración">
-              {data.demo ? 'Modo demo: tasación no guardada en el servidor' : 'Estimación basada en datos proporcionados'}
+            <p className="ReportePage-demoBadge" aria-label="Origen de la estimación">
+              {esIA
+                ? 'Estimación generada por el modelo de IA'
+                : data.demo
+                  ? 'Modo demo: IA no disponible, valor estimado localmente'
+                  : 'Estimación basada en datos proporcionados'}
             </p>
           </div>
           <ReportDownloadButton />
@@ -83,7 +91,7 @@ export const ReportPage = () => {
             Valor de m² / Comparación con CAC
           </h2>
           <p className="ReportePage-sectionSubtitle">
-            2.500 USD/m² estimado
+            {valorM2.toLocaleString('es-AR')} USD/m² estimado
           </p>
           <ValorM2CacChart />
         </section>

@@ -89,33 +89,54 @@ export const PropertyForm = () => {
     try {
       const usuarioId = getUsuarioId() || 'demo-user';
 
+      const superficieCubierta = Number(data.superficieCubierta) || 0;
+      const superficieDescubierta = Number(data.superficieDescubierta) || 0;
+
       const body = {
         titulo: `${data.tipoUnidad} en ${data.direccion}`,
         descripcion: `Tasación automática. Comodidades: ${data.comodidades.join(', ')}`,
         precio: 0,
         direccion: data.direccion,
         ciudad: data.ciudad,
-        habitaciones: Number(data.ambientes),
-        area_m2: Number(data.superficieCubierta),
+        tipo_propiedad: data.tipoUnidad,
+        ambientes: Number(data.ambientes),
+        superficie_cubierta: superficieCubierta,
+        superficie_total: superficieCubierta + superficieDescubierta,
         piso: data.piso,
-        luzNatural: data.luzNatural,
-        comodidades: data.comodidades,
         estadoGeneral: data.estadoGeneral,
+        comodidades: data.comodidades,
         usuario_id: usuarioId
       };
 
-      const { ok, data: resData } = await apiFetch('/Apis/PublicarPropiedad', {
-        method: 'POST',
-        body: JSON.stringify(body)
-      });
+      const { ok, data: resData } = await apiFetch(
+        '/Apis/PublicarPropiedad',
+        { method: 'POST', body: JSON.stringify(body) },
+        15000
+      );
 
-      if (ok && resData?.success && resData?.data?.id) {
-        sessionStorage.setItem('tasacion-draft', JSON.stringify({ ...data, id: resData.data.id, demo: false }));
+      const payload = resData?.data;
+      const precioIA =
+        ok && payload?.precio_estimado_usd != null
+          ? Number(payload.precio_estimado_usd)
+          : null;
+      const guardada = ok && resData?.success && payload?.saved === true;
+
+      if (ok && resData?.success) {
+        sessionStorage.setItem(
+          'tasacion-draft',
+          JSON.stringify({
+            ...data,
+            id: payload?.id || `local-${Date.now()}`,
+            demo: !guardada,
+            precioEstimadoUsd: precioIA,
+            coordenadas: payload?.coordenadas || null,
+          })
+        );
       } else {
         console.warn('[demo] PublicarPropiedad no disponible; tasación guardada solo localmente');
         sessionStorage.setItem(
           'tasacion-draft',
-          JSON.stringify({ ...data, id: `demo-${Date.now()}`, demo: true })
+          JSON.stringify({ ...data, id: `demo-${Date.now()}`, demo: true, precioEstimadoUsd: null })
         );
       }
       navigate('/cargando');

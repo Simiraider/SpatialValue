@@ -184,12 +184,6 @@ import Logo from "../components/Logo.astro";
         clearTimeout(timeoutId);
       }
 
-      const res = await fetch('/Apis/Registro', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-
       const data = await res.json();
 
       if (res.ok && data?.success) {

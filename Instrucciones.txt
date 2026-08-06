@@ -9,7 +9,7 @@ taskkill /F /IM chrome.exe
 http://localhost:9222/json
  npx vercel env pull .env.local
 
-python "src/pages/Apis/API IA.py"
+python "src/pages/Apis/api_ia.py"
 
 $env:NODE_TLS_REJECT_UNAUTHORIZED="0"
 npx tsx --env-file=.env.local .\LicenciadoScraper.js
