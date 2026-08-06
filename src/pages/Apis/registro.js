@@ -38,7 +38,7 @@ export async function POST({ request }) {
       RETURNING "id_usuario"
     `;
     
-    const usuarioId = nuevoUsuario[0].id;
+    const usuarioId = nuevoUsuario[0].id_usuario;
 
     const response = new Response(
       JSON.stringify({ 

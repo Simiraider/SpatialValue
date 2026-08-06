@@ -64,9 +64,9 @@ export const DashboardApp = () => {
 
       if (ok && Array.isArray(data)) {
         const mapped: TasacionItem[] = data
-          .filter((p: any) => p && p.id !== undefined && p.id !== null)
+          .filter((p: any) => p && p.id_publicacion !== undefined && p.id_publicacion !== null)
           .map((p: any) => ({
-            id: String(p.id),
+            id: String(p.id_publicacion ?? p.id), 
             address: p.direccion || p.titulo || 'Sin dirección',
             value:
               typeof p.precio === 'number' && p.precio > 0

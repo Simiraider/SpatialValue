@@ -25,7 +25,7 @@ export async function POST({ request }) {
         success: true, 
         username: user.nombre,
         email: user.email,
-        id: user.id 
+        id: user.id_usuario
       }), { 
         status: 200,
         headers: { "Content-Type": "application/json" }
@@ -33,7 +33,7 @@ export async function POST({ request }) {
 
       response.headers.append(
         "Set-Cookie", 
-        `usuario_id=${user.id}; Path=/; Max-Age=1800; SameSite=Lax`
+        `usuario_id=${user.id_usuario}; Path=/; Max-Age=1800; SameSite=Lax`
       );
 
       return response;

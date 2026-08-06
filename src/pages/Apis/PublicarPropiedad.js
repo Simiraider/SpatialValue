@@ -58,7 +58,11 @@ export async function POST({ request }) {
       usuario_id, // O id_usuario
     } = data;
 
-    const idUsuarioFinal = usuario_id || data.id_usuario;
+    // Sesiones viejas pueden dejar cookies con el literal 'undefined'/'null': no las tomamos como válidas
+    const idUsuarioFinal =
+      [usuario_id, data.id_usuario].find(
+        (v) => v && v !== 'undefined' && v !== 'null'
+      ) || null;
     // El form envía "estadoGeneral" (slider 1-10)
     const estadoGeneral = data.estado_general ?? data.estadoGeneral;
 
@@ -72,6 +76,8 @@ export async function POST({ request }) {
 
     const superficieCubierta = Number(superficie_cubierta) || 0;
     const superficieTotal = Number(superficie_total) || superficieCubierta;
+    // La base exige minúsculas (CHECK constraint): 'departamento', 'casa', ...
+    const tipoPropiedadDB = String(tipo_propiedad).toLowerCase();
 
     // Mapeo al schema que espera la IA (api_ia.py → PropiedadInput)
     const payloadIA = {
@@ -123,6 +129,7 @@ export async function POST({ request }) {
           tipo_operacion,
           tipo_propiedad,
           precio,
+          precio_estimado_ia,
           moneda,
           expensas,
           superficie_total,
@@ -142,8 +149,9 @@ export async function POST({ request }) {
           ${titulo},
           ${descripcion || null},
           ${tipo_operacion},
-          ${tipo_propiedad},
+          ${tipoPropiedadDB},
           ${precioFinal},
+          ${precioEstimadoUsd},
           ${moneda},
           ${expensas},
           ${superficieTotal || null},
@@ -172,7 +180,7 @@ export async function POST({ request }) {
           ? "Publicación creada con éxito"
           : "Tasación estimada (no guardada: usuario inválido o servicio de datos no disponible)",
         data: {
-          id: publicacionGuardada?.id ?? null,
+          id: publicacionGuardada?.id_publicacion ?? null,
           precio_estimado_usd: precioEstimadoUsd != null ? Math.round(precioEstimadoUsd) : null,
           coordenadas: resultadoIA?.coordenadas ?? null,
           saved: Boolean(publicacionGuardada),
