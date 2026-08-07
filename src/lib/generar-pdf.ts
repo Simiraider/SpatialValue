@@ -2,9 +2,6 @@ import { jsPDF } from 'jspdf';
 import { montoEnLetras } from './numero-a-letras';
 import { calcularValores, esAlquiler, estadoConservacion, antiguedadEstimada } from './tasacion';
 
-/* ------------------------------------------------------------------ */
-/*  Paleta profesional (sobria: azules, grises y negro)                */
-/* ------------------------------------------------------------------ */
 const AZUL_OSCURO: [number, number, number] = [30, 58, 95];
 const AZUL_PRIMARIO: [number, number, number] = [37, 99, 235];
 const NEGRO: [number, number, number] = [15, 23, 42];
@@ -13,13 +10,10 @@ const GRIS_CLARO: [number, number, number] = [241, 245, 249];
 const BORDE: [number, number, number] = [203, 213, 225];
 const BLANCO: [number, number, number] = [255, 255, 255];
 
-/* ------------------------------------------------------------------ */
-/*  Constantes de página (A4 en mm)                                    */
-/* ------------------------------------------------------------------ */
 const W = 210;
 const H = 297;
 const MARGEN = 18;
-const CONTENT_W = W - MARGEN * 2; // 174
+const CONTENT_W = W - MARGEN * 2;
 const HEADER_CONTENT_Y = 25;
 const CONTENT_MAX_Y = 274;
 const FOOTER_LINE_Y = 280;
@@ -28,15 +22,11 @@ const FOOTER_TEXT_Y = 284.5;
 export type DatosInforme = Record<string, any>;
 
 export interface OpcionesInforme {
-  /** Hook opcional para interceptar el guardado del archivo (útil en entornos sin DOM, p. ej. tests). */
   guardar?: (doc: jsPDF, nombreArchivo: string) => void;
 }
 
 const fmt = (n: number): string => Math.round(n).toLocaleString('es-AR');
 
-/* ---------- testigos ---------- */
-
-/** Testigos de venta: valor total por m² (método comparativo de venta). */
 function generarTestigosVenta(superficie: number, valorM2: number, tipo: string, ciudad: string) {
   const base = superficie > 0 ? superficie : 60;
   const specs = [
@@ -58,7 +48,6 @@ function generarTestigosVenta(superficie: number, valorM2: number, tipo: string,
   });
 }
 
-/** Testigos locativos: precio mensual por unidad completa (bloque), en ARS con referencia USD. */
 function generarTestigosLocativos(valorArs: number, superficie: number, tipo: string, ciudad: string) {
   const base = superficie > 0 ? superficie : 60;
   const specs = [
@@ -80,7 +69,6 @@ function generarTestigosLocativos(valorArs: number, superficie: number, tipo: st
   });
 }
 
-/** Carga /logo.svg, lo rasteriza a PNG en un canvas y devuelve dataURL + proporción. */
 async function convertirLogoAPng(): Promise<{ dataUrl: string; ratio: number } | null> {
   try {
     const res = await fetch('/logo.svg');
@@ -110,9 +98,6 @@ async function convertirLogoAPng(): Promise<{ dataUrl: string; ratio: number } |
   }
 }
 
-/* ------------------------------------------------------------------ */
-/*  Generador del informe                                              */
-/* ------------------------------------------------------------------ */
 class PdfInforme {
   private doc: jsPDF;
   private data: DatosInforme;
@@ -141,8 +126,6 @@ class PdfInforme {
     });
     this.doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
   }
-
-  /* ---------- utilidades de layout ---------- */
 
   private asegurarEspacio(alto: number) {
     if (this.y + alto > CONTENT_MAX_Y) {
@@ -247,7 +230,6 @@ class PdfInforme {
       return (cell: string | number) => d.splitTextToSize(String(cell), cellW - pad * 2);
     };
 
-    // Fila de encabezado
     this.asegurarEspacio(10);
     d.setFillColor(...AZUL_OSCURO);
     d.rect(MARGEN, this.y, totalW, 8, 'F');
@@ -261,7 +243,6 @@ class PdfInforme {
     });
     this.y += 8;
 
-    // Filas de datos
     rows.forEach((row, ri) => {
       const wrapped = row.map((cell, ci) => style(colWidths[ci])(cell));
       const maxLines = Math.max(...wrapped.map((l) => l.length), 1);
@@ -283,13 +264,10 @@ class PdfInforme {
     });
   }
 
-  /* ---------- portada ---------- */
-
   private portada(v: ReturnType<PdfInforme['valores']>) {
     const d = this.doc;
     const tipo = v.tipo;
 
-    // Banda superior
     d.setFillColor(...AZUL_OSCURO);
     d.rect(0, 0, W, 36, 'F');
     d.setFillColor(...AZUL_PRIMARIO);
@@ -307,7 +285,6 @@ class PdfInforme {
     d.setTextColor(...BLANCO);
     d.text(`Informe N° ${this.data.id ?? '—'}`, W - MARGEN, 23, { align: 'right' });
 
-    // Logo
     if (this.logo) {
       const h = 30;
       const w = h * this.logo.ratio;
@@ -333,7 +310,6 @@ class PdfInforme {
     d.setTextColor(...NEGRO);
     d.text(dirLines, W / 2, 152, { align: 'center', lineHeightFactor: 1.4 });
 
-    // Cuadro de datos (altura dinámica)
     const infoRows: [string, string][] = [
       ['Informe N°', String(this.data.id ?? '—')],
       ['Cliente', this.cliente || '—'],
@@ -366,7 +342,6 @@ class PdfInforme {
       ry += r.alto;
     });
 
-    // Banda inferior
     d.setFillColor(...AZUL_OSCURO);
     d.rect(0, 250, W, H - 250, 'F');
     d.setFont('helvetica', 'normal');
@@ -384,8 +359,6 @@ class PdfInforme {
       { align: 'center' }
     );
   }
-
-  /* ---------- secciones ---------- */
 
   private valores() {
     const base = calcularValores(this.data);
@@ -719,7 +692,6 @@ class PdfInforme {
     d.setTextColor(...GRIS);
     d.text('Dirección Técnica de Tasaciones', MARGEN + 6, boxY + boxH - 4.5);
 
-    // Sello digital
     const sealCx = W - MARGEN - 16;
     const sealCy = boxY + boxH / 2;
     d.setDrawColor(...AZUL_PRIMARIO);
@@ -784,8 +756,6 @@ class PdfInforme {
     );
   }
 
-  /* ---------- generación ---------- */
-
   private nombreArchivo(): string {
     const esLoc = esAlquiler(this.data);
     const dir = String(this.data.direccion || 'inmueble')
@@ -799,9 +769,9 @@ class PdfInforme {
     const d = this.doc;
     const v = this.valores();
 
-    this.portada(v); // página 1
+    this.portada(v);
     d.addPage();
-    this.dibujarEncabezado(); // página 2 en adelante
+    this.dibujarEncabezado();
     this.y = HEADER_CONTENT_Y;
 
     let n = 1;
@@ -816,7 +786,6 @@ class PdfInforme {
     this.firma(String(n++));
     this.anexos(String(n++));
 
-    // Encabezado y pie en todas las páginas (con número de página)
     const total = d.getNumberOfPages();
     for (let i = 1; i <= total; i++) {
       d.setPage(i);
@@ -836,12 +805,6 @@ class PdfInforme {
   }
 }
 
-/**
- * Genera y descarga el informe de tasación en PDF (venta o locación según data.tipoTasacion).
- * @param data Datos de la tasación (mismos que muestra ReportPage).
- * @param clienteNombre Nombre del cliente (usuario logueado).
- * @param opciones Configuración adicional (p. ej. hook de guardado para tests).
- */
 export async function generarInformePdf(
   data: DatosInforme,
   clienteNombre?: string,

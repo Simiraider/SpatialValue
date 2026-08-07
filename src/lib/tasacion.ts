@@ -1,15 +1,11 @@
 import { TASA_ARS_USD, estimarPrecioVenta, valorM2Alquiler, valorM2Venta } from './mercado';
 
-export type TipoTasacion = 'venta' | 'alquiler';
-
 export type DatosTasacion = Record<string, any>;
 
 export function esAlquiler(data: DatosTasacion): boolean {
-  // El draft usa tipoTasacion; el backend/DB usa tipo_operacion.
   return data.tipoTasacion === 'alquiler' || data.tipo_operacion === 'alquiler';
 }
 
-/** Estima las expensas mensuales (ARS) a partir de los amenities declarados. */
 export function estimarExpensas(comodidades?: string[]): number {
   if (!Array.isArray(comodidades)) return 120000;
   const extras: [string, number][] = [
@@ -38,14 +34,6 @@ export interface ValoresCalculados {
   expensasDeclaradas: number;
 }
 
-/**
- * Calcula los valores del informe a partir de los datos de la tasación.
- *
- * IMPORTANTE: el modelo de IA (api_ia.py) se entrena con valores LOCATIVOS mensuales
- * (el scraper releva ofertas de alquiler), por lo que su salida es un alquiler mensual
- * en USD y solo aplica a operaciones de alquiler. Para VENTA se usa el método
- * comparativo de mercado: superficie × USD/m² de referencia del barrio.
- */
 export function calcularValores(data: DatosTasacion): ValoresCalculados {
   const alquiler = esAlquiler(data);
   const precioIA = Number(data.precioEstimadoUsd);
@@ -57,7 +45,6 @@ export function calcularValores(data: DatosTasacion): ValoresCalculados {
   const expensas = expensasDeclaradas > 0 ? expensasDeclaradas : estimarExpensas(data.comodidades);
 
   if (alquiler) {
-    // Alquiler: el modelo de IA predice el valor locativo mensual en USD.
     const valorUsd = precioIA > 0 ? precioIA : Math.round(supCub * valorM2Alquiler(barrio));
     const valorArs = Math.round(valorUsd * TASA_ARS_USD);
     return {
@@ -74,7 +61,6 @@ export function calcularValores(data: DatosTasacion): ValoresCalculados {
     };
   }
 
-  // Venta: valor total por método comparativo (m² cubiertos + 40 % de los descubiertos).
   const m2Venta = valorM2Venta(barrio);
   const valorUsd = estimarPrecioVenta(supCub, supDesc, barrio);
   const valorArs = Math.round(valorUsd * TASA_ARS_USD);

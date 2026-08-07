@@ -21,7 +21,6 @@ async function llamarAI(payload) {
     });
     if (!res.ok) return null;
     const data = await res.json();
-    // Solo tomamos como válido el estado "success"; "warning" significa modelo sin datos
     return data && data.status === 'success' ? data : null;
   } catch (error) {
     console.error('IA no disponible:', error.message);
@@ -56,19 +55,15 @@ export async function POST({ request }) {
       comodidades,
       latitud,
       longitud,
-      usuario_id, // O id_usuario
+      usuario_id,
     } = data;
 
-    // Sesiones viejas pueden dejar cookies con el literal 'undefined'/'null': no las tomamos como válidas
     const idUsuarioFinal =
       [usuario_id, data.id_usuario].find(
         (v) => v && v !== 'undefined' && v !== 'null'
       ) || null;
-    // El form envía "estadoGeneral" (slider 1-10)
     const estadoGeneral = data.estado_general ?? data.estadoGeneral;
 
-    // Validación de campos obligatorios. El precio NO es obligatorio:
-    // lo estima la IA (alquiler) o el método comparativo de mercado (venta).
     if (!titulo || !direccion || !idUsuarioFinal) {
       return new Response(
         JSON.stringify({ error: "Faltan campos obligatorios (título, dirección o usuario)" }),
@@ -78,10 +73,8 @@ export async function POST({ request }) {
 
     const superficieCubierta = Number(superficie_cubierta) || 0;
     const superficieTotal = Number(superficie_total) || superficieCubierta;
-    // La base exige minúsculas (CHECK constraint): 'departamento', 'casa', ...
     const tipoPropiedadDB = String(tipo_propiedad).toLowerCase();
 
-    // Mapeo al schema que espera la IA (api_ia.py → PropiedadInput)
     const payloadIA = {
       tipo_propiedad: tipo_propiedad === 'Casa' ? 'Casa' : 'Departamento',
       barrio_zona: barrio || ciudad || 'Capital Federal',
@@ -111,19 +104,16 @@ export async function POST({ request }) {
       gym: tiene(comodidades, 'Gimnasio'),
       lounge: false,
       laundry: false,
-      // Se envía la operación para que el modelo pueda aprender a diferenciar venta/alquiler a futuro.
       tipo_operacion: String(tipo_operacion || 'venta').toLowerCase(),
       ...(latitud != null && latitud !== '' ? { latitud: Number(latitud) } : {}),
       ...(longitud != null && longitud !== '' ? { longitud: Number(longitud) } : {}),
     };
 
-    // 1) Estimación del valor
     const esAlquiler = String(tipo_operacion || 'venta').toLowerCase() === 'alquiler';
     let resultadoIA = null;
     let precioEstimadoUsd = null;
 
     if (esAlquiler) {
-      // La IA se entrena con valores LOCATIVOS mensuales → solo aplica a alquiler.
       resultadoIA = await llamarAI(payloadIA);
       precioEstimadoUsd = resultadoIA?.precio_estimado_usd ?? null;
     }
@@ -132,7 +122,6 @@ export async function POST({ request }) {
     if (esAlquiler) {
       precioFinal = precioEstimadoUsd != null ? Math.round(precioEstimadoUsd) : Number(precio) || 0;
     } else {
-      // Venta: método comparativo de mercado (el modelo de IA no sirve: se entrena con alquileres).
       precioFinal = estimarPrecioVenta(
         superficieCubierta,
         Math.max(superficieTotal - superficieCubierta, 0),
@@ -140,7 +129,6 @@ export async function POST({ request }) {
       );
     }
 
-    // 2) Guardado en la base (puede fallar si el usuario no existe: igual devolvemos la estimación)
     let publicacionGuardada = null;
     try {
       const nuevaPublicacion = await sql`

@@ -7,7 +7,7 @@ import Logo from "../components/Logo.astro";
 
 <Layout title="Crear cuenta">
   <div class="min-h-screen flex items-center justify-center p-4 bg-[#F5F5F5] bg-[url('/bg-logo.png')] bg-center bg-no-repeat bg-cover">
-    <div class="w-full max-w-md bg-[#575656] text-white rounded- p-8 sm:p-10 shadow-2xl relative overflow-hidden my-8">
+    <div class="w-full max-w-md bg-[#575656] text-white rounded-3xl p-8 sm:p-10 shadow-2xl relative overflow-hidden my-8">
       <header class="mb-8 text-center flex flex-col items-center">
         <a href="/" class="text-white mb-4 block scale-125">
           <Logo />
@@ -110,7 +110,9 @@ import Logo from "../components/Logo.astro";
       </p>
     </div>
   </div>
-</Layout>  <script>
+</Layout>
+
+<script>
   import { setUser } from '../lib/session';
 
   const form = document.getElementById("register-form") as HTMLFormElement | null;
@@ -120,7 +122,6 @@ import Logo from "../components/Logo.astro";
   const apellido = document.getElementById("register-apellido") as HTMLInputElement | null;
   const email = document.getElementById("register-email") as HTMLInputElement | null;
   const mensajeEstado = document.getElementById("mensaje-estado") as HTMLElement | null;
-
 
   const setMensaje = (texto: string, color: string) => {
     if (!mensajeEstado) return;

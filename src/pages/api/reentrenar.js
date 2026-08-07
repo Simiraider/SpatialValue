@@ -2,7 +2,6 @@ export const prerender = false;
 
 const IA_URL = import.meta.env.IA_URL || process.env.IA_URL || 'http://127.0.0.1:8000';
 
-// Cron de Vercel: reentrena el modelo en el servicio Python deployado (Render).
 export async function GET() {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 30000);

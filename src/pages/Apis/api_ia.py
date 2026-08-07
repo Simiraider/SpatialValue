@@ -1,5 +1,3 @@
-
-
 import os
 import json
 from pathlib import Path
@@ -15,8 +13,6 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
-
-# CONFIGURACIÓN
 
 BASE_PATH = Path(__file__).resolve().parent.parent.parent.parent
 ENV_PATH = BASE_PATH / ".env.local"
@@ -67,14 +63,10 @@ COLUMNAS_NUMERICAS = [
     "longitud",
 ]
 
-# CONEXIÓN A BASE DE DATOS
-
 app = FastAPI(title="API IA Estimador")
 db_pool = psycopg2.pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
 
 modelo_v4 = None
-
-# Entrenamiento
 
 def _extraer_coordenadas(row):
     try:
@@ -124,7 +116,6 @@ def _preparar_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def entrenar_modelo():
-    """Entrena (o re-entrena) el modelo con todos los datos disponibles en Neon."""
     global modelo_v4
 
     df = _cargar_datos_entrenamiento()
@@ -167,8 +158,6 @@ try:
 except Exception as e:
     print(f"Error al entrenar el modelo inicial: {e}")
 
-# Plantilla 
-
 class PropiedadInput(BaseModel):
     tipo_propiedad: str
     barrio_zona: str
@@ -201,11 +190,8 @@ class PropiedadInput(BaseModel):
     latitud: float | None = None
     longitud: float | None = None
 
-# Endpoints
-
 @app.get("/")
 def health():
-    """Endpoint de salud. Útil para el keep-alive y para verificar el deploy."""
     return {
         "status": "ok",
         "servicio": "API IA Estimador SpatialValue",
@@ -283,11 +269,9 @@ def reentrenar_api():
 if __name__ == "__main__":
     import uvicorn
 
-    # En Render (y otros hosts), el puerto llega por la variable PORT.
     uvicorn.run(
         "api_ia:app",
         host="0.0.0.0",
         port=int(os.environ.get("PORT", 8000)),
-        # Auto-reload solo en desarrollo local (Render setea RENDER=true)
         reload=os.environ.get("RENDER") != "true",
     )

@@ -5,10 +5,8 @@ export async function DELETE({ request }) {
   try {
     const data = await request.json();
   
-    // Soporta tanto 'id_publicacion' como 'id' en el body
     const id_publicacion = data.id_publicacion || data.id; 
     
-    // Extracción segura de cookies
     const cookieHeader = request.headers.get("cookie") || "";
     const cookies = Object.fromEntries(
       cookieHeader.split("; ").filter(Boolean).map(c => {
@@ -16,11 +14,14 @@ export async function DELETE({ request }) {
         return [key, v.join("=")];
       })
     );
-    const usuarioActual = cookies.usuario_id;
-    
+
+    const usuarioActual = [cookies.usuario_id, data.usuario_id, data.id_usuario].find(
+      (v) => v && v !== "undefined" && v !== "null"
+    );
+
     if (!usuarioActual) {
       return new Response(
-        JSON.stringify({ error: "No has iniciado sesión" }), 
+        JSON.stringify({ error: "No has iniciado sesión. Volvé a iniciar sesión e intentá de nuevo." }), 
         { status: 401, headers: { "Content-Type": "application/json" } }
       );
     }

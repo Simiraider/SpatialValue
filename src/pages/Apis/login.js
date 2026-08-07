@@ -6,7 +6,6 @@ export async function POST({ request }) {
   try {
     const { email, contraseña } = await request.json();
 
-    // 1. Buscamos al usuario (sin comillas dobles para evitar líos de mayúsculas)
     const users = await sql`SELECT * FROM usuarios WHERE email = ${email}`;
     const user = users[0];
 
@@ -17,7 +16,6 @@ export async function POST({ request }) {
       });
     }
 
-    // 2. Verificamos la contraseña
     const esValida = await argon2.verify(user.contraseña, contraseña);
 
     if (esValida) {

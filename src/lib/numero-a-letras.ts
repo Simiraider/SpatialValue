@@ -8,7 +8,6 @@ const UNIDADES = [
 const DECENAS = ['', '', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];
 const CENTENAS = ['', 'cien', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos', 'setecientos', 'ochocientos', 'novecientos'];
 
-/** Convierte 0..999 a palabras. */
 function centenas(n: number): string {
   if (n < 30) return UNIDADES[n];
   if (n < 100) {
@@ -25,7 +24,6 @@ function centenas(n: number): string {
   return `${cent} ${centenas(resto)}`;
 }
 
-/** Convierte 0..999.999 a palabras. */
 function miles(n: number): string {
   if (n < 1000) return centenas(n);
   const m = Math.floor(n / 1000);
@@ -35,11 +33,7 @@ function miles(n: number): string {
   return `${mStr} ${centenas(resto)}`;
 }
 
-/**
- * Convierte un número entero a su expresión en letras en español.
- * Ej: 200000 -> "doscientos mil"
- */
-export function numeroALetras(n: number): string {
+function numeroALetras(n: number): string {
   const entero = Math.floor(Math.abs(n));
   const prefijo = n < 0 ? 'menos ' : '';
   if (entero < 1000000) return prefijo + miles(entero);
@@ -50,7 +44,6 @@ export function numeroALetras(n: number): string {
   return prefijo + `${mStr} ${miles(resto)}`;
 }
 
-/** Monto monetario en letras: "doscientos mil dólares estadounidenses" o "dos millones de pesos argentinos". */
 export function montoEnLetras(valor: number, moneda: 'USD' | 'ARS'): string {
   const entero = Math.floor(Math.abs(valor));
   const singular = moneda === 'USD' ? 'un dólar estadounidense' : 'un peso argentino';
@@ -60,7 +53,3 @@ export function montoEnLetras(valor: number, moneda: 'USD' | 'ARS'): string {
   return `${base} ${plural}`;
 }
 
-/** Valor en dólares: "doscientos mil dólares estadounidenses". */
-export function valorEnLetras(valor: number): string {
-  return montoEnLetras(valor, 'USD');
-}

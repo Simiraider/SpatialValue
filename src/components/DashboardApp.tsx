@@ -79,8 +79,6 @@ export const DashboardApp = () => {
                   ? `$${p.precio.toLocaleString('es-AR')}`
                   : 'A tasar';
             } else {
-              // Las ventas se recalculan con el método comparativo: los precios guardados
-              // antes de agosto 2026 provenían del modelo de alquileres y eran incorrectos.
               const supCub = Number(p.superficie_cubierta) || 0;
               const supDesc = Math.max((Number(p.superficie_total) || 0) - supCub, 0);
               value = supCub > 0
@@ -144,18 +142,26 @@ export const DashboardApp = () => {
         return;
       }
 
-      const { ok } = await apiFetch(
+      const { ok, data: resData } = await apiFetch(
         '/Apis/BorrarPropiedades',
         {
           method: 'DELETE',
-          body: JSON.stringify({ id_publicacion: t.id }),
+          body: JSON.stringify({
+            id_publicacion: t.id,
+            usuario_id: getUsuarioId() ?? undefined,
+          }),
         },
         8000
       );
 
       if (!ok) {
-        console.error('BorrarPropiedades: respuesta inesperada', { ok });
-        alert('No se pudo eliminar la tasación. Intentá de nuevo.');
+        const serverError = (resData as any)?.error;
+        console.error('BorrarPropiedades: respuesta inesperada', { ok, serverError });
+        alert(
+          serverError
+            ? `No se pudo eliminar la tasación. ${serverError}`
+            : 'No se pudo eliminar la tasación. Intentá de nuevo.'
+        );
         return;
       }
 

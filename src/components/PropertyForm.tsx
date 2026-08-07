@@ -160,7 +160,6 @@ export const PropertyForm = () => {
 
   return (
     <div className="w-full max-w-2xl mx-auto py-8">
-      {/* Progress Indicator */}
       <div className="flex items-center justify-center mb-8">
         {[1, 2, 3].map((s, i) => (
           <React.Fragment key={s}>
