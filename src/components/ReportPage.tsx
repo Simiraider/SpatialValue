@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react';
 import { ValorM2CacChart } from './ReportCharts';
 import { ReportActions, ReportDownloadButton } from './ReportActions';
 import { Button } from './ui/Button';
+import { getUser } from '../lib/session';
+import { calcularValores, esAlquiler } from '../lib/tasacion';
 import '../styles/reporte.css';
+
+const fmt = (n: number) => Math.round(n).toLocaleString('es-AR');
 
 export const ReportPage = () => {
   const [data, setData] = useState<any>(null);
@@ -47,12 +51,8 @@ export const ReportPage = () => {
 
   if (!data) return <div className="ReportePage" style={{padding: '2rem', textAlign: 'center'}}>Cargando reporte...</div>;
 
-  const precioIA = Number(data.precioEstimadoUsd);
-  const superficieM2 = Number(data.superficieCubierta) || 0;
-  const esIA = precioIA > 0;
-  const valorEstimadoUsd = esIA ? precioIA : (superficieM2 * 2500) || 0;
-  const valorEstimadoArs = valorEstimadoUsd * 1000;
-  const valorM2 = superficieM2 > 0 ? Math.round(valorEstimadoUsd / superficieM2) : 2500;
+  const v = calcularValores(data);
+  const alquiler = esAlquiler(data);
 
   return (
     <div className="ReportePage">
@@ -62,44 +62,69 @@ export const ReportPage = () => {
             <p className="ReportePage-meta">
               ID: {data.id || 'N/A'} · {new Date().toLocaleDateString('es-AR')}
             </p>
-            <h1 className="ReportePage-title">Reporte final - {data.direccion}</h1>
+            <h1 className="ReportePage-title">
+              {alquiler ? 'Reporte de tasación locativa' : 'Reporte final'} - {data.direccion}
+            </h1>
             <p className="ReportePage-demoBadge" aria-label="Origen de la estimación">
-              {esIA
+              {v.esIA
                 ? 'Estimación generada por el modelo de IA'
                 : data.demo
                   ? 'Modo demo: IA no disponible, valor estimado localmente'
                   : 'Estimación basada en datos proporcionados'}
             </p>
           </div>
-          <ReportDownloadButton />
+          <ReportDownloadButton data={data} cliente={getUser()?.nombre} />
         </div>
       </header>
 
       <main className="ReportePage-main">
         <section className="ReportePage-valueCard">
-          <p className="ReportePage-valueLabel">Valor total estimado</p>
+          <p className="ReportePage-valueLabel">
+            {alquiler ? 'Valor locativo mensual estimado' : 'Valor total estimado'}
+          </p>
           <p className="ReportePage-valueUsd">
-            {valorEstimadoUsd.toLocaleString('es-AR')} USD
+            {alquiler ? `${fmt(v.valorArs)} ARS` : `${fmt(v.valorUsd)} USD`}
           </p>
           <p className="ReportePage-valueArs">
-            {valorEstimadoArs.toLocaleString('es-AR')} ARS
+            {alquiler
+              ? `${fmt(v.valorUsd)} USD · Expensas ~ $${fmt(v.expensas)}/mes`
+              : `${fmt(v.valorArs)} ARS`}
           </p>
         </section>
+
+        {alquiler ? (
+          <section className="ReportePage-section">
+            <h2 className="ReportePage-sectionTitle">Expensas y servicios</h2>
+            <p className="ReportePage-sectionSubtitle">
+              {v.expensasDeclaradas > 0
+                ? `Expensas mensuales declaradas: $${fmt(v.expensas)} ARS.`
+                : `Expensas mensuales estimadas según amenities: $${fmt(v.expensas)} ARS (verificar con la administración).`}
+            </p>
+            <p className="ReportePage-sectionSubtitle">
+              El valor del alquiler no incluye expensas ni servicios (luz, gas, agua/AySA, ABL), que suelen estar a cargo
+              del inquilino. Las expensas extraordinarias corresponden al propietario.
+            </p>
+          </section>
+        ) : (
+          <section className="ReportePage-section">
+            <h2 className="ReportePage-sectionTitle">
+              Valor de m² / Comparación con CAC
+            </h2>
+            <p className="ReportePage-sectionSubtitle">
+              {fmt(v.valorM2)} USD/m² estimado
+            </p>
+            <ValorM2CacChart />
+          </section>
+        )}
 
         <section className="ReportePage-section">
           <h2 className="ReportePage-sectionTitle">
-            Valor de m² / Comparación con CAC
+            {alquiler ? 'Ofertas de alquiler similares' : 'Propiedades similares'}
           </h2>
-          <p className="ReportePage-sectionSubtitle">
-            {valorM2.toLocaleString('es-AR')} USD/m² estimado
-          </p>
-          <ValorM2CacChart />
-        </section>
-
-        <section className="ReportePage-section">
-          <h2 className="ReportePage-sectionTitle">Propiedades similares</h2>
           <div className="ReportePage-mapPlaceholder">
-            Mapa con comparables — integración en sprint posterior.
+            {alquiler
+              ? 'Mapa con ofertas de alquiler comparables — integración en sprint posterior.'
+              : 'Mapa con comparables — integración en sprint posterior.'}
           </div>
         </section>
 

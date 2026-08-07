@@ -11,6 +11,7 @@ const TOTAL_STEPS = 3;
 const AMENITIES_LIST = ["Pileta", "SUM", "Parrilla", "Cochera", "Gimnasio", "Balcón", "Patio", "Seguridad 24h"];
 
 type FormData = {
+  tipoTasacion: 'venta' | 'alquiler';
   direccion: string;
   ciudad: string;
   tipoUnidad: 'Casa' | 'Departamento';
@@ -21,9 +22,11 @@ type FormData = {
   luzNatural: 'Mucha' | 'Regular' | 'Poca' | '';
   comodidades: string[];
   estadoGeneral: number;
+  expensas: string;
 };
 
 const initialData: FormData = {
+  tipoTasacion: 'venta',
   direccion: '',
   ciudad: '',
   tipoUnidad: 'Departamento',
@@ -34,6 +37,7 @@ const initialData: FormData = {
   luzNatural: '',
   comodidades: [],
   estadoGeneral: 7,
+  expensas: '',
 };
 
 function validateStep(step: number, data: FormData): Record<string, string> {
@@ -95,6 +99,8 @@ export const PropertyForm = () => {
       const body = {
         titulo: `${data.tipoUnidad} en ${data.direccion}`,
         descripcion: `Tasación automática. Comodidades: ${data.comodidades.join(', ')}`,
+        tipo_operacion: data.tipoTasacion,
+        expensas: data.tipoTasacion === 'alquiler' ? Number(data.expensas) || 0 : 0,
         precio: 0,
         direccion: data.direccion,
         ciudad: data.ciudad,
@@ -183,6 +189,26 @@ export const PropertyForm = () => {
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
               <h2 className="text-xl font-bold text-slate-800 mb-6">Datos Básicos</h2>
               
+              <p className="text-sm font-medium text-slate-700 mb-2 ml-1">Tipo de tasación</p>
+              <div className="flex gap-4 mb-4">
+                <Button 
+                  type="button"
+                  variant={data.tipoTasacion === 'venta' ? 'secondary' : 'outline'}
+                  fullWidth
+                  onClick={() => update('tipoTasacion', 'venta')}
+                >
+                  Venta
+                </Button>
+                <Button 
+                  type="button"
+                  variant={data.tipoTasacion === 'alquiler' ? 'secondary' : 'outline'}
+                  fullWidth
+                  onClick={() => update('tipoTasacion', 'alquiler')}
+                >
+                  Alquiler
+                </Button>
+              </div>
+
               <div className="flex gap-4 mb-4">
                 <Button 
                   type="button"
@@ -243,6 +269,18 @@ export const PropertyForm = () => {
                     {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n}</option>)}
                   </select>
                 </div>
+
+                {data.tipoTasacion === 'alquiler' && (
+                  <div className="md:col-span-2">
+                    <Input
+                      label="Expensas mensuales (ARS)"
+                      type="number"
+                      placeholder="Ej. 150000 — opcional, si no las sabés las estimamos"
+                      value={data.expensas}
+                      onChange={(e) => update('expensas', e.target.value)}
+                    />
+                  </div>
+                )}
 
                 {data.tipoUnidad === 'Departamento' && (
                   <>
