@@ -1,3 +1,5 @@
+import { TASA_ARS_USD, estimarPrecioVenta, valorM2Alquiler, valorM2Venta } from './mercado';
+
 export type TipoTasacion = 'venta' | 'alquiler';
 
 export type DatosTasacion = Record<string, any>;
@@ -38,20 +40,56 @@ export interface ValoresCalculados {
 
 /**
  * Calcula los valores del informe a partir de los datos de la tasación.
- * El valor en USD proviene del modelo de IA (precioEstimadoUsd) o de un fallback local.
+ *
+ * IMPORTANTE: el modelo de IA (api_ia.py) se entrena con valores LOCATIVOS mensuales
+ * (el scraper releva ofertas de alquiler), por lo que su salida es un alquiler mensual
+ * en USD y solo aplica a operaciones de alquiler. Para VENTA se usa el método
+ * comparativo de mercado: superficie × USD/m² de referencia del barrio.
  */
 export function calcularValores(data: DatosTasacion): ValoresCalculados {
+  const alquiler = esAlquiler(data);
   const precioIA = Number(data.precioEstimadoUsd);
   const supCub = Number(data.superficieCubierta) || 0;
   const supDesc = Number(data.superficieDescubierta) || 0;
   const supTotal = supCub + supDesc;
-  const esIA = precioIA > 0;
-  const valorUsd = esIA ? precioIA : supCub * 2500 || 0;
-  const valorArs = Math.round(valorUsd * 1000);
-  const valorM2 = supCub > 0 ? Math.round(valorUsd / supCub) : 2500;
+  const barrio = data.barrio || data.ciudad;
   const expensasDeclaradas = Number(data.expensas) || 0;
   const expensas = expensasDeclaradas > 0 ? expensasDeclaradas : estimarExpensas(data.comodidades);
-  return { precioIA, supCub, supDesc, supTotal, esIA, valorUsd, valorArs, valorM2, expensas, expensasDeclaradas };
+
+  if (alquiler) {
+    // Alquiler: el modelo de IA predice el valor locativo mensual en USD.
+    const valorUsd = precioIA > 0 ? precioIA : Math.round(supCub * valorM2Alquiler(barrio));
+    const valorArs = Math.round(valorUsd * TASA_ARS_USD);
+    return {
+      precioIA,
+      supCub,
+      supDesc,
+      supTotal,
+      esIA: precioIA > 0,
+      valorUsd,
+      valorArs,
+      valorM2: valorM2Alquiler(barrio),
+      expensas,
+      expensasDeclaradas,
+    };
+  }
+
+  // Venta: valor total por método comparativo (m² cubiertos + 40 % de los descubiertos).
+  const m2Venta = valorM2Venta(barrio);
+  const valorUsd = estimarPrecioVenta(supCub, supDesc, barrio);
+  const valorArs = Math.round(valorUsd * TASA_ARS_USD);
+  return {
+    precioIA,
+    supCub,
+    supDesc,
+    supTotal,
+    esIA: false,
+    valorUsd,
+    valorArs,
+    valorM2: m2Venta,
+    expensas,
+    expensasDeclaradas,
+  };
 }
 
 export function estadoConservacion(n: number): string {

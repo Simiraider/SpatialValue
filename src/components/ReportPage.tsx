@@ -66,11 +66,13 @@ export const ReportPage = () => {
               {alquiler ? 'Reporte de tasación locativa' : 'Reporte final'} - {data.direccion}
             </h1>
             <p className="ReportePage-demoBadge" aria-label="Origen de la estimación">
-              {v.esIA
-                ? 'Estimación generada por el modelo de IA'
-                : data.demo
-                  ? 'Modo demo: IA no disponible, valor estimado localmente'
-                  : 'Estimación basada en datos proporcionados'}
+              {alquiler
+                ? v.esIA
+                  ? 'Estimación generada por el modelo de IA'
+                  : data.demo
+                    ? 'Modo demo: IA no disponible, valor estimado localmente'
+                    : 'Estimación basada en datos proporcionados'
+                : 'Estimación por método comparativo de mercado (USD/m² de referencia del barrio)'}
             </p>
           </div>
           <ReportDownloadButton data={data} cliente={getUser()?.nombre} />
@@ -113,7 +115,7 @@ export const ReportPage = () => {
             <p className="ReportePage-sectionSubtitle">
               {fmt(v.valorM2)} USD/m² estimado
             </p>
-            <ValorM2CacChart />
+            <ValorM2CacChart valorM2={v.valorM2} />
           </section>
         )}
 

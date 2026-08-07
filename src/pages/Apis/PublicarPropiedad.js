@@ -1,5 +1,6 @@
 export const prerender = false;
 import sql from '../../Backend/carga.js';
+import { estimarPrecioVenta } from '../../lib/mercado';
 
 const IA_URL = import.meta.env.IA_URL || process.env.IA_URL || 'http://127.0.0.1:8000';
 const IA_TIMEOUT_MS = 15000;
@@ -66,7 +67,8 @@ export async function POST({ request }) {
     // El form envía "estadoGeneral" (slider 1-10)
     const estadoGeneral = data.estado_general ?? data.estadoGeneral;
 
-    // Validación de campos obligatorios. El precio NO es obligatorio: lo estima la IA.
+    // Validación de campos obligatorios. El precio NO es obligatorio:
+    // lo estima la IA (alquiler) o el método comparativo de mercado (venta).
     if (!titulo || !direccion || !idUsuarioFinal) {
       return new Response(
         JSON.stringify({ error: "Faltan campos obligatorios (título, dirección o usuario)" }),
@@ -109,14 +111,34 @@ export async function POST({ request }) {
       gym: tiene(comodidades, 'Gimnasio'),
       lounge: false,
       laundry: false,
+      // Se envía la operación para que el modelo pueda aprender a diferenciar venta/alquiler a futuro.
+      tipo_operacion: String(tipo_operacion || 'venta').toLowerCase(),
       ...(latitud != null && latitud !== '' ? { latitud: Number(latitud) } : {}),
       ...(longitud != null && longitud !== '' ? { longitud: Number(longitud) } : {}),
     };
 
-    // 1) Estimación de la IA (server-side, evita problemas de CORS)
-    const resultadoIA = await llamarAI(payloadIA);
-    const precioEstimadoUsd = resultadoIA?.precio_estimado_usd ?? null;
-    const precioFinal = precioEstimadoUsd != null ? Math.round(precioEstimadoUsd) : Number(precio) || 0;
+    // 1) Estimación del valor
+    const esAlquiler = String(tipo_operacion || 'venta').toLowerCase() === 'alquiler';
+    let resultadoIA = null;
+    let precioEstimadoUsd = null;
+
+    if (esAlquiler) {
+      // La IA se entrena con valores LOCATIVOS mensuales → solo aplica a alquiler.
+      resultadoIA = await llamarAI(payloadIA);
+      precioEstimadoUsd = resultadoIA?.precio_estimado_usd ?? null;
+    }
+
+    let precioFinal;
+    if (esAlquiler) {
+      precioFinal = precioEstimadoUsd != null ? Math.round(precioEstimadoUsd) : Number(precio) || 0;
+    } else {
+      // Venta: método comparativo de mercado (el modelo de IA no sirve: se entrena con alquileres).
+      precioFinal = estimarPrecioVenta(
+        superficieCubierta,
+        Math.max(superficieTotal - superficieCubierta, 0),
+        barrio || ciudad
+      );
+    }
 
     // 2) Guardado en la base (puede fallar si el usuario no existe: igual devolvemos la estimación)
     let publicacionGuardada = null;
@@ -151,7 +173,7 @@ export async function POST({ request }) {
           ${tipo_operacion},
           ${tipoPropiedadDB},
           ${precioFinal},
-          ${precioEstimadoUsd},
+          ${esAlquiler ? precioEstimadoUsd : null},
           ${moneda},
           ${expensas},
           ${superficieTotal || null},
@@ -181,7 +203,7 @@ export async function POST({ request }) {
           : "Tasación estimada (no guardada: usuario inválido o servicio de datos no disponible)",
         data: {
           id: publicacionGuardada?.id_publicacion ?? null,
-          precio_estimado_usd: precioEstimadoUsd != null ? Math.round(precioEstimadoUsd) : null,
+          precio_estimado_usd: esAlquiler && precioEstimadoUsd != null ? Math.round(precioEstimadoUsd) : null,
           coordenadas: resultadoIA?.coordenadas ?? null,
           saved: Boolean(publicacionGuardada),
         },

@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Bell, Search, Loader2, RefreshCw } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Bell, Search, Loader2, RefreshCw, Trash2 } from 'lucide-react';
 import { borradores, type TasacionItem } from '../data/mock';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
 import { apiFetch, getCookie } from '../lib/api';
+import { estimarPrecioVenta } from '../lib/mercado';
 import { getUser, getUsuarioId, cerrarSesion, syncSessionAcrossTabs, type SesionUsuario } from '../lib/session';
 
 type Section = 'tasaciones' | 'borradores' | 'indices' | 'config';
@@ -37,6 +38,10 @@ export const DashboardApp = () => {
   const [status, setStatus] = useState<CargaStatus>('loading');
   const [user, setUser] = useState<SesionUsuario | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [borradoresState, setBorradoresState] = useState<TasacionItem[]>(borradores);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const confirmTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setUser(getUser());
@@ -65,15 +70,30 @@ export const DashboardApp = () => {
       if (ok && Array.isArray(data)) {
         const mapped: TasacionItem[] = data
           .filter((p: any) => p && p.id_publicacion !== undefined && p.id_publicacion !== null)
-          .map((p: any) => ({
-            id: String(p.id_publicacion ?? p.id), 
-            address: p.direccion || p.titulo || 'Sin dirección',
-            value:
-              typeof p.precio === 'number' && p.precio > 0
-                ? `$${p.precio.toLocaleString('es-AR')}`
-                : 'A tasar',
-            status: 'completada' as const,
-          }));
+          .map((p: any) => {
+            const esAlq = String(p.tipo_operacion).toLowerCase() === 'alquiler';
+            let value: string;
+            if (esAlq) {
+              value =
+                typeof p.precio === 'number' && p.precio > 0
+                  ? `$${p.precio.toLocaleString('es-AR')}`
+                  : 'A tasar';
+            } else {
+              // Las ventas se recalculan con el método comparativo: los precios guardados
+              // antes de agosto 2026 provenían del modelo de alquileres y eran incorrectos.
+              const supCub = Number(p.superficie_cubierta) || 0;
+              const supDesc = Math.max((Number(p.superficie_total) || 0) - supCub, 0);
+              value = supCub > 0
+                ? `$${estimarPrecioVenta(supCub, supDesc, p.barrio || p.ciudad).toLocaleString('es-AR')}`
+                : 'A tasar';
+            }
+            return {
+              id: String(p.id_publicacion ?? p.id),
+              address: p.direccion || p.titulo || 'Sin dirección',
+              value,
+              status: 'completada' as const,
+            };
+          });
         setTasacionesApi(mapped);
         setStatus('ready');
       } else {
@@ -95,6 +115,60 @@ export const DashboardApp = () => {
     fetchTasaciones();
   }, [fetchTasaciones, checkingSession]);
 
+  useEffect(() => () => {
+    if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
+  }, []);
+
+  useEffect(() => {
+    if (!confirmingId) return;
+    document.getElementById(`btn-confirmar-borrar-${confirmingId}`)?.focus();
+  }, [confirmingId]);
+
+  const startConfirm = (id: string) => {
+    setConfirmingId(id);
+    if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
+    confirmTimeoutRef.current = setTimeout(() => setConfirmingId(null), 4000);
+  };
+
+  const cancelConfirm = () => {
+    if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
+    setConfirmingId(null);
+  };
+
+  const handleDelete = async (t: TasacionItem) => {
+    if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
+    setDeletingId(t.id);
+    try {
+      if (section === 'borradores') {
+        setBorradoresState((prev) => prev.filter((x) => x.id !== t.id));
+        return;
+      }
+
+      const { ok } = await apiFetch(
+        '/Apis/BorrarPropiedades',
+        {
+          method: 'DELETE',
+          body: JSON.stringify({ id_publicacion: t.id }),
+        },
+        8000
+      );
+
+      if (!ok) {
+        console.error('BorrarPropiedades: respuesta inesperada', { ok });
+        alert('No se pudo eliminar la tasación. Intentá de nuevo.');
+        return;
+      }
+
+      setTasacionesApi((prev) => prev.filter((x) => x.id !== t.id));
+    } catch (error) {
+      console.error('Error al eliminar tasación', error);
+      alert('No se pudo eliminar la tasación. Intentá de nuevo.');
+    } finally {
+      setConfirmingId(null);
+      setDeletingId(null);
+    }
+  };
+
   if (checkingSession) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#F5F5F5]">
@@ -105,7 +179,7 @@ export const DashboardApp = () => {
 
   const items =
     section === 'borradores'
-      ? borradores
+      ? borradoresState
       : section === 'tasaciones'
         ? tasacionesApi
         : [];
@@ -238,28 +312,67 @@ export const DashboardApp = () => {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {filtered.map((t) => (
-                    <a
-                      key={t.id}
-                      href={`/reporte?id=${t.id}`}
-                      className="group"
-                    >
-                      <Card className="h-full hover:shadow-md transition-shadow border border-transparent group-hover:border-cyan-200 p-6 flex flex-col justify-between cursor-pointer">
-                        <div>
-                          <div className="flex items-start justify-between mb-4">
-                            <span className={cn(
-                              "text-xs font-semibold px-3 py-1 rounded-full",
-                              t.status === 'completada' ? "bg-teal-100 text-teal-700" : "bg-yellow-100 text-yellow-700"
-                            )}>
-                              {statusLabel[t.status]}
-                            </span>
+                    <div key={t.id} className="group relative">
+                      <a href={`/reporte?id=${t.id}`} className="block h-full">
+                        <Card className="h-full hover:shadow-md transition-shadow border border-transparent group-hover:border-cyan-200 p-6 flex flex-col justify-between cursor-pointer">
+                          <div>
+                            <div className="flex items-start justify-between mb-4">
+                              <span className={cn(
+                                "text-xs font-semibold px-3 py-1 rounded-full",
+                                t.status === 'completada' ? "bg-teal-100 text-teal-700" : "bg-yellow-100 text-yellow-700"
+                              )}>
+                                {statusLabel[t.status]}
+                              </span>
+                            </div>
+                            <h3 className="font-semibold text-lg text-slate-800 line-clamp-2 leading-snug">{t.address}</h3>
                           </div>
-                          <h3 className="font-semibold text-lg text-slate-800 line-clamp-2 leading-snug">{t.address}</h3>
+                          <div className="mt-6 pt-4 border-t border-slate-100">
+                            <p className="text-2xl font-bold text-slate-900">{t.value}</p>
+                          </div>
+                        </Card>
+                      </a>
+
+                      {confirmingId === t.id ? (
+                        <div
+                          className="absolute top-3 right-3 z-20 flex items-center gap-1.5 rounded-xl bg-white shadow-lg border border-slate-200 px-2 py-1.5"
+                          role="dialog"
+                          aria-label={`Confirmar eliminación de ${t.address}`}
+                        >
+                          <span className="text-xs font-medium text-slate-600 whitespace-nowrap">¿Eliminar?</span>
+                          <button
+                            type="button"
+                            id={`btn-confirmar-borrar-${t.id}`}
+                            disabled={deletingId === t.id}
+                            onClick={() => handleDelete(t)}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold px-2.5 py-1.5 transition-colors disabled:opacity-60 disabled:cursor-wait"
+                          >
+                            {deletingId === t.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden />
+                            ) : (
+                              <Trash2 className="w-3.5 h-3.5" aria-hidden />
+                            )}
+                            {deletingId === t.id ? 'Borrando…' : 'Borrar'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={cancelConfirm}
+                            className="rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 text-xs font-medium px-2 py-1.5 transition-colors"
+                          >
+                            Cancelar
+                          </button>
                         </div>
-                        <div className="mt-6 pt-4 border-t border-slate-100">
-                          <p className="text-2xl font-bold text-slate-900">{t.value}</p>
-                        </div>
-                      </Card>
-                    </a>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => startConfirm(t.id)}
+                          className="absolute top-3 right-3 z-10 p-2 rounded-lg bg-white/80 backdrop-blur border border-slate-200 shadow-sm text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all opacity-70 hover:opacity-100"
+                          aria-label={`Eliminar tasación de ${t.address}`}
+                          title="Eliminar tasación"
+                        >
+                          <Trash2 className="w-4 h-4" aria-hidden />
+                        </button>
+                      )}
+                    </div>
                   ))}
                 </div>
               ))}
