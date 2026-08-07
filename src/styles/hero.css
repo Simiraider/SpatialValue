@@ -13,7 +13,7 @@
   gap: 4rem;
   padding: clamp(2rem, 5vw, 4rem);
   border-radius: 3rem;
-  background: #9793a6;
+  background: #0b1d58;
 }
 
 .hero-title {
@@ -21,7 +21,7 @@
   font-weight: 800;
   line-height: 1;
   margin: 0 0 2rem;
-  color: #23324d;
+  color: #ffffff;
   letter-spacing: 0;
 }
 
@@ -34,10 +34,10 @@
 }
 
 .hero-list li {
-  font-size: clamp(1.6rem, 4vw, 3rem);
-  font-weight: 800;
+  font-size: clamp(1rem, 3vw, 3rem);
+  font-weight: 700;
   line-height: 1.15;
-  color: #111111;
+  color: #4ba5bb;
 }
 
 .hero-action {
@@ -53,7 +53,7 @@
 
 .hero-action-content h2 {
   margin: 0 0 1.25rem;
-  color: #4d4d4d;
+  color: #010033;
   font-size: clamp(2rem, 4vw, 3.25rem);
   line-height: 1;
   font-weight: 800;
@@ -63,8 +63,8 @@
 .hero-action-content p {
   max-width: 18rem;
   margin: 0 0 1.5rem;
-  color: #4d4d4d;
-  font-size: clamp(1.15rem, 2.2vw, 1.65rem);
+  color: #000000;
+  font-size: clamp(1.35rem, 1.5vw, 1.65rem);
   font-weight: 700;
   line-height: 1.25;
 }
