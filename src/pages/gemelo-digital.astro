@@ -1,0 +1,25 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { FlujoGemelo } from "../components/GemeloDigital/FlujoGemelo";
+import "../styles/tasacion.css";
+import "../styles/gemelo.css";
+
+const url = new URL(Astro.request.url);
+const propiedad = url.searchParams.get("propiedad");
+const titulo = url.searchParams.get("titulo");
+---
+
+<Layout title="Gemelo Digital 3D">
+  <header class="TasacionPage-header">
+    <div class="TasacionPage-headerInner">
+      <a href="/dashboard" class="TasacionPage-brand">SpatialValue</a>
+      <span class="TasacionPage-subtitle">Gemelo digital 3D</span>
+    </div>
+  </header>
+
+  <main class="TasacionPage-main">
+    <div class="TasacionPage-card">
+      <FlujoGemelo client:load titulo={titulo} propiedad={propiedad} />
+    </div>
+  </main>
+</Layout>

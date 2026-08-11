@@ -9,11 +9,15 @@
     "dev": "concurrently \"python src/pages/Apis/api_ia.py\" \"astro dev\"",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:worker": "cd server && npm test"
   },
   "dependencies": {
     "@astrojs/react": "^5.0.4",
     "@astrojs/vercel": "^10.0.8",
+    "@google/model-viewer": "^4.1.0",
     "@neondatabase/serverless": "^1.1.0",
     "@tailwindcss/vite": "^4.1.8",
     "@types/react": "^19.2.14",
@@ -35,6 +39,7 @@
     "vite": "^7"
   },
   "devDependencies": {
-    "concurrently": "^10.0.4"
+    "concurrently": "^10.0.4",
+    "vitest": "^3.2.4"
   }
 }

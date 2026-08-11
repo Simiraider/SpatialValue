@@ -11,7 +11,12 @@ export default defineConfig({
   adapter: vercel(),
 
   vite: {
-    plugins: [tailwindcss()]
+    plugins: [tailwindcss()],
+    optimizeDeps: {
+      // model-viewer se pre-empaqueta al arrancar el dev server para evitar
+      // "Failed to fetch dynamically imported module" por caché desactualizado.
+      include: ['@google/model-viewer/dist/model-viewer-module.min.js'],
+    },
   },
 
   integrations: [react()]

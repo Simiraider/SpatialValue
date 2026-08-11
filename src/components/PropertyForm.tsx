@@ -59,6 +59,7 @@ export const PropertyForm = () => {
   const [data, setData] = useState<FormData>(initialData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [generar3D, setGenerar3D] = useState(false);
 
   useEffect(() => {
     sessionStorage.removeItem('tasacion-draft');
@@ -126,13 +127,15 @@ export const PropertyForm = () => {
           ? Number(payload.precio_estimado_usd)
           : null;
       const guardada = ok && resData?.success && payload?.saved === true;
+      let idTasacion: string;
 
       if (ok && resData?.success) {
+        idTasacion = payload?.id || `local-${Date.now()}`;
         sessionStorage.setItem(
           'tasacion-draft',
           JSON.stringify({
             ...data,
-            id: payload?.id || `local-${Date.now()}`,
+            id: idTasacion,
             demo: !guardada,
             precioEstimadoUsd: precioIA,
             coordenadas: payload?.coordenadas || null,
@@ -140,19 +143,30 @@ export const PropertyForm = () => {
         );
       } else {
         console.warn('[demo] PublicarPropiedad no disponible; tasación guardada solo localmente');
+        idTasacion = `demo-${Date.now()}`;
         sessionStorage.setItem(
           'tasacion-draft',
-          JSON.stringify({ ...data, id: `demo-${Date.now()}`, demo: true, precioEstimadoUsd: null })
+          JSON.stringify({ ...data, id: idTasacion, demo: true, precioEstimadoUsd: null })
         );
       }
-      navigate('/cargando');
+
+      if (generar3D) {
+        const tituloProp = `${data.tipoUnidad} en ${data.direccion}`;
+        navigate(`/gemelo-digital?propiedad=${encodeURIComponent(idTasacion)}&titulo=${encodeURIComponent(tituloProp)}`);
+      } else {
+        navigate('/cargando');
+      }
     } catch (error) {
       console.error(error);
       sessionStorage.setItem(
         'tasacion-draft',
         JSON.stringify({ ...data, id: `demo-${Date.now()}`, demo: true })
       );
-      navigate('/cargando');
+      if (generar3D) {
+        navigate(`/gemelo-digital?titulo=${encodeURIComponent(`${data.tipoUnidad} en ${data.direccion}`)}`);
+      } else {
+        navigate('/cargando');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -341,9 +355,7 @@ export const PropertyForm = () => {
           {step === 3 && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
               <h2 className="text-xl font-bold text-slate-800 mb-2">Estado General</h2>
-              <p className="text-slate-500 mb-6 text-sm">Del 1 al 10, ¿cómo calificarías el estado de conservación de la propiedad?</p>
-              
-              <div className="py-8 px-4 bg-slate-50 rounded-3xl flex flex-col items-center">
+              <p className="text-slate-500 mb-6 text-sm">Del 1 al 10, ¿cómo calificarías el estado de conservación de la propiedad?</p>                <div className="py-8 px-4 bg-slate-50 rounded-3xl flex flex-col items-center">
                 <div className="text-5xl font-bold text-cyan-600 mb-6">{data.estadoGeneral}</div>
                 <input 
                   type="range" 
@@ -356,6 +368,25 @@ export const PropertyForm = () => {
                 <div className="flex justify-between w-full mt-4 text-sm font-medium text-slate-400">
                   <span>1 (A refaccionar)</span>
                   <span>10 (A estrenar)</span>
+                </div>
+              </div>
+
+              <div
+                onClick={() => setGenerar3D((v) => !v)}
+                className="mt-6 flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-dashed border-cyan-200 bg-cyan-50/50 p-4 transition-colors hover:border-cyan-400"
+              >
+                <input
+                  type="checkbox"
+                  checked={generar3D}
+                  onChange={(e) => setGenerar3D(e.target.checked)}
+                  className="mt-0.5 h-5 w-5 accent-cyan-600"
+                />
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">Generar gemelo digital 3D</p>
+                  <p className="text-xs text-slate-500">
+                    Después de calcular la tasación vas a poder subir fotos (o un video) y obtener una
+                    réplica 3D interactiva de la propiedad con fotogrametría.
+                  </p>
                 </div>
               </div>
             </div>

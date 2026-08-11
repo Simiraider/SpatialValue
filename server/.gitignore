@@ -1,0 +1,5 @@
+# Datos de runtime (fotos temporales, modelos, estado JSON)
+data/
+
+# Dependencias (ya cubiertas por el .gitignore raíz, por claridad)
+node_modules/

@@ -1,7 +1,14 @@
-# Blueprint de Render para el servicio Python de IA de SpatialValue.
-# Al pushear este archivo a main, Render crea/actualiza el servicio automáticamente.
-# Después del primer deploy hay que pegar el valor de SpatialValueStorage_DATABASE_URL
-# (lo pedimos con "sync: false", o lo seteas en Dashboard > Environment).
+# Blueprint de Render para SpatialValue.
+# Al pushear este archivo a main, Render crea/actualiza los servicios.
+#
+# 1) spatial-value-ia:      IA de tasación (Python, plan free).
+# 2) spatial-value-gemelo:  Worker 3D de gemelos digitales (Node, plan free).
+#
+# Nota plan free: sin disco persistente ni COLMAP. El worker usa el modo
+# simulación (GEMELO_MODO=auto) y el primer request puede tardar ~30-60 s en
+# "despertar" el servicio. Para COLMAP real, desplegá la misma imagen en un
+# VPS (ver docs/DESPLIEGUE.md).
+
 services:
   - type: web
     name: spatial-value-ia
@@ -16,4 +23,26 @@ services:
       - key: SpatialValueStorage_DATABASE_URL
         sync: false
       - key: SpatialValueStorage_DATABASE_URL_UNPOOLED
+        sync: false
+
+  - type: web
+    name: spatial-value-gemelo
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node src/index.js
+    envVars:
+      - key: GEMELO_MODO
+        value: auto
+      - key: GEMELO_TTL_HORAS
+        value: "1"
+      - key: GEMELO_MAX_FOTOS
+        value: "100"
+      - key: GEMELO_DATA_DIR
+        value: ./data
+      # En producción poné el dominio del frontend, p.ej. https://tu-app.vercel.app
+      - key: CORS_ORIGIN
+        sync: false
+      - key: WORKER_TOKEN
         sync: false
