@@ -20,12 +20,12 @@ const parsearPrecioUSD = (texto) => {
 };
 
 (async () => {
-    console.log("Iniciando scraper");
+    console.log("Iniciando scraper...");
     let browser;
     try {
         browser = await chromium.connectOverCDP('http://localhost:9222');
     } catch {
-        console.error(' Error CDP localhost:9222');
+        console.error('❌ Error CDP localhost:9222');
         process.exit(1);
     }
 
@@ -43,13 +43,11 @@ const parsearPrecioUSD = (texto) => {
 
             try {
                 await page.goto(urlPagina, { waitUntil: 'domcontentloaded', timeout: 60000 });
-
                 const selectorListado = await waitForAny(page, [
                     '[data-qa="posting-card"]', '[data-posting-id]', 'div[class*="posting-card"]', 'ol[class*="postings"] li', 'article'
                 ], 30000);
 
                 if (!selectorListado) break;
-
                 await page.waitForTimeout(1500);
 
                 const linksPagina = await page.evaluate(() =>
@@ -67,7 +65,6 @@ const parsearPrecioUSD = (texto) => {
         }
 
         const links = [...new Set(linksTotales)];
-
         if (links.length === 0) {
             await browser.disconnect();
             return;
@@ -92,6 +89,94 @@ const parsearPrecioUSD = (texto) => {
                     const elTitulo = document.querySelector('h1,[data-qa="title"],[class*="TitleContainer"]');
                     const tituloTexto = elTitulo ? (elTitulo.innerText || elTitulo.textContent || '').trim().toLowerCase() : '';
 
+                    // 1. TIPO DE PROPIEDAD REAL (Basado en la URL o título, no en texto aleatorio)
+                    let tipo_propiedad = 'Departamento';
+                    if (window.location.href.includes('/casas-') || tituloTexto.startsWith('casa')) {
+                        tipo_propiedad = 'Casa';
+                    } else if (window.location.href.includes('/ph-') || tituloTexto.startsWith('ph')) {
+                        tipo_propiedad = 'PH';
+                    }
+
+                    // 2. EXTRAER COORDENADAS REALES DE SCRIPTS
+                    let latitud = null;
+                    let longitud = null;
+
+                    const scripts = Array.from(document.querySelectorAll('script'));
+                    for (const script of scripts) {
+                        const content = script.textContent || '';
+                        if (content.includes('latitude') && content.includes('longitude')) {
+                            const latMatch = content.match(/"latitude"\s*:\s*(-?\d+\.\d+)/);
+                            const lngMatch = content.match(/"longitude"\s*:\s*(-?\d+\.\d+)/);
+                            if (latMatch && lngMatch) {
+                                latitud = parseFloat(latMatch[1]);
+                                longitud = parseFloat(lngMatch[1]);
+                                break;
+                            }
+                        }
+                    }
+
+                    // 3. EXTRAER CARACTERÍSTICAS PRINCIPALES DE LA GRILLA DE ÍCONOS
+                    let superficie_total = null;
+                    let superficie_cubierta = null;
+                    let ambientes = null;
+                    let banos = null;
+                    let dormitorios = null;
+                    let disposicion = 'No especificada';
+                    let orientacion = 'No especificada';
+
+                    // Seleccionar ítems específicos de la grilla principal
+                    const featureNodes = document.querySelectorAll(
+                        '[class*="icon-feature"], [class*="section-icon-features"] li, [data-qa="main-features"] > div, [class*="MainFeatures"] > div'
+                    );
+
+                    featureNodes.forEach(node => {
+                        const txt = (node.innerText || '').trim();
+                        const txtLower = txt.toLowerCase();
+
+                        // Superficie cubierta / total
+                        if (txtLower.includes('m² cub') || txtLower.includes('m2 cub')) {
+                            const m = txt.match(/(\d+)/);
+                            if (m) superficie_cubierta = parseInt(m[1], 10);
+                        } else if (txtLower.includes('m²') || txtLower.includes('m2')) {
+                            const m = txt.match(/(\d+)/);
+                            if (m) superficie_total = parseInt(m[1], 10);
+                        }
+
+                        // Ambientes
+                        if (txtLower.includes('amb')) {
+                            const m = txt.match(/(\d+)/);
+                            if (m) ambientes = parseInt(m[1], 10);
+                        }
+
+                        // Baños
+                        if (txtLower.includes('baño')) {
+                            const m = txt.match(/(\d+)/);
+                            if (m) banos = parseInt(m[1], 10);
+                        }
+
+                        // Dormitorios
+                        if (txtLower.includes('dorm')) {
+                            const m = txt.match(/(\d+)/);
+                            if (m) dormitorios = parseInt(m[1], 10);
+                        }
+
+                        // Disposición
+                        if (txtLower === 'frente') disposicion = 'Frente';
+                        if (txtLower === 'contrafrente') disposicion = 'Contrafrente';
+                        if (txtLower === 'lateral') disposicion = 'Lateral';
+                        if (txtLower === 'interno') disposicion = 'Interno';
+
+                        // Orientación
+                        if (['n', 's', 'e', 'o', 'ne', 'no', 'se', 'so'].includes(txtLower.toUpperCase())) {
+                            orientacion = txt.toUpperCase();
+                        }
+                    });
+
+                    // Si superficie_total no vino explícita pero si cubierta, igualarlas por defecto
+                    if (!superficie_total && superficie_cubierta) superficie_total = superficie_cubierta;
+                    if (!superficie_cubierta && superficie_total) superficie_cubierta = superficie_total;
+
+                    // Precio USD
                     let precioUSD = '';
                     const byQa = document.querySelector('[data-qa="price"]');
                     if (byQa) {
@@ -109,6 +194,7 @@ const parsearPrecioUSD = (texto) => {
                         }
                     }
 
+                    // Expensas
                     let expensas = 0;
                     const candidatosExp = [...document.querySelectorAll('[class*="xpens"],[class*="Expens"],[data-qa="expenses"]')];
                     for (const el of candidatosExp) {
@@ -120,69 +206,26 @@ const parsearPrecioUSD = (texto) => {
                         }
                     }
 
-                    let superficie = null;
-                    const resumen = document.querySelector('[class*="MainFeatures"],[class*="main-features"],[data-qa="main-features"]');
-                    if (resumen) {
-                        const m = (resumen.innerText || '').match(/(\d+)\s*m²/i);
-                        if (m) superficie = parseInt(m[1], 10);
-                    }
-
-                    let dormitorios = null;
-                    let banos = null;
-                    let ambientes = null;
-
-                    const items = [...document.querySelectorAll('[class*="feature"],[class*="Feature"]')];
-                    for (const el of items) {
-                        const txt = (el.innerText || '').toLowerCase();
-                        if (!superficie && txt.match(/m²|m2/i)) {
-                            const n = txt.match(/(\d+)/);
-                            if (n) superficie = parseInt(n[1], 10);
-                        }
-                        if (!dormitorios && txt.match(/dorm|hab/)) {
-                            const n = txt.match(/(\d+)/);
-                            if (n) dormitorios = parseInt(n[1], 10);
-                        }
-                        if (!banos && txt.includes('baño')) {
-                            const n = txt.match(/(\d+)/);
-                            if (n) banos = parseInt(n[1], 10);
-                        }
-                        if (!ambientes && txt.includes('ambiente')) {
-                            const n = txt.match(/(\d+)/);
-                            if (n) ambientes = parseInt(n[1], 10);
-                        }
-                    }
-
-                    return { textoCompleto, tituloTexto, precioUSD, expensas, superficie, dormitorios, banos, ambientes };
+                    return {
+                        textoCompleto,
+                        tituloTexto,
+                        tipo_propiedad,
+                        precioUSD,
+                        expensas,
+                        superficie_total,
+                        superficie_cubierta,
+                        dormitorios,
+                        banos,
+                        ambientes,
+                        disposicion,
+                        orientacion,
+                        latitud,
+                        longitud
+                    };
                 });
 
                 const precio_real_usd = parsearPrecioUSD(data.precioUSD);
                 if (!precio_real_usd) continue;
-
-                let superficie_total_m2 = data.superficie;
-                if (!superficie_total_m2) {
-                    const m = data.textoCompleto.match(/(\d+)\s*m[²2]/);
-                    if (m) superficie_total_m2 = parseInt(m[1], 10);
-                }
-                if (superficie_total_m2 && superficie_total_m2 < 15) superficie_total_m2 = null;
-
-                let dormitorios = data.dormitorios;
-                if (!dormitorios) {
-                    const m = data.textoCompleto.match(/(\d+)\s*(?:dormitorio|dorm|habitaci)/);
-                    if (m) dormitorios = parseInt(m[1], 10);
-                }
-
-                let banos = data.banos;
-                if (!banos) {
-                    const m = data.textoCompleto.match(/(\d+)\s*baño/);
-                    if (m) banos = parseInt(m[1], 10);
-                }
-
-                let ambientes = data.ambientes;
-                if (!ambientes) {
-                    const m = data.textoCompleto.match(/(\d+)\s*ambiente/);
-                    if (m) ambientes = parseInt(m[1], 10);
-                }
-                if (!ambientes) ambientes = dormitorios ? dormitorios + 1 : 1;
 
                 const check = (...words) => words.some(w => data.textoCompleto.includes(w));
                 const barrios = ['palermo', 'recoleta', 'belgrano', 'caballito', 'saavedra', 'san telmo',
@@ -192,18 +235,18 @@ const parsearPrecioUSD = (texto) => {
                 const barrioEncontrado = barrios.find(b => data.textoCompleto.includes(b) || data.tituloTexto.includes(b));
 
                 const propiedadData = {
-                    tipo_propiedad: data.textoCompleto.includes('casa') ? 'Casa' : 'Departamento',
+                    tipo_propiedad: data.tipo_propiedad,
                     barrio_zona: barrioEncontrado ? barrioEncontrado.charAt(0).toUpperCase() + barrioEncontrado.slice(1) : 'Capital Federal',
-                    ambientes,
-                    dormitorios: dormitorios || 1,
-                    banos: banos || 1,
-                    superficie_total_m2: superficie_total_m2 || null,
-                    superficie_cubierta_m2: superficie_total_m2 ? Math.floor(superficie_total_m2 * 0.9) : null,
+                    ambientes: data.ambientes || 1,
+                    dormitorios: data.dormitorios || 1,
+                    banos: data.banos || 1,
+                    superficie_total_m2: data.superficie_total || null,
+                    superficie_cubierta_m2: data.superficie_cubierta || null,
                     estado: check('a estrenar', 'estrenar') ? 'A estrenar' : 'Usado',
                     anios_de_antiguedad: check('estrenar') ? 0 : null,
                     piso: parseInt(data.textoCompleto.match(/piso\s*(\d+)/i)?.[1] || '0', 10) || null,
-                    orientacion: 'No especificada',
-                    disposicion: check('contrafrente') ? 'Contrafrente' : check('al frente', 'a la calle') ? 'Frente' : 'No especificada',
+                    orientacion: data.orientacion,
+                    disposicion: data.disposicion,
                     cochera: check('cochera', 'garage', 'estacionamiento'),
                     balcon: check('balcon', 'balcón'),
                     terraza: check('terraza'),
@@ -219,7 +262,9 @@ const parsearPrecioUSD = (texto) => {
                     camara: check('camara', 'cámara', 'cctv'),
                     gym: check('gym', 'gimnasio'),
                     lounge: check('lounge'),
-                    laundry: check('laundry', 'lavadero')
+                    laundry: check('laundry', 'lavadero'),
+                    latitud: data.latitud,
+                    longitud: data.longitud
                 };
 
                 let resultadoIA = {};
@@ -230,6 +275,10 @@ const parsearPrecioUSD = (texto) => {
                     });
                     if (resIA.ok) resultadoIA = await resIA.json();
                 } catch {}
+
+                const coordsFinales = (data.latitud && data.longitud)
+                    ? { lat: data.latitud, lng: data.longitud }
+                    : (resultadoIA.coordenadas || null);
 
                 const query = `
                     INSERT INTO propiedades (
@@ -249,7 +298,7 @@ const parsearPrecioUSD = (texto) => {
                     propiedadData.orientacion, propiedadData.disposicion, propiedadData.cochera, propiedadData.balcon, propiedadData.terraza, propiedadData.patio, propiedadData.pileta, propiedadData.parrilla,
                     propiedadData.seguridad_24hs, propiedadData.ascensor, propiedadData.expensas_ars, propiedadData.baulera, propiedadData.sum, propiedadData.seguridad_tipo, propiedadData.camara,
                     propiedadData.gym, propiedadData.lounge, propiedadData.laundry, precio_real_usd, resultadoIA.precio_estimado_usd || null, 
-                    resultadoIA.coordenadas ? JSON.stringify(resultadoIA.coordenadas) : null, new Date().toISOString().split('T')[0]
+                    coordsFinales ? JSON.stringify(coordsFinales) : null, new Date().toISOString().split('T')[0]
                 ];
 
                 await pool.query(query, values);
