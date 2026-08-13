@@ -12,16 +12,18 @@ const waitForAny = async (page, selectors, timeout = 15000) => {
 };
 
 const parsearPrecioUSD = (texto) => {
-    if (!texto) return null;
+    if (!texto) return 0;
     const match = texto.match(/USD\s*[\$]?\s*([\d.,]+)/i);
-    if (!match) return null;
+    if (!match) return 0;
     const valor = parseFloat(match[1].replace(/\./g, '').replace(',', '.'));
-    return (valor >= 100 && valor <= 20000000) ? Math.round(valor) : null;
+    return (valor >= 100 && valor <= 20000000) ? Math.round(valor) : 0;
 };
 
 const calcularFechaPublicacion = (texto) => {
     const ahora = new Date();
-    const match = texto.match(/publicado\s+(hace\s+[\w\s]+|hoy|ayer)/i);
+    if (!texto) return ahora.toISOString().split('T')[0];
+
+    const match = texto.match(/publicado\s+(hace\s+[^.|\n\r]+|hoy|ayer)/i);
     if (!match) return ahora.toISOString().split('T')[0];
 
     const frase = match[1].toLowerCase();
@@ -35,11 +37,11 @@ const calcularFechaPublicacion = (texto) => {
         const numMatch = frase.match(/(\d+)/);
         const num = numMatch ? parseInt(numMatch[1], 10) : 1;
 
-        if (frase.includes('día') || frase.includes('dia')) {
+        if (frase.includes('dia') || frase.includes('día')) {
             diasAtras = num;
         } else if (frase.includes('mes')) {
             diasAtras = num * 30;
-        } else if (frase.includes('año') || frase.includes('ano')) {
+        } else if (frase.includes('ano') || frase.includes('año')) {
             diasAtras = num * 365;
         }
     }
@@ -49,12 +51,12 @@ const calcularFechaPublicacion = (texto) => {
 };
 
 (async () => {
-    console.log("🚀 Iniciando scraper...");
+    console.log("Iniciando scraper...");
     let browser;
     try {
         browser = await chromium.connectOverCDP('http://localhost:9222');
     } catch {
-        console.error('❌ Error al conectar con Chrome via CDP (localhost:9222)');
+        console.error('Error al conectar con Chrome via CDP (localhost:9222)');
         process.exit(1);
     }
 
@@ -74,14 +76,14 @@ const calcularFechaPublicacion = (texto) => {
                 : `https://www.zonaprop.com.ar/casas-${TIPO_OPERACION}-capital-federal-pagina-${pagina}.html`;
 
             try {
-                console.log(`📄 Cargando página ${pagina}...`);
+                console.log(`Cargando página ${pagina}...`);
                 await page.goto(urlPagina, { waitUntil: 'domcontentloaded', timeout: 30000 });
                 const selectorListado = await waitForAny(page, [
                     '[data-qa="posting-card"]', '[data-posting-id]', 'div[class*="posting-card"]', 'ol[class*="postings"] li', 'article'
                 ], 15000);
 
                 if (!selectorListado) {
-                    console.log(`⚠️ No se encontró listado en página ${pagina}, deteniendo paginación.`);
+                    console.log(`No se encontró listado en página ${pagina}, deteniendo paginación.`);
                     break;
                 }
                 await page.waitForTimeout(1000);
@@ -95,16 +97,16 @@ const calcularFechaPublicacion = (texto) => {
                 linksTotales.push(...linksPagina);
 
             } catch (err) {
-                console.warn(`⚠️ Error cargando listado página ${pagina}: ${err.message}`);
+                console.warn(`Error cargando listado página ${pagina}: ${err.message}`);
                 continue;
             }
         }
 
         const links = [...new Set(linksTotales)];
-        console.log(`🔗 Se encontraron ${links.length} enlaces de propiedades.`);
+        console.log(`Se encontraron ${links.length} enlaces de propiedades.`);
 
         if (links.length === 0) {
-            await browser.disconnect();
+            await browser.close();
             return;
         }
 
@@ -128,8 +130,9 @@ const calcularFechaPublicacion = (texto) => {
                 await detailPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 30000 });
                 await waitForAny(detailPage, ['[class*="price"]', '[class*="Price"]', '[data-qa="price"]'], 10000);
 
+                await detailPage.waitForSelector('[class*="scoreCard"], [class*="scoreLevel"], [class*="score-title"]', { timeout: 3000 }).catch(() => {});
+
                 const data = await detailPage.evaluate(() => {
-                    // Clics nativos en JS para desplegar "ver más"
                     document.querySelectorAll('button, a, div, span').forEach(el => {
                         const t = (el.innerText || '').toLowerCase();
                         if (t === 'ver más' || t === 'ver mas') {
@@ -143,12 +146,28 @@ const calcularFechaPublicacion = (texto) => {
                     const tituloTexto = elTitulo ? (elTitulo.innerText || elTitulo.textContent || '').trim().toLowerCase() : '';
 
                     let codigo_anunciante = null;
-                    const matchCod = textoCompleto.match(/cód\.\s*del\s*anunciante:\s*([a-z0-9_-]+)/i);
+                    const matchCod = textoCompleto.match(/cód\.\s*del\s*anunciante:\s*([^|\n\r]+)/i);
                     if (matchCod) {
                         const cand = matchCod[1].trim();
-                        const ignorar = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-                        if (cand.length >= 3 && !ignorar.includes(cand.toLowerCase()) && !/^\d{1,2}$/.test(cand)) {
+                        if (cand.length >= 2) {
                             codigo_anunciante = cand;
+                        }
+                    }
+
+                    let calificacion_usuarios = null;
+                    const elScore = document.querySelector('div[class*="score-title"], div[class*="scoreTitle"], div[class*="scoreLevel"]');
+                    if (elScore) {
+                        const txt = (elScore.innerText || elScore.textContent || '').trim();
+                        const match = txt.match(/\d+/);
+                        if (match) {
+                            calificacion_usuarios = parseInt(match[0], 10);
+                        }
+                    }
+
+                    if (calificacion_usuarios === null) {
+                        const matchNivel = textoCompleto.match(/nivel\s*(\d+)/i);
+                        if (matchNivel) {
+                            calificacion_usuarios = parseInt(matchNivel[1], 10);
                         }
                     }
 
@@ -289,6 +308,7 @@ const calcularFechaPublicacion = (texto) => {
                         direccion,
                         barrio_zona,
                         codigo_anunciante,
+                        calificacion_usuarios,
                         tipo_propiedad,
                         precioUSD,
                         expensas,
@@ -306,11 +326,8 @@ const calcularFechaPublicacion = (texto) => {
                     };
                 });
 
-                const precio_real_usd = parsearPrecioUSD(data.precioUSD);
-                if (!precio_real_usd) {
-                    console.log(`⚠️ Precio no válido en ${id_propiedad}, omitiendo.`);
-                    continue;
-                }
+                // Si no hay precio, se asigna 0 por defecto en lugar de omitir
+                const precio_real_usd = parsearPrecioUSD(data.precioUSD) || 0;
 
                 const fechaPublicacionCalculada = calcularFechaPublicacion(data.textoCompleto);
                 const check = (...words) => words.some(w => data.textoLower.includes(w));
@@ -354,56 +371,70 @@ const calcularFechaPublicacion = (texto) => {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(propiedadData),
-                        signal: AbortSignal.timeout(3000) // Timeout de 3 segundos
+                        signal: AbortSignal.timeout(3000)
                     });
                     if (resIA.ok) resultadoIA = await resIA.json();
-                } catch (e) {
-                    // Si la IA no responde a tiempo, no frena el scraper
-                }
+                } catch (e) {}
 
                 const coordsFinales = (data.latitud && data.longitud)
                     ? { lat: data.latitud, lng: data.longitud }
                     : (resultadoIA.coordenadas || null);
 
+                const precioEstimadoIaUsd = resultadoIA.precio_estimado_usd 
+                    ? Math.round(Number(resultadoIA.precio_estimado_usd)) 
+                    : null;
+
                 const query = `
                     INSERT INTO propiedades (
-                        id_propiedad, url, tipo_propiedad, barrio_zona, ambientes, dormitorios, banos,
-                        superficie_total_m2, superficie_cubierta_m2, estado, anios_de_antiguedad, piso,
-                        orientacion, disposicion, cochera, balcon, terraza, patio, pileta, parrilla,
-                        seguridad_24hs, ascensor, expensas_ars, baulera, sum, seguridad_tipo, camara,
-                        gym, lounge, laundry, precio_real_usd, precio_estimado_ia_usd, coordenadas_gps, 
-                        fecha_publicacion, tipo_operacion, codigo_anunciante, luminosidad, direccion
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 
-                              $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, 
-                              $34, $35, $36, $37, $38)
+                        id_propiedad, url, tipo_operacion, fecha_publicacion,
+                        direccion, barrio_zona, coordenadas_gps,
+                        tipo_propiedad, ambientes, dormitorios, banos,
+                        superficie_total_m2, superficie_cubierta_m2, piso,
+                        estado, anios_de_antiguedad, orientacion, disposicion, luminosidad,
+                        precio_real_usd, precio_estimado_ia_usd, expensas_ars,
+                        cochera, balcon, terraza, patio, pileta, parrilla, ascensor, baulera, sum, gym, lounge, laundry,
+                        seguridad_24hs, seguridad_tipo, camara,
+                        codigo_anunciante, calificacion_usuarios
+                    ) VALUES (
+                        $1, $2, $3, $4,
+                        $5, $6, $7,
+                        $8, $9, $10, $11,
+                        $12, $13, $14,
+                        $15, $16, $17, $18, $19,
+                        $20, $21, $22,
+                        $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34,
+                        $35, $36, $37,
+                        $38, $39
+                    )
                     ON CONFLICT (id_propiedad) DO NOTHING;
                 `;
 
                 const values = [
-                    id_propiedad, link, propiedadData.tipo_propiedad, propiedadData.barrio_zona, propiedadData.ambientes, propiedadData.dormitorios, propiedadData.banos,
-                    propiedadData.superficie_total_m2, propiedadData.superficie_cubierta_m2, propiedadData.estado, propiedadData.anios_de_antiguedad, propiedadData.piso,
-                    propiedadData.orientacion, propiedadData.disposicion, propiedadData.cochera, propiedadData.balcon, propiedadData.terraza, propiedadData.patio, propiedadData.pileta, propiedadData.parrilla,
-                    propiedadData.seguridad_24hs, propiedadData.ascensor, propiedadData.expensas_ars, propiedadData.baulera, propiedadData.sum, propiedadData.seguridad_tipo, propiedadData.camara,
-                    propiedadData.gym, propiedadData.lounge, propiedadData.laundry, precio_real_usd, resultadoIA.precio_estimado_usd || null, 
-                    coordsFinales ? JSON.stringify(coordsFinales) : null, fechaPublicacionCalculada,
-                    TIPO_OPERACION, data.codigo_anunciante, data.luminosidad, data.direccion
+                    id_propiedad, link, TIPO_OPERACION, fechaPublicacionCalculada,
+                    data.direccion, propiedadData.barrio_zona, coordsFinales ? JSON.stringify(coordsFinales) : null,
+                    propiedadData.tipo_propiedad, propiedadData.ambientes, propiedadData.dormitorios, propiedadData.banos,
+                    propiedadData.superficie_total_m2, propiedadData.superficie_cubierta_m2, propiedadData.piso,
+                    propiedadData.estado, propiedadData.anios_de_antiguedad, propiedadData.orientacion, propiedadData.disposicion, data.luminosidad,
+                    precio_real_usd, precioEstimadoIaUsd, propiedadData.expensas_ars,
+                    propiedadData.cochera, propiedadData.balcon, propiedadData.terraza, propiedadData.patio, propiedadData.pileta, propiedadData.parrilla, propiedadData.ascensor, propiedadData.baulera, propiedadData.sum, propiedadData.gym, propiedadData.lounge, propiedadData.laundry,
+                    propiedadData.seguridad_24hs, propiedadData.seguridad_tipo, propiedadData.camara,
+                    data.codigo_anunciante, data.calificacion_usuarios
                 ];
 
                 await pool.query(query, values);
                 nuevos++;
-                console.log(`✅ Guardado: ${id_propiedad} (${data.direccion || data.barrio_zona}) - USD ${precio_real_usd}`);
+                console.log(`Guardado: ${id_propiedad} | Precio USD: ${precio_real_usd} | Anunciante: ${data.codigo_anunciante || 'N/A'} | Nivel Calificación: ${data.calificacion_usuarios ?? 'N/A'}`);
 
             } catch (err) {
-                console.error(`❌ Error procesando ${id_propiedad}: ${err.message}`);
+                console.error(`Error procesando ${id_propiedad}: ${err.message}`);
             } finally {
                 await detailPage.close().catch(() => {});
             }
 
-            // Pausa de cortesía breve entre propiedades
             await new Promise(r => setTimeout(r, 800 + Math.random() * 800));
         }
 
-        console.log(`\n🎉 Finalizado. Nuevas propiedades guardadas: ${nuevos}`);
+        console.log(`\nFinalizado. Nuevas propiedades guardadas: ${nuevos}`);
 
         if (nuevos > 0) {
             try {
@@ -412,9 +443,9 @@ const calcularFechaPublicacion = (texto) => {
         }
 
     } catch (e) {
-        console.error(`❌ Error general en la ejecución: ${e.message}`);
+        console.error(`Error general en la ejecución: ${e.message}`);
     } finally {
-        if (browser) await browser.disconnect();
+        if (browser) await browser.close();
         await pool.end();
     }
 })();
