@@ -1,8 +1,16 @@
+// =========================================================================
+// 1. IMPORTACIÓN DE MÓDULOS Y CONFIGURACIÓN DE CONEXIONES
+// =========================================================================
 import { chromium } from 'playwright';
 import { Pool } from '@neondatabase/serverless';
 
 const pool = new Pool({ connectionString: process.env.SpatialValueStorage_DATABASE_URL });
 
+// =========================================================================
+// 2. FUNCIONES AUXILIARES Y HELPER UTILS
+// =========================================================================
+
+// ESPERA DINÁMICA POR CUALQUIERA DE LOS SELECTORES PROPORCIONADOS
 const waitForAny = async (page, selectors, timeout = 15000) => {
     return Promise.race(
         selectors.map(sel =>
@@ -11,6 +19,7 @@ const waitForAny = async (page, selectors, timeout = 15000) => {
     ).then(r => r ?? null);
 };
 
+// EXTRACCIÓN Y LIMPIEZA DEL PRECIO EN DÓLARES (USD)
 const parsearPrecioUSD = (texto) => {
     if (!texto) return 0;
     const match = texto.match(/USD\s*[\$]?\s*([\d.,]+)/i);
@@ -19,6 +28,7 @@ const parsearPrecioUSD = (texto) => {
     return (valor >= 100 && valor <= 20000000) ? Math.round(valor) : 0;
 };
 
+// CÁLCULO DE FECHA RELATIVA A FORMATO ISO (YYYY-MM-DD)
 const calcularFechaPublicacion = (texto) => {
     const ahora = new Date();
     if (!texto) return ahora.toISOString().split('T')[0];
@@ -50,8 +60,41 @@ const calcularFechaPublicacion = (texto) => {
     return ahora.toISOString().split('T')[0];
 };
 
+// GEOCODIFICACIÓN DE RESPALDO CON API OPENSTREETMAP (NOMINATIM)
+const geocodificarDireccion = async (direccion, barrio) => {
+    if (!direccion) return null;
+    
+    const queryTexto = `${direccion}, ${barrio || 'Capital Federal'}, Buenos Aires, Argentina`;
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryTexto)}`;
+
+    try {
+        const res = await fetch(url, {
+            headers: { 'User-Agent': 'SpatialValueScraper/1.0' }
+        });
+        if (!res.ok) return null;
+        
+        const data = await res.json();
+        if (data && data.length > 0) {
+            return {
+                lat: parseFloat(data[0].lat),
+                lng: parseFloat(data[0].lon)
+            };
+        }
+    } catch (e) {
+        console.warn(`Error al geocodificar dirección (${direccion}): ${e.message}`);
+    }
+    return null;
+};
+
+// =========================================================================
+// 3. FLUJO PRINCIPAL DEL SCRAPER (MAIN ASYNC)
+// =========================================================================
 (async () => {
     console.log("Iniciando scraper...");
+    
+    // ---------------------------------------------------------------------
+    // A. CONEXIÓN AL NAVEGADOR
+    // ---------------------------------------------------------------------
     let browser;
     try {
         browser = await chromium.connectOverCDP('http://localhost:9222');
@@ -70,6 +113,9 @@ const calcularFechaPublicacion = (texto) => {
         const ES_VENTA = true; 
         const TIPO_OPERACION = ES_VENTA ? 'venta' : 'alquiler';
 
+        // -----------------------------------------------------------------
+        // B. ETAPA 1: PAGINACIÓN Y EXTRAER ENLACES DE PROPIEDADES
+        // -----------------------------------------------------------------
         for (let pagina = 1; pagina <= PAGINAS_MAXIMAS; pagina++) {
             const urlPagina = pagina === 1 
                 ? `https://www.zonaprop.com.ar/casas-${TIPO_OPERACION}-capital-federal.html`
@@ -78,6 +124,7 @@ const calcularFechaPublicacion = (texto) => {
             try {
                 console.log(`Cargando página ${pagina}...`);
                 await page.goto(urlPagina, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                
                 const selectorListado = await waitForAny(page, [
                     '[data-qa="posting-card"]', '[data-posting-id]', 'div[class*="posting-card"]', 'ol[class*="postings"] li', 'article'
                 ], 15000);
@@ -103,17 +150,23 @@ const calcularFechaPublicacion = (texto) => {
         }
 
         const links = [...new Set(linksTotales)];
-        console.log(`Se encontraron ${links.length} enlaces de propiedades.`);
+        console.log(`Se encontraron ${links.length} enlaces únicos de propiedades.`);
 
         if (links.length === 0) {
             await browser.close();
             return;
         }
 
+        // -----------------------------------------------------------------
+        // C. ETAPA 2: FILTRADO DE REPETIDOS CONTRA BASE DE DATOS
+        // -----------------------------------------------------------------
         const { rows } = await pool.query('SELECT id_propiedad FROM propiedades');
         const idsProcesados = new Set(rows.map(r => r.id_propiedad));
         let nuevos = 0;
 
+        // -----------------------------------------------------------------
+        // D. ETAPA 3: PROCESAMIENTO DETALLADO PROPIEDAD POR PROPIEDAD
+        // -----------------------------------------------------------------
         for (let i = 0; i < links.length; i++) {
             const link = links[i];
             const idMatch = link.match(/-(\d+)\.html/);
@@ -130,9 +183,14 @@ const calcularFechaPublicacion = (texto) => {
                 await detailPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 30000 });
                 await waitForAny(detailPage, ['[class*="price"]', '[class*="Price"]', '[data-qa="price"]'], 10000);
 
+                // ESPERA ASÍNCRONA POR SECCIÓN DE CALIFICACIÓN/ANUNCIANTE
                 await detailPage.waitForSelector('[class*="scoreCard"], [class*="scoreLevel"], [class*="score-title"]', { timeout: 3000 }).catch(() => {});
 
+                // ---------------------------------------------------------
+                // EXTRACCIÓN DE DATOS DESDE EL DOM DE LA PÁGINA (EVALUATE)
+                // ---------------------------------------------------------
                 const data = await detailPage.evaluate(() => {
+                    // DESPLEGAR SECCIONES OCULTAS ("VER MÁS")
                     document.querySelectorAll('button, a, div, span').forEach(el => {
                         const t = (el.innerText || '').toLowerCase();
                         if (t === 'ver más' || t === 'ver mas') {
@@ -145,32 +203,28 @@ const calcularFechaPublicacion = (texto) => {
                     const elTitulo = document.querySelector('h1,[data-qa="title"],[class*="TitleContainer"]');
                     const tituloTexto = elTitulo ? (elTitulo.innerText || elTitulo.textContent || '').trim().toLowerCase() : '';
 
+                    // CÓDIGO DEL ANUNCIANTE
                     let codigo_anunciante = null;
                     const matchCod = textoCompleto.match(/cód\.\s*del\s*anunciante:\s*([^|\n\r]+)/i);
                     if (matchCod) {
                         const cand = matchCod[1].trim();
-                        if (cand.length >= 2) {
-                            codigo_anunciante = cand;
-                        }
+                        if (cand.length >= 2) codigo_anunciante = cand;
                     }
 
+                    // NIVEL DE CALIFICACIÓN DE ANUNCIANTE
                     let calificacion_usuarios = null;
                     const elScore = document.querySelector('div[class*="score-title"], div[class*="scoreTitle"], div[class*="scoreLevel"]');
                     if (elScore) {
                         const txt = (elScore.innerText || elScore.textContent || '').trim();
                         const match = txt.match(/\d+/);
-                        if (match) {
-                            calificacion_usuarios = parseInt(match[0], 10);
-                        }
+                        if (match) calificacion_usuarios = parseInt(match[0], 10);
                     }
-
                     if (calificacion_usuarios === null) {
                         const matchNivel = textoCompleto.match(/nivel\s*(\d+)/i);
-                        if (matchNivel) {
-                            calificacion_usuarios = parseInt(matchNivel[1], 10);
-                        }
+                        if (matchNivel) calificacion_usuarios = parseInt(matchNivel[1], 10);
                     }
 
+                    // DIRECCIÓN Y BARRIO
                     let direccion = null;
                     let barrio_zona = 'Capital Federal';
                     const h4Ubicacion = document.querySelector('#map-section h4, div[class*="section-location-property"] h4');
@@ -187,6 +241,7 @@ const calcularFechaPublicacion = (texto) => {
                         }
                     }
 
+                    // TIPO DE PROPIEDAD
                     let tipo_propiedad = 'Casa';
                     if (window.location.href.includes('/departamentos-') || tituloTexto.startsWith('departamento')) {
                         tipo_propiedad = 'Departamento';
@@ -194,6 +249,7 @@ const calcularFechaPublicacion = (texto) => {
                         tipo_propiedad = 'PH';
                     }
 
+                    // COORDENADAS DESDE SCRIPTS JSON EN EL HTML
                     let latitud = null;
                     let longitud = null;
                     const scripts = Array.from(document.querySelectorAll('script'));
@@ -210,6 +266,7 @@ const calcularFechaPublicacion = (texto) => {
                         }
                     }
 
+                    // CARACTERÍSTICAS TÉCNICAS (METROS, AMBIENTES, ETC)
                     let superficie_total = null;
                     let superficie_cubierta = null;
                     let ambientes = null;
@@ -273,6 +330,7 @@ const calcularFechaPublicacion = (texto) => {
                     if (!superficie_total && superficie_cubierta) superficie_total = superficie_cubierta;
                     if (!superficie_cubierta && superficie_total) superficie_cubierta = superficie_total;
 
+                    // PRECIO BRUTO
                     let precioUSD = '';
                     const byQa = document.querySelector('[data-qa="price"]');
                     if (byQa) {
@@ -290,6 +348,7 @@ const calcularFechaPublicacion = (texto) => {
                         }
                     }
 
+                    // EXPENSAS BRUTAS
                     let expensas = 0;
                     const candidatosExp = [...document.querySelectorAll('[class*="xpens"],[class*="Expens"],[data-qa="expenses"]')];
                     for (const el of candidatosExp) {
@@ -326,9 +385,10 @@ const calcularFechaPublicacion = (texto) => {
                     };
                 });
 
-                // Si no hay precio, se asigna 0 por defecto en lugar de omitir
+                // ---------------------------------------------------------
+                // E. TRANSFORMATION & ENRICHMENT CON SERVICIOS EXTERNOS
+                // ---------------------------------------------------------
                 const precio_real_usd = parsearPrecioUSD(data.precioUSD) || 0;
-
                 const fechaPublicacionCalculada = calcularFechaPublicacion(data.textoCompleto);
                 const check = (...words) => words.some(w => data.textoLower.includes(w));
 
@@ -365,6 +425,7 @@ const calcularFechaPublicacion = (texto) => {
                     longitud: data.longitud
                 };
 
+                // CONSULTA A MICROSERVICIO DE IA (PREDICCIÓN PRECIO / GPS)
                 let resultadoIA = {};
                 try {
                     const resIA = await fetch('http://127.0.0.1:8000/estimar-precio', {
@@ -376,14 +437,24 @@ const calcularFechaPublicacion = (texto) => {
                     if (resIA.ok) resultadoIA = await resIA.json();
                 } catch (e) {}
 
-                const coordsFinales = (data.latitud && data.longitud)
+                // SISTEMA DE GEOCODIFICACIÓN TRIPLE FALLBACK
+                let coordsFinales = (data.latitud && data.longitud)
                     ? { lat: data.latitud, lng: data.longitud }
                     : (resultadoIA.coordenadas || null);
+
+                if (!coordsFinales && data.direccion) {
+                    console.log(`Geocodificando por OpenStreetMap: ${data.direccion}...`);
+                    coordsFinales = await geocodificarDireccion(data.direccion, data.barrio_zona);
+                    await new Promise(r => setTimeout(r, 1000));
+                }
 
                 const precioEstimadoIaUsd = resultadoIA.precio_estimado_usd 
                     ? Math.round(Number(resultadoIA.precio_estimado_usd)) 
                     : null;
 
+                // ---------------------------------------------------------
+                // F. INSERCIÓN EN LA BASE DE DATOS (POSTGRESQL)
+                // ---------------------------------------------------------
                 const query = `
                     INSERT INTO propiedades (
                         id_propiedad, url, tipo_operacion, fecha_publicacion,
@@ -423,7 +494,7 @@ const calcularFechaPublicacion = (texto) => {
 
                 await pool.query(query, values);
                 nuevos++;
-                console.log(`Guardado: ${id_propiedad} | Precio USD: ${precio_real_usd} | Anunciante: ${data.codigo_anunciante || 'N/A'} | Nivel Calificación: ${data.calificacion_usuarios ?? 'N/A'}`);
+                console.log(`Guardado: ${id_propiedad} | Precio USD: ${precio_real_usd} | GPS: ${coordsFinales ? 'SÍ' : 'NO'} | Anunciante: ${data.codigo_anunciante || 'N/A'} | Calificación: ${data.calificacion_usuarios ?? 'N/A'}`);
 
             } catch (err) {
                 console.error(`Error procesando ${id_propiedad}: ${err.message}`);
@@ -436,6 +507,9 @@ const calcularFechaPublicacion = (texto) => {
 
         console.log(`\nFinalizado. Nuevas propiedades guardadas: ${nuevos}`);
 
+        // -----------------------------------------------------------------
+        // G. REENTRENAMIENTO AUTOMÁTICO DE MODELO IA Y FINALIZACIÓN
+        // -----------------------------------------------------------------
         if (nuevos > 0) {
             try {
                 await fetch('http://127.0.0.1:8000/reentrenar', { method: 'POST', signal: AbortSignal.timeout(5000) });
@@ -445,6 +519,9 @@ const calcularFechaPublicacion = (texto) => {
     } catch (e) {
         console.error(`Error general en la ejecución: ${e.message}`);
     } finally {
+        // =========================================================================
+        // 4. LIBERACIÓN DE RECURSOS Y CIERRE
+        // =========================================================================
         if (browser) await browser.close();
         await pool.end();
     }

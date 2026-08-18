@@ -33,3 +33,4 @@ __pycache__/
 chrome_scraper_data/
 
 /chrome_scraper_data
+.env*.local
