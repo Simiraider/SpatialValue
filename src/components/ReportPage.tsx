@@ -5,6 +5,7 @@ import { Button } from './ui/Button';
 import { getUser, getUsuarioId } from '../lib/session';
 import { apiFetch } from '../lib/api';
 import { calcularValores, esAlquiler } from '../lib/tasacion';
+import { MapaReporte } from './MapaReporte';
 import '../styles/reporte.css';
 
 const fmt = (n: number) => Math.round(n).toLocaleString('es-AR');
@@ -14,6 +15,23 @@ type ErrorEstado = 'notfound' | 'session' | 'server' | null;
 function mapearDesdeDB(p: any) {
   const supCub = Number(p.superficie_cubierta) || 0;
   const supTotal = Number(p.superficie_total) || supCub;
+
+  // Extraer latitud y longitud desde las distintas formas que vengan de la BD
+  let lat = p.latitud ? Number(p.latitud) : null;
+  let lng = p.longitud ? Number(p.longitud) : null;
+
+  if ((!lat || !lng) && p.coordenadas_gps) {
+    try {
+      const coords = typeof p.coordenadas_gps === 'string' 
+        ? JSON.parse(p.coordenadas_gps) 
+        : p.coordenadas_gps;
+      lat = Number(coords.lat);
+      lng = Number(coords.lng);
+    } catch (e) {
+      console.warn('Error parseando coordenadas_gps:', e);
+    }
+  }
+
   return {
     id: String(p.id_publicacion ?? p.id),
     tipoTasacion: p.tipo_operacion,
@@ -29,6 +47,8 @@ function mapearDesdeDB(p: any) {
     precioEstimadoUsd: p.precio_estimado_ia != null ? Number(p.precio_estimado_ia) : null,
     comodidades: [],
     demo: false,
+    latitud: lat,
+    longitud: lng,
   };
 }
 
@@ -188,11 +208,16 @@ export const ReportPage = () => {
           <h2 className="ReportePage-sectionTitle">
             {alquiler ? 'Ofertas de alquiler similares' : 'Propiedades similares'}
           </h2>
-          <div className="ReportePage-mapPlaceholder">
-            {alquiler
-              ? 'Mapa con ofertas de alquiler comparables — integración en sprint posterior.'
-              : 'Mapa con comparables — integración en sprint posterior.'}
-          </div>
+          <section className="ReportePage-section">
+            <h2 className="ReportePage-sectionTitle">
+              {alquiler ? 'Ubicación de la propiedad' : 'Ubicación y comparables'}
+            </h2>
+            <MapaReporte 
+              lat={data.latitud} 
+              lng={data.longitud} 
+              direccion={data.direccion} 
+            />
+          </section>
         </section>
 
         <ReportActions />
