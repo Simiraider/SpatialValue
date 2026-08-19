@@ -3,10 +3,18 @@ import { defineMiddleware } from 'astro:middleware';
 const peticionesIP = new Map<string, { cantidad: number; reinicio: number }>();
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  const ip = context.clientAddress;
+  let ip: string;
+  try {
+    ip = context.clientAddress;
+  } catch {
+    return next();
+  }
+
+  if (!ip) return next();
+
   const ahora = Date.now();
-  const unMinuto = 60 * 1000; 
-  const limiteMaximo = 60; 
+  const unMinuto = 60 * 1000;
+  const limiteMaximo = 60;
 
   const registro = peticionesIP.get(ip) || { cantidad: 0, reinicio: ahora + unMinuto };
 
