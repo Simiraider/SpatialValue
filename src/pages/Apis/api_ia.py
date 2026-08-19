@@ -6,13 +6,16 @@ import pandas as pd
 import psycopg2
 from psycopg2 import pool
 from dotenv import load_dotenv
-from fastapi import FastAPI
+
 from pydantic import BaseModel
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
+
+from fastapi import FastAPI, Depends, HTTPException, Security
+from fastapi.security import APIKeyHeader
 
 BASE_PATH = Path(__file__).resolve().parent.parent.parent.parent
 ENV_PATH = BASE_PATH / ".env.local"
@@ -64,6 +67,19 @@ COLUMNAS_NUMERICAS = [
 ]
 
 app = FastAPI(title="API IA Estimador")
+
+API_KEY_SECRET = os.getenv("INTERNAL_API_KEY", "Clave_ia")
+api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=False)
+
+async def validar_api_key(api_key: str = Security(api_key_header)):
+    if api_key != API_KEY_SECRET:
+        raise HTTPException(status_code=403, detail="Acceso denegado: API Key inválida")
+
+# Aplica la protección a tus endpoints
+@app.post("/estimar-precio", dependencies=[Depends(validar_api_key)])
+def estimar_precio(data: dict):
+    return {"status": "ok"}
+
 db_pool = psycopg2.pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
 
 modelo_v4 = None
