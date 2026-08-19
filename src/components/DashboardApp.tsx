@@ -72,18 +72,25 @@ export const DashboardApp = () => {
           .filter((p: any) => p && p.id_publicacion !== undefined && p.id_publicacion !== null)
           .map((p: any) => {
             const esAlq = String(p.tipo_operacion).toLowerCase() === 'alquiler';
+            const precioIA = p.precio_estimado_ia != null ? Number(p.precio_estimado_ia) : null;
             let value: string;
             if (esAlq) {
               value =
-                typeof p.precio === 'number' && p.precio > 0
-                  ? `$${p.precio.toLocaleString('es-AR')}`
-                  : 'A tasar';
+                precioIA != null && precioIA > 0
+                  ? `$${precioIA.toLocaleString('es-AR')}`
+                  : typeof p.precio === 'number' && p.precio > 0
+                    ? `$${p.precio.toLocaleString('es-AR')}`
+                    : 'A tasar';
             } else {
-              const supCub = Number(p.superficie_cubierta) || 0;
-              const supDesc = Math.max((Number(p.superficie_total) || 0) - supCub, 0);
-              value = supCub > 0
-                ? `$${estimarPrecioVenta(supCub, supDesc, p.barrio || p.ciudad).toLocaleString('es-AR')}`
-                : 'A tasar';
+              if (precioIA != null && precioIA > 0) {
+                value = `$${Math.round(precioIA).toLocaleString('es-AR')}`;
+              } else {
+                const supCub = Number(p.superficie_cubierta) || 0;
+                const supDesc = Math.max((Number(p.superficie_total) || 0) - supCub, 0);
+                value = supCub > 0
+                  ? `$${estimarPrecioVenta(supCub, supDesc, p.barrio || p.ciudad).toLocaleString('es-AR')}`
+                  : 'A tasar';
+              }
             }
             return {
               id: String(p.id_publicacion ?? p.id),

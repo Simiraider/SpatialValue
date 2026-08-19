@@ -63,16 +63,13 @@ export const ReportPage = () => {
       const params = new URLSearchParams(window.location.search);
       const urlId = params.get('id');
 
-      const draftStr = sessionStorage.getItem('tasacion-draft');
-      if (draftStr) {
-        const draft = JSON.parse(draftStr);
-        if (!urlId || urlId === draft.id) {
+      if (!urlId) {
+        const draftStr = sessionStorage.getItem('tasacion-draft');
+        if (draftStr) {
+          const draft = JSON.parse(draftStr);
           setData(draft);
           return;
         }
-      }
-
-      if (!urlId) {
         setError('notfound');
         return;
       }
@@ -86,6 +83,14 @@ export const ReportPage = () => {
       );
 
       if (!ok || !resData) {
+        const draftStr = sessionStorage.getItem('tasacion-draft');
+        if (draftStr) {
+          const draft = JSON.parse(draftStr);
+          if (draft.id === urlId) {
+            setData(draft);
+            return;
+          }
+        }
         setError(status === 401 ? 'session' : status === 404 ? 'notfound' : 'server');
         return;
       }
@@ -151,13 +156,11 @@ export const ReportPage = () => {
               {alquiler ? 'Reporte de tasación locativa' : 'Reporte final'} - {data.direccion}
             </h1>
             <p className="ReportePage-demoBadge" aria-label="Origen de la estimación">
-              {alquiler
-                ? v.esIA
-                  ? 'Estimación generada por el modelo de IA'
-                  : data.demo
-                    ? 'Modo demo: IA no disponible, valor estimado localmente'
-                    : 'Estimación basada en datos proporcionados'
-                : 'Estimación por método comparativo de mercado (USD/m² de referencia del barrio)'}
+              {v.esIA
+                ? 'Estimación generada por el modelo de IA'
+                : data.demo
+                  ? 'Modo demo: IA no disponible, valor estimado localmente'
+                  : 'Estimación por método comparativo de mercado (USD/m² de referencia del barrio)'}
             </p>
           </div>
           <ReportDownloadButton data={data} cliente={getUser()?.nombre} />

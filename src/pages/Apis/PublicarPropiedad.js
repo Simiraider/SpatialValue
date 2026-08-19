@@ -110,19 +110,21 @@ export async function POST({ request }) {
     };
 
     const esAlquiler = String(tipo_operacion || 'venta').toLowerCase() === 'alquiler';
-    let resultadoIA = null;
-    let precioEstimadoUsd = null;
 
-    if (esAlquiler) {
-      resultadoIA = await llamarAI(payloadIA);
-      precioEstimadoUsd = resultadoIA?.precio_estimado_usd ?? null;
-    }
+    let resultadoIA = await llamarAI(payloadIA);
+    let precioIA = resultadoIA?.precio_estimado_usd ?? null;
 
+    const RENTABILIDAD_ANUAL = 0.045;
     let precioFinal;
+    let precioEstimadoUsd;
+
     if (esAlquiler) {
-      precioFinal = precioEstimadoUsd != null ? Math.round(precioEstimadoUsd) : Number(precio) || 0;
+      const alquilerMensualUsd = precioIA != null ? Math.round(precioIA * RENTABILIDAD_ANUAL / 12) : null;
+      precioEstimadoUsd = alquilerMensualUsd;
+      precioFinal = alquilerMensualUsd != null ? alquilerMensualUsd : Number(precio) || 0;
     } else {
-      precioFinal = estimarPrecioVenta(
+      precioEstimadoUsd = precioIA;
+      precioFinal = precioIA != null ? Math.round(precioIA) : estimarPrecioVenta(
         superficieCubierta,
         Math.max(superficieTotal - superficieCubierta, 0),
         barrio || ciudad
@@ -161,7 +163,7 @@ export async function POST({ request }) {
           ${tipo_operacion},
           ${tipoPropiedadDB},
           ${precioFinal},
-          ${esAlquiler ? precioEstimadoUsd : null},
+          ${precioEstimadoUsd ?? null},
           ${moneda},
           ${expensas},
           ${superficieTotal || null},
@@ -191,7 +193,7 @@ export async function POST({ request }) {
           : "Tasación estimada (no guardada: usuario inválido o servicio de datos no disponible)",
         data: {
           id: publicacionGuardada?.id_publicacion ?? null,
-          precio_estimado_usd: esAlquiler && precioEstimadoUsd != null ? Math.round(precioEstimadoUsd) : null,
+          precio_estimado_usd: precioEstimadoUsd != null ? Math.round(precioEstimadoUsd) : null,
           coordenadas: resultadoIA?.coordenadas ?? null,
           saved: Boolean(publicacionGuardada),
         },

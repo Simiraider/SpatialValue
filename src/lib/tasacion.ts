@@ -62,14 +62,14 @@ export function calcularValores(data: DatosTasacion): ValoresCalculados {
   }
 
   const m2Venta = valorM2Venta(barrio);
-  const valorUsd = estimarPrecioVenta(supCub, supDesc, barrio);
+  const valorUsd = precioIA > 0 ? Math.round(precioIA) : estimarPrecioVenta(supCub, supDesc, barrio);
   const valorArs = Math.round(valorUsd * TASA_ARS_USD);
   return {
     precioIA,
     supCub,
     supDesc,
     supTotal,
-    esIA: false,
+    esIA: precioIA > 0,
     valorUsd,
     valorArs,
     valorM2: m2Venta,
