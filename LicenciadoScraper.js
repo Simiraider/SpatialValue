@@ -428,12 +428,15 @@ const geocodificarDireccion = async (direccion, barrio) => {
                 // CONSULTA A MICROSERVICIO DE IA (PREDICCIÓN PRECIO / GPS)
                 let resultadoIA = {};
                 try {
-                    const resIA = await fetch('http://127.0.0.1:8000/estimar-precio', {
+                    const resIA = 
+                        await fetch('http://127.0.0.1:8000/estimar-precio', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(propiedadData),
-                        signal: AbortSignal.timeout(3000)
-                    });
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-API-KEY': process.env.INTERNAL_API_KEY
+                        },
+                        body: JSON.stringify(propiedadData)
+                        });
                     if (resIA.ok) resultadoIA = await resIA.json();
                 } catch (e) {}
 
