@@ -9,13 +9,18 @@ const tiene = (comodidades, nombre) =>
   Array.isArray(comodidades) &&
   comodidades.some((a) => String(a).toLowerCase() === nombre.toLowerCase());
 
+const IA_API_KEY = import.meta.env.INTERNAL_API_KEY || process.env.INTERNAL_API_KEY || '';
+
 async function llamarAI(payload) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), IA_TIMEOUT_MS);
   try {
     const res = await fetch(`${IA_URL}/estimar-precio`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': IA_API_KEY,
+      },
       body: JSON.stringify(payload),
       signal: controller.signal,
     });

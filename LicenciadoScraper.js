@@ -515,7 +515,14 @@ const geocodificarDireccion = async (direccion, barrio) => {
         // -----------------------------------------------------------------
         if (nuevos > 0) {
             try {
-                await fetch('http://127.0.0.1:8000/reentrenar', { method: 'POST', signal: AbortSignal.timeout(5000) });
+                await fetch('http://127.0.0.1:8000/reentrenar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': process.env.INTERNAL_API_KEY || '',
+                    },
+                    signal: AbortSignal.timeout(5000),
+                });
             } catch {}
         }
 
