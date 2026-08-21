@@ -188,11 +188,10 @@ import Logo from "../components/Logo.astro";
       const data = await res.json();
 
       if (res.ok && data?.success) {
-        setMensaje("¡Cuenta creada con éxito! Redirigiendo...", "#10b981");
-        setUser({ nombre: data.username, id: data.id });
+        setMensaje("¡Te enviamos un email! Verificá tu casilla para activar la cuenta.", "#10b981");
         setTimeout(() => {
-          window.location.href = '/dashboard';
-        }, 1500);
+          window.location.href = '/login';
+        }, 3000);
       } else {
         setMensaje(`${data?.error || 'Error al crear la cuenta'}`, "#ef4444");
       }
