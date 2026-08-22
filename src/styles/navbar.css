@@ -1,12 +1,13 @@
 .navbar {
-  background: var(--color-bg);
-  border-bottom: 1px solid var(--color-border);
+  background: var(--color-graphite);
+  border-bottom: 2px solid var(--color-brand);
 }
 
 .navbar-inner {
-  max-width: var(--max-width);
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 0.85rem 1.5rem;
+  min-height: 92px;
+  padding: 0.65rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -30,8 +31,8 @@
 }
 
 .logo-img {
-  width: 92px;
-  height: 92px;
+  width: 118px;
+  height: 70px;
   object-fit: contain;
   flex-shrink: 0;
 }
@@ -39,44 +40,44 @@
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 1.75rem;
+  gap: clamp(0.75rem, 2vw, 2rem);
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
 .nav-links a {
-  color: var(--color-text);
+  color: #fff;
   text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
 .nav-links a:hover {
-  color: var(--color-green-dark);
+  color: var(--color-brand);
 }
 
 .nav-right {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .nav-login {
   font-size: 0.9rem;
   font-weight: 500;
-  color: var(--color-text);
+  color: #fff;
   text-decoration: none;
 }
 
 .nav-login:hover {
-  color: var(--color-green-dark);
+  color: var(--color-brand);
 }
 
 .nav-user {
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--color-text);
+  color: #fff;
   white-space: nowrap;
 }
 
@@ -84,4 +85,8 @@
   .nav-links {
     display: none;
   }
+
+  .navbar-inner { min-height: 72px; padding: 0.5rem 1rem; }
+  .logo-img { width: 96px; height: 56px; }
+  .nav-right .button-primary { display: none; }
 }

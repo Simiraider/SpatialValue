@@ -129,6 +129,29 @@
   border-radius: 0.5rem;
 }
 
+.ReportePage-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .75rem;
+  margin: 1.25rem 0;
+}
+
+.ReportePage-facts div {
+  min-height: 5.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: .3rem;
+  padding: .8rem;
+  background: #f8fafc;
+  border-radius: .75rem;
+}
+
+.ReportePage-facts span { color: #64748b; font-size: .78rem; }
+.ReportePage-facts strong { color: #0f172a; font-size: 1rem; }
+
+@media (max-width: 640px) { .ReportePage-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
 .ReportePage-actions {
   display: flex;
   justify-content: center;
