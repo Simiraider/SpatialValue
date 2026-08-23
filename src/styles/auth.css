@@ -1,0 +1,9 @@
+.auth-page { min-height: 100vh; display: grid; place-items: center; padding: 2rem 1rem; background: #f8fafc url('/bg-logo.png') center / cover no-repeat; }
+.auth-card { width: min(100%, 42.5rem); padding: clamp(2rem, 5vw, 4.5rem); color: white; background: var(--color-graphite); border: 1px solid rgba(255,255,255,.14); border-radius: 1.7rem; box-shadow: 0 24px 60px rgba(15,23,42,.25); }
+.auth-card .logo-img { width: 175px; height: 110px; }
+.auth-title { margin: .5rem 0; font-size: clamp(2.2rem, 5vw, 3.75rem); line-height: 1; font-weight: 800; }
+.auth-status { color: #d5d5d5; font-size: 1rem; }
+.auth-card :is(input) { border-radius: 999px; }
+.auth-card :is(button[type='submit']) { background: var(--color-brand); }
+.auth-card :is(button[type='submit']):hover { background: var(--color-brand-dark); }
+.auth-card a:not(.logo) { color: #53c6ef; }

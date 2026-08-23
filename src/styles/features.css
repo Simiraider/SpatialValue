@@ -1,10 +1,10 @@
 .features {
-  background: #d9d9d9;
-  padding: 5rem 1.5rem;
+  background: linear-gradient(180deg, #f8fafc 0%, #eefaff 100%);
+  padding: 5rem 1.5rem 4rem;
 }
 
 .features-inner {
-  max-width: var(--max-width);
+  max-width: 1440px;
   margin: 0 auto;
 }
 
@@ -20,7 +20,7 @@
 .features-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1.5rem;
+  gap: 2.5rem;
 }
 
 @media (min-width: 768px) {
@@ -34,51 +34,57 @@
   grid-template-columns: auto minmax(0, 1fr);
   gap: 0.9rem;
   align-items: center;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 0;
+  min-height: 360px;
+  background: #ffffff;
+  border: 1px solid rgba(0,135,192,.08);
+  border-radius: 2rem;
+  padding: 2rem;
   text-align: left;
-  box-shadow: none;
+  box-shadow: 0 5px 12px rgba(0,135,192,.06), 0 1px 3px rgba(15,23,42,.06);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(0,135,192,.1), 0 4px 8px rgba(15,23,42,.06);
 }
 
 .feature-icon {
-  width: 4.5rem;
-  height: 4.5rem;
+  width: 7.5rem;
+  height: 7.5rem;
   margin: 0;
-  background: #ffffff;
-  border-radius: 50%;
+  background: #e1f4fb;
+  border-radius: 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .feature-icon img {
-  width: 1.9rem;
-  height: 1.9rem;
+  width: 4.25rem;
+  height: 4.25rem;
   object-fit: contain;
 }
 
 .feature-card h3 {
-  font-size: 1.45rem;
+  font-size: 1.8rem;
   font-weight: 800;
   margin: 0 0 0.5rem;
   color: var(--color-text);
 }
 
 .feature-card p {
-  font-size: 1rem;
+  font-size: 1.1rem;
   color: #242424;
   line-height: 1.55;
   margin: 0;
 }
 
 .feature-text {
-  max-width: 16rem;
+  max-width: 20rem;
 }
 
 .team-section {
-  background: #d9d9d9;
+  background: var(--color-bg);
   padding: 5rem 1.5rem 6rem;
 }
 
@@ -98,8 +104,9 @@
   max-width: 16rem;
   aspect-ratio: 0.77;
   margin: 0 auto 1.25rem;
-  border-radius: 2rem;
-  background: #414141;
+  border-radius: 1.7rem;
+  background: var(--color-graphite);
+  box-shadow: 0 5px 12px rgba(15, 23, 42, .13);
   object-fit: cover;
 }
 

@@ -5,9 +5,35 @@ import { estimarPrecioVenta } from '../../lib/mercado';
 const IA_URL = import.meta.env.IA_URL || process.env.IA_URL || 'http://127.0.0.1:8000';
 const IA_TIMEOUT_MS = 15000;
 
+const normalizar = (valor) => String(valor || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .trim();
+
 const tiene = (comodidades, nombre) =>
   Array.isArray(comodidades) &&
-  comodidades.some((a) => String(a).toLowerCase() === nombre.toLowerCase());
+  comodidades.some((a) => normalizar(a) === normalizar(nombre));
+
+const IA_API_KEY = import.meta.env.INTERNAL_API_KEY || process.env.INTERNAL_API_KEY || '';
+
+async function geocodificar(direccion, barrio, ciudad) {
+  const query = `${direccion}, ${barrio || ''}, ${ciudad || 'Buenos Aires'}, Argentina`;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=ar`;
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'SpatialValue/1.0 (tasaciones)' },
+      signal: AbortSignal.timeout(5000),
+    });
+    const data = await res.json();
+    if (data && data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+  } catch (e) {
+    console.warn('Geocoding falló:', e.message);
+  }
+  return null;
+}
 
 const IA_API_KEY = import.meta.env.INTERNAL_API_KEY || process.env.INTERNAL_API_KEY || '';
 
@@ -57,7 +83,12 @@ export async function POST({ request }) {
       superficie_cubierta,
       superficie_total,
       piso,
+      antiguedad,
+      anios_de_antiguedad,
+      orientacion,
+      disposicion,
       comodidades,
+      fotos = [],
       latitud,
       longitud,
       usuario_id,
@@ -80,6 +111,13 @@ export async function POST({ request }) {
     const superficieTotal = Number(superficie_total) || superficieCubierta;
     const tipoPropiedadDB = String(tipo_propiedad).toLowerCase();
 
+    let coordenadasFinales = (latitud && longitud) ? { lat: Number(latitud), lng: Number(longitud) } : null;
+    if (!coordenadasFinales) {
+      coordenadasFinales = await geocodificar(direccion, barrio, ciudad);
+    }
+    const latFinal = coordenadasFinales?.lat ?? null;
+    const lngFinal = coordenadasFinales?.lng ?? null;
+
     const payloadIA = {
       tipo_propiedad: tipo_propiedad === 'Casa' ? 'Casa' : 'Departamento',
       barrio_zona: barrio || ciudad || 'Capital Federal',
@@ -89,44 +127,45 @@ export async function POST({ request }) {
       superficie_total_m2: superficieTotal || null,
       superficie_cubierta_m2: superficieCubierta || null,
       estado: Number(estadoGeneral) >= 8 ? 'A estrenar' : 'Usado',
-      anios_de_antiguedad: null,
-      piso: piso ? Number(piso) : null,
-      orientacion: null,
-      disposicion: null,
+      anios_de_antiguedad: antiguedad != null ? Number(antiguedad) : (anios_de_antiguedad != null ? Number(anios_de_antiguedad) : null),
+      piso: piso ? parseInt(String(piso).replace(/[^0-9]/g, ''), 10) || null : null,
+      orientacion: orientacion || null,
+      disposicion: disposicion || null,
       cochera: tiene(comodidades, 'Cochera'),
       balcon: tiene(comodidades, 'Balcón') || tiene(comodidades, 'Balcon'),
-      terraza: false,
+      terraza: tiene(comodidades, 'Terraza'),
       patio: tiene(comodidades, 'Patio'),
       pileta: tiene(comodidades, 'Pileta'),
       parrilla: tiene(comodidades, 'Parrilla'),
       seguridad_24hs: tiene(comodidades, 'Seguridad 24h'),
-      ascensor: false,
+      ascensor: tiene(comodidades, 'Ascensor'),
       expensas_ars: Number(expensas) || 0,
-      baulera: false,
+      baulera: tiene(comodidades, 'Baulera'),
       sum: tiene(comodidades, 'SUM'),
-      seguridad_tipo: 'Ninguno',
-      camara: false,
+      seguridad_tipo: tiene(comodidades, 'Seguridad 24h') ? '24hs' : 'Ninguno',
+      camara: tiene(comodidades, 'Cámaras') || tiene(comodidades, 'Camaras'),
       gym: tiene(comodidades, 'Gimnasio'),
-      lounge: false,
-      laundry: false,
+      lounge: tiene(comodidades, 'Lounge'),
+      laundry: tiene(comodidades, 'Laundry'),
       tipo_operacion: String(tipo_operacion || 'venta').toLowerCase(),
-      ...(latitud != null && latitud !== '' ? { latitud: Number(latitud) } : {}),
-      ...(longitud != null && longitud !== '' ? { longitud: Number(longitud) } : {}),
+      ...(latFinal != null ? { latitud: latFinal } : {}),
+      ...(lngFinal != null ? { longitud: lngFinal } : {}),
     };
 
     const esAlquiler = String(tipo_operacion || 'venta').toLowerCase() === 'alquiler';
 
-    let resultadoIA = await llamarAI(payloadIA);
-    let precioIA = resultadoIA?.precio_estimado_usd ?? null;
+    let resultadoIA = null;
+    let precioEstimadoUsd = null;
+
+    resultadoIA = await llamarAI(payloadIA);
+    precioEstimadoUsd = resultadoIA?.precio_estimado_usd ?? null;
 
     const RENTABILIDAD_ANUAL = 0.045;
     let precioFinal;
-    let precioEstimadoUsd;
-
-    if (esAlquiler) {
-      const alquilerMensualUsd = precioIA != null ? Math.round(precioIA * RENTABILIDAD_ANUAL / 12) : null;
-      precioEstimadoUsd = alquilerMensualUsd;
-      precioFinal = alquilerMensualUsd != null ? alquilerMensualUsd : Number(precio) || 0;
+    if (precioEstimadoUsd != null) {
+      precioFinal = Math.round(precioEstimadoUsd);
+    } else if (esAlquiler) {
+      precioFinal = Number(precio) || 0;
     } else {
       precioEstimadoUsd = precioIA;
       precioFinal = precioIA != null ? Math.round(precioIA) : estimarPrecioVenta(
@@ -168,7 +207,7 @@ export async function POST({ request }) {
           ${tipo_operacion},
           ${tipoPropiedadDB},
           ${precioFinal},
-          ${precioEstimadoUsd ?? null},
+          ${precioEstimadoUsd != null ? Math.round(precioEstimadoUsd) : null},
           ${moneda},
           ${expensas},
           ${superficieTotal || null},
@@ -180,12 +219,39 @@ export async function POST({ request }) {
           ${direccion},
           ${barrio || null},
           ${ciudad},
-          ${latitud || null},
-          ${longitud || null}
+          ${latFinal},
+          ${lngFinal}
         )
         RETURNING *;
       `;
       publicacionGuardada = nuevaPublicacion[0];
+
+      try {
+        await sql`
+          CREATE TABLE IF NOT EXISTS tasacion_detalles (
+            id_publicacion TEXT PRIMARY KEY,
+            datos JSONB NOT NULL DEFAULT '{}'::jsonb
+          )
+        `;
+        try {
+          await sql`ALTER TABLE tasacion_detalles ALTER COLUMN id_publicacion TYPE TEXT USING id_publicacion::text`;
+        } catch (e) {}
+        const detalles = JSON.stringify({
+          antiguedad: payloadIA.anios_de_antiguedad,
+          orientacion: payloadIA.orientacion,
+          disposicion: payloadIA.disposicion,
+          estadoGeneral: Number(estadoGeneral) || null,
+          comodidades: Array.isArray(comodidades) ? comodidades : [],
+          fotos: Array.isArray(fotos) ? fotos : [],
+        });
+        await sql`
+          INSERT INTO tasacion_detalles (id_publicacion, datos)
+          VALUES (${publicacionGuardada.id_publicacion}, ${detalles}::jsonb)
+          ON CONFLICT (id_publicacion) DO UPDATE SET datos = EXCLUDED.datos
+        `;
+      } catch (detailError) {
+        console.warn('No se pudo guardar el detalle ampliado de la tasación:', detailError.message);
+      }
     } catch (error) {
       console.error("No se pudo guardar la publicación (igual se devuelve la estimación):", error.message);
     }

@@ -1,14 +1,15 @@
+@import "./variables.css";
 @import "tailwindcss";
 
 @theme {
   --font-sans: 'Inclusive Sans', system-ui, sans-serif;
   
-  --color-primary-50: #ecfeff;
-  --color-primary-100: #cffafe;
-  --color-primary-500: #06b6d4;
-  --color-primary-600: #0891b2;
-  --color-primary-700: #0e7490;
-  --color-primary-900: #164e63;
+  --color-primary-50: #e1f4fb;
+  --color-primary-100: #c4e9f7;
+  --color-primary-500: #0087c0;
+  --color-primary-600: #006b99;
+  --color-primary-700: #005477;
+  --color-primary-900: #0f172a;
 }
 
 @layer base {
@@ -17,7 +18,7 @@
     scroll-behavior: smooth;
   }
   body {
-    @apply bg-[#F5F5F5] text-slate-900 antialiased;
+    @apply bg-[#F8FAFC] text-slate-900 antialiased;
   }
 }
 

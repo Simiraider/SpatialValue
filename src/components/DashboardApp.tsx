@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell, Search, Loader2, RefreshCw, Trash2 } from 'lucide-react';
+import { Bell, Search, Loader2, RefreshCw, Trash2, Download } from 'lucide-react';
 import { borradores, type TasacionItem } from '../data/mock';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
 import { apiFetch, getCookie } from '../lib/api';
-import { estimarPrecioVenta } from '../lib/mercado';
+import { estimarPrecioVenta, valorM2Alquiler, TASA_ARS_USD } from '../lib/mercado';
 import { getUser, getUsuarioId, cerrarSesion, syncSessionAcrossTabs, type SesionUsuario } from '../lib/session';
+import { generarInformePdf } from '../lib/generar-pdf';
 
 type Section = 'tasaciones' | 'borradores' | 'indices' | 'config';
 type CargaStatus = 'loading' | 'error' | 'ready';
@@ -41,6 +42,7 @@ export const DashboardApp = () => {
   const [borradoresState, setBorradoresState] = useState<TasacionItem[]>(borradores);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const confirmTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -75,14 +77,20 @@ export const DashboardApp = () => {
             const precioIA = p.precio_estimado_ia != null ? Number(p.precio_estimado_ia) : null;
             let value: string;
             if (esAlq) {
-              value =
-                precioIA != null && precioIA > 0
-                  ? `$${precioIA.toLocaleString('es-AR')}`
-                  : typeof p.precio === 'number' && p.precio > 0
-                    ? `$${p.precio.toLocaleString('es-AR')}`
-                    : 'A tasar';
+              const supCubAlq = Number(p.superficie_cubierta) || 0;
+              const precioIA = Number(p.precio_estimado_ia);
+              if (precioIA > 0) {
+                const alqMensualUsd = Math.round(precioIA * 0.045 / 12);
+                value = `$${alqMensualUsd.toLocaleString('es-AR')} USD/mes`;
+              } else if (supCubAlq > 0) {
+                const alqMensualUsd = Math.round(supCubAlq * valorM2Alquiler(p.barrio || p.ciudad));
+                value = `$${alqMensualUsd.toLocaleString('es-AR')} USD/mes`;
+              } else {
+                value = 'A tasar';
+              }
             } else {
-              if (precioIA != null && precioIA > 0) {
+              const precioIA = Number(p.precio_estimado_ia);
+              if (precioIA > 0) {
                 value = `$${Math.round(precioIA).toLocaleString('es-AR')}`;
               } else {
                 const supCub = Number(p.superficie_cubierta) || 0;
@@ -179,6 +187,29 @@ export const DashboardApp = () => {
     } finally {
       setConfirmingId(null);
       setDeletingId(null);
+    }
+  };
+
+  const handleDownloadPdf = async (t: TasacionItem) => {
+    setDownloadingId(t.id);
+    try {
+      const usuarioId = getUsuarioId();
+      const qs = usuarioId ? `&usuario_id=${encodeURIComponent(usuarioId)}` : '';
+      const { ok, data: resData } = await apiFetch(
+        `/Apis/ObtenerTasacion?id=${encodeURIComponent(t.id)}${qs}`,
+        {},
+        8000
+      );
+      if (!ok || !resData) {
+        alert('No se pudieron cargar los datos para generar el PDF.');
+        return;
+      }
+      await generarInformePdf(resData, getUser()?.nombre);
+    } catch (error) {
+      console.error('Error al generar PDF', error);
+      alert('No se pudo generar el PDF. Intentá de nuevo.');
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -339,8 +370,24 @@ export const DashboardApp = () => {
                             </div>
                             <h3 className="font-semibold text-lg text-slate-800 line-clamp-2 leading-snug">{t.address}</h3>
                           </div>
-                          <div className="mt-6 pt-4 border-t border-slate-100">
+                          <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
                             <p className="text-2xl font-bold text-slate-900">{t.value}</p>
+                            {t.status === 'completada' && (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDownloadPdf(t); }}
+                                disabled={downloadingId === t.id}
+                                className="p-2 rounded-lg text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 transition-all disabled:opacity-50"
+                                aria-label="Descargar informe PDF"
+                                title="Descargar PDF"
+                              >
+                                {downloadingId === t.id ? (
+                                  <Loader2 className="w-5 h-5 animate-spin" />
+                                ) : (
+                                  <Download className="w-5 h-5" />
+                                )}
+                              </button>
+                            )}
                           </div>
                         </Card>
                       </a>
