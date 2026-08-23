@@ -5,9 +5,17 @@ import { estimarPrecioVenta } from '../../lib/mercado';
 const IA_URL = import.meta.env.IA_URL || process.env.IA_URL || 'http://127.0.0.1:8000';
 const IA_TIMEOUT_MS = 15000;
 
+const normalizar = (valor) => String(valor || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .trim();
+
 const tiene = (comodidades, nombre) =>
   Array.isArray(comodidades) &&
-  comodidades.some((a) => String(a).toLowerCase() === nombre.toLowerCase());
+  comodidades.some((a) => normalizar(a) === normalizar(nombre));
+
+const IA_API_KEY = import.meta.env.INTERNAL_API_KEY || process.env.INTERNAL_API_KEY || '';
 
 async function llamarAI(payload) {
   const controller = new AbortController();
@@ -15,7 +23,10 @@ async function llamarAI(payload) {
   try {
     const res = await fetch(`${IA_URL}/estimar-precio`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': IA_API_KEY,
+      },
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
@@ -52,7 +63,12 @@ export async function POST({ request }) {
       superficie_cubierta,
       superficie_total,
       piso,
+      antiguedad,
+      anios_de_antiguedad,
+      orientacion,
+      disposicion,
       comodidades,
+      fotos = [],
       latitud,
       longitud,
       usuario_id,
@@ -84,44 +100,49 @@ export async function POST({ request }) {
       superficie_total_m2: superficieTotal || null,
       superficie_cubierta_m2: superficieCubierta || null,
       estado: Number(estadoGeneral) >= 8 ? 'A estrenar' : 'Usado',
-      anios_de_antiguedad: null,
-      piso: piso ? Number(piso) : null,
-      orientacion: null,
-      disposicion: null,
+      anios_de_antiguedad: antiguedad != null ? Number(antiguedad) : (anios_de_antiguedad != null ? Number(anios_de_antiguedad) : null),
+      piso: piso ? parseInt(String(piso).replace(/[^0-9]/g, ''), 10) || null : null,
+      orientacion: orientacion || null,
+      disposicion: disposicion || null,
       cochera: tiene(comodidades, 'Cochera'),
       balcon: tiene(comodidades, 'Balcón') || tiene(comodidades, 'Balcon'),
-      terraza: false,
+      terraza: tiene(comodidades, 'Terraza'),
       patio: tiene(comodidades, 'Patio'),
       pileta: tiene(comodidades, 'Pileta'),
       parrilla: tiene(comodidades, 'Parrilla'),
       seguridad_24hs: tiene(comodidades, 'Seguridad 24h'),
-      ascensor: false,
+      ascensor: tiene(comodidades, 'Ascensor'),
       expensas_ars: Number(expensas) || 0,
-      baulera: false,
+      baulera: tiene(comodidades, 'Baulera'),
       sum: tiene(comodidades, 'SUM'),
-      seguridad_tipo: 'Ninguno',
-      camara: false,
+      seguridad_tipo: tiene(comodidades, 'Seguridad 24h') ? '24hs' : 'Ninguno',
+      camara: tiene(comodidades, 'Cámaras') || tiene(comodidades, 'Camaras'),
       gym: tiene(comodidades, 'Gimnasio'),
-      lounge: false,
-      laundry: false,
+      lounge: tiene(comodidades, 'Lounge'),
+      laundry: tiene(comodidades, 'Laundry'),
       tipo_operacion: String(tipo_operacion || 'venta').toLowerCase(),
       ...(latitud != null && latitud !== '' ? { latitud: Number(latitud) } : {}),
       ...(longitud != null && longitud !== '' ? { longitud: Number(longitud) } : {}),
     };
 
     const esAlquiler = String(tipo_operacion || 'venta').toLowerCase() === 'alquiler';
+
     let resultadoIA = null;
     let precioEstimadoUsd = null;
 
-    if (esAlquiler) {
-      resultadoIA = await llamarAI(payloadIA);
-      precioEstimadoUsd = resultadoIA?.precio_estimado_usd ?? null;
-    }
+    // Llamar a la IA para VENTA y ALQUILER
+    resultadoIA = await llamarAI(payloadIA);
+    precioEstimadoUsd = resultadoIA?.precio_estimado_usd ?? null;
 
     let precioFinal;
-    if (esAlquiler) {
-      precioFinal = precioEstimadoUsd != null ? Math.round(precioEstimadoUsd) : Number(precio) || 0;
+    if (precioEstimadoUsd != null) {
+      // IA respondió: usar su estimación
+      precioFinal = Math.round(precioEstimadoUsd);
+    } else if (esAlquiler) {
+      // IA no disponible para alquiler: estimación local
+      precioFinal = Number(precio) || 0;
     } else {
+      // IA no disponible para venta: fórmula por m²
       precioFinal = estimarPrecioVenta(
         superficieCubierta,
         Math.max(superficieTotal - superficieCubierta, 0),
@@ -161,7 +182,7 @@ export async function POST({ request }) {
           ${tipo_operacion},
           ${tipoPropiedadDB},
           ${precioFinal},
-          ${esAlquiler ? precioEstimadoUsd : null},
+          ${precioEstimadoUsd != null ? Math.round(precioEstimadoUsd) : null},
           ${moneda},
           ${expensas},
           ${superficieTotal || null},
@@ -179,6 +200,30 @@ export async function POST({ request }) {
         RETURNING *;
       `;
       publicacionGuardada = nuevaPublicacion[0];
+
+      try {
+        await sql`
+          CREATE TABLE IF NOT EXISTS tasacion_detalles (
+            id_publicacion BIGINT PRIMARY KEY REFERENCES publicaciones(id_publicacion) ON DELETE CASCADE,
+            datos JSONB NOT NULL DEFAULT '{}'::jsonb
+          )
+        `;
+        const detalles = JSON.stringify({
+          antiguedad: payloadIA.anios_de_antiguedad,
+          orientacion: payloadIA.orientacion,
+          disposicion: payloadIA.disposicion,
+          estadoGeneral: Number(estadoGeneral) || null,
+          comodidades: Array.isArray(comodidades) ? comodidades : [],
+          fotos: Array.isArray(fotos) ? fotos : [],
+        });
+        await sql`
+          INSERT INTO tasacion_detalles (id_publicacion, datos)
+          VALUES (${publicacionGuardada.id_publicacion}, ${detalles}::jsonb)
+          ON CONFLICT (id_publicacion) DO UPDATE SET datos = EXCLUDED.datos
+        `;
+      } catch (detailError) {
+        console.warn('No se pudo guardar el detalle ampliado de la tasación:', detailError.message);
+      }
     } catch (error) {
       console.error("No se pudo guardar la publicación (igual se devuelve la estimación):", error.message);
     }
@@ -191,7 +236,7 @@ export async function POST({ request }) {
           : "Tasación estimada (no guardada: usuario inválido o servicio de datos no disponible)",
         data: {
           id: publicacionGuardada?.id_publicacion ?? null,
-          precio_estimado_usd: esAlquiler && precioEstimadoUsd != null ? Math.round(precioEstimadoUsd) : null,
+          precio_estimado_usd: precioEstimadoUsd != null ? Math.round(precioEstimadoUsd) : null,
           coordenadas: resultadoIA?.coordenadas ?? null,
           saved: Boolean(publicacionGuardada),
         },
