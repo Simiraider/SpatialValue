@@ -157,8 +157,101 @@
   justify-content: center;
 }
 
+.ReportePage-downloadGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .ReportePage-downloadIcon {
   width: 1rem;
   height: 1rem;
   margin-right: 0.5rem;
+}
+
+.ReportePage-downloadSize {
+  font-size: 0.65rem;
+  color: #94a3b8;
+}
+
+.ReportePage-comparables {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.ReportePage-comparableCard {
+  padding: 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  text-decoration: none;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ReportePage-comparableCard:hover {
+  border-color: #0891b2;
+  box-shadow: 0 4px 12px rgba(8, 145, 178, 0.1);
+  transform: translateY(-1px);
+}
+
+.ReportePage-comparableHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ReportePage-comparableBadge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  background: #e0f2fe;
+  color: #0369a1;
+  border-radius: 9999px;
+}
+
+.ReportePage-comparableM2 {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.ReportePage-comparableDir {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #1e293b;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ReportePage-comparableFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: auto;
+}
+
+.ReportePage-comparablePrice {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0891b2;
+}
+
+.ReportePage-comparableM2Price {
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.ReportePage-noComparables {
+  text-align: center;
+  padding: 2rem;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 0.75rem;
 }

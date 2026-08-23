@@ -45,10 +45,10 @@ export function calcularValores(data: DatosTasacion): ValoresCalculados {
   const expensas = expensasDeclaradas > 0 ? expensasDeclaradas : estimarExpensas(data.comodidades);
 
   if (alquiler) {
-    const valorUsd = precioIA > 0 ? precioIA : Math.round(supCub * valorM2Alquiler(barrio));
+    const valorUsd = precioIA > 0 ? Math.round(precioIA * 0.045 / 12) : Math.round(supCub * valorM2Alquiler(barrio));
     const valorArs = Math.round(valorUsd * TASA_ARS_USD);
     return {
-      precioIA,
+      precioIA: valorUsd,
       supCub,
       supDesc,
       supTotal,
@@ -62,6 +62,23 @@ export function calcularValores(data: DatosTasacion): ValoresCalculados {
   }
 
   const m2Venta = valorM2Venta(barrio);
+  if (precioIA > 0) {
+    const valorUsd = Math.round(precioIA);
+    const valorArs = Math.round(valorUsd * TASA_ARS_USD);
+    const valorM2Calculado = supCub > 0 ? Math.round(valorUsd / supCub) : m2Venta;
+    return {
+      precioIA,
+      supCub,
+      supDesc,
+      supTotal,
+      esIA: true,
+      valorUsd,
+      valorArs,
+      valorM2: valorM2Calculado,
+      expensas,
+      expensasDeclaradas,
+    };
+  }
   const valorUsd = estimarPrecioVenta(supCub, supDesc, barrio);
   const valorArs = Math.round(valorUsd * TASA_ARS_USD);
   return {

@@ -34,17 +34,21 @@ export async function GET({ url, request }) {
 
     await sql`
       CREATE TABLE IF NOT EXISTS tasacion_detalles (
-        id_publicacion BIGINT PRIMARY KEY REFERENCES publicaciones(id_publicacion) ON DELETE CASCADE,
+        id_publicacion TEXT PRIMARY KEY,
         datos JSONB NOT NULL DEFAULT '{}'::jsonb
       )
     `;
+
+    try {
+      await sql`ALTER TABLE tasacion_detalles ALTER COLUMN id_publicacion TYPE TEXT USING id_publicacion::text`;
+    } catch (e) {}
 
     const publicaciones = await sql`
       SELECT p.*, u."nombre" as autor, d.datos AS detalles
       FROM "publicaciones" p
       JOIN "usuarios" u ON p.id_usuario = u.id_usuario
-      LEFT JOIN tasacion_detalles d ON d.id_publicacion = p.id_publicacion
-      WHERE p.id_publicacion = ${id} AND p.id_usuario = ${usuarioActual}
+      LEFT JOIN tasacion_detalles d ON d.id_publicacion = p.id_publicacion::text
+      WHERE p.id_publicacion = ${id}::uuid AND p.id_usuario = ${usuarioActual}
     `;
 
     if (publicaciones.length === 0) {

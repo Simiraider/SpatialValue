@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+
 interface MapaReporteProps {
   lat?: number | null;
   lng?: number | null;
@@ -6,36 +8,73 @@ interface MapaReporteProps {
 
 export const MapaReporte = ({ lat, lng, direccion }: MapaReporteProps) => {
   const hasCoords = lat != null && lng != null && lat !== 0 && lng !== 0;
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
+    hasCoords ? { lat: lat!, lng: lng! } : null
+  );
+  const [cargando, setCargando] = useState(false);
 
-  if (!hasCoords) {
+  useEffect(() => {
+    if (hasCoords) {
+      setCoords({ lat: lat!, lng: lng! });
+      return;
+    }
+    if (!direccion) return;
+
+    setCargando(true);
+    const query = `${direccion}, Ciudad de Buenos Aires, Argentina`;
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=ar`, {
+      headers: { 'User-Agent': 'SpatialValue/1.0 (tasaciones)' },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.length > 0) {
+          setCoords({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setCargando(false));
+  }, [lat, lng, direccion]);
+
+  const mapsUrl = coords
+    ? `https://www.google.com/maps?q=${coords.lat},${coords.lng}&z=15&t=h`
+    : `https://www.google.com/maps?q=${encodeURIComponent(direccion || '')},Ciudad+de+Buenos+Aires&z=15&t=h`;
+
+  const embedSrc = coords
+    ? `https://maps.google.com/maps?q=${coords.lat},${coords.lng}&z=15&output=embed`
+    : `https://maps.google.com/maps?q=${encodeURIComponent(direccion || '')},Ciudad+de+Buenos+Aires&z=15&output=embed`;
+
+  if (cargando) {
     return (
       <div className="ReportePage-mapPlaceholder">
-        <p>Coordenadas no disponibles para {direccion || 'esta propiedad'}.</p>
+        <p style={{ color: '#94a3b8' }}>Buscando ubicación...</p>
       </div>
     );
   }
 
-  const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}&z=15&t=h`;
-
   return (
-    <div className="ReportePage-mapPlaceholder" style={{ flexDirection: 'column', gap: '0.75rem' }}>
+    <div style={{ borderRadius: '0.5rem', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
       <iframe
         title={`Mapa de ${direccion || 'la propiedad'}`}
         width="100%"
-        height="260"
-        style={{ border: 0, borderRadius: '0.5rem' }}
+        height="280"
+        style={{ border: 0, display: 'block' }}
         loading="lazy"
         referrerPolicy="no-referrer-when-downgrade"
-        src={`https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3283.${Math.round(lng! * 1000)}!2d${lng}!3d${lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2z${lat},${lng}!5e0!3m2!1ses!2sar!4v1`}
+        src={embedSrc}
       />
-      <a
-        href={mapsUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ fontSize: '0.8rem', color: '#0891b2', textDecoration: 'underline' }}
-      >
-        Abrir en Google Maps
-      </a>
+      <div style={{ padding: '0.75rem', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+          {direccion || (coords ? `${coords.lat}, ${coords.lng}` : '')}
+        </span>
+        <a
+          href={mapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ fontSize: '0.8rem', color: '#0891b2', textDecoration: 'underline', fontWeight: 500 }}
+        >
+          Abrir en Google Maps ↗
+        </a>
+      </div>
     </div>
   );
 };
