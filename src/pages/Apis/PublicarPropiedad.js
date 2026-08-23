@@ -35,8 +35,6 @@ async function geocodificar(direccion, barrio, ciudad) {
   return null;
 }
 
-const IA_API_KEY = import.meta.env.INTERNAL_API_KEY || process.env.INTERNAL_API_KEY || '';
-
 async function llamarAI(payload) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), IA_TIMEOUT_MS);
@@ -160,15 +158,13 @@ export async function POST({ request }) {
     resultadoIA = await llamarAI(payloadIA);
     precioEstimadoUsd = resultadoIA?.precio_estimado_usd ?? null;
 
-    const RENTABILIDAD_ANUAL = 0.045;
     let precioFinal;
     if (precioEstimadoUsd != null) {
       precioFinal = Math.round(precioEstimadoUsd);
     } else if (esAlquiler) {
       precioFinal = Number(precio) || 0;
     } else {
-      precioEstimadoUsd = precioIA;
-      precioFinal = precioIA != null ? Math.round(precioIA) : estimarPrecioVenta(
+      precioFinal = estimarPrecioVenta(
         superficieCubierta,
         Math.max(superficieTotal - superficieCubierta, 0),
         barrio || ciudad

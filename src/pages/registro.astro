@@ -189,10 +189,11 @@ import "../styles/auth.css";
       const data = await res.json();
 
       if (res.ok && data?.success) {
-        setMensaje("¡Te enviamos un email! Verificá tu casilla para activar la cuenta.", "#10b981");
+        setMensaje("¡Cuenta creada con éxito! Redirigiendo...", "#10b981");
+        setUser({ nombre: data.username, id: data.id });
         setTimeout(() => {
-          window.location.href = '/login';
-        }, 3000);
+          window.location.href = '/dashboard';
+        }, 1500);
       } else {
         setMensaje(`${data?.error || 'Error al crear la cuenta'}`, "#ef4444");
       }

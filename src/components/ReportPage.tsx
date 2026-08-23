@@ -147,14 +147,6 @@ export const ReportPage = () => {
       );
 
       if (!ok || !resData) {
-        const draftStr = sessionStorage.getItem('tasacion-draft');
-        if (draftStr) {
-          const draft = JSON.parse(draftStr);
-          if (draft.id === urlId) {
-            setData(draft);
-            return;
-          }
-        }
         setError(status === 401 ? 'session' : status === 404 ? 'notfound' : 'server');
         return;
       }

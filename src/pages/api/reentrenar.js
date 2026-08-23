@@ -1,7 +1,6 @@
 export const prerender = false;
 
 const IA_URL = import.meta.env.IA_URL || process.env.IA_URL || 'http://127.0.0.1:8000';
-const IA_API_KEY = import.meta.env.INTERNAL_API_KEY || process.env.INTERNAL_API_KEY || '';
 
 export async function GET() {
   const controller = new AbortController();
@@ -9,10 +8,7 @@ export async function GET() {
   try {
     const res = await fetch(`${IA_URL}/reentrenar`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-KEY': IA_API_KEY,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: '{}',
       signal: controller.signal,
     });
