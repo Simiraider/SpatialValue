@@ -86,7 +86,7 @@ export function calcularValores(data: DatosTasacion): ValoresCalculados {
     supCub,
     supDesc,
     supTotal,
-    esIA: false,
+    esIA: precioIA > 0,
     valorUsd,
     valorArs,
     valorM2: m2Venta,

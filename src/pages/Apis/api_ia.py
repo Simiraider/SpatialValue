@@ -6,13 +6,17 @@ import pandas as pd
 import psycopg2
 from psycopg2 import pool
 from dotenv import load_dotenv
-from fastapi import FastAPI
+
 from pydantic import BaseModel
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
+
+from fastapi import FastAPI, Depends, HTTPException, Security
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import APIKeyHeader
 
 BASE_PATH = Path(__file__).resolve().parent.parent.parent.parent
 ENV_PATH = BASE_PATH / ".env.local"
@@ -64,6 +68,26 @@ COLUMNAS_NUMERICAS = [
 ]
 
 app = FastAPI(title="API IA Estimador")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:4321",
+        "http://127.0.0.1:4321",
+        "https://spatialvalue.vercel.app",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+API_KEY_SECRET = os.getenv("INTERNAL_API_KEY", "Clave_ia")
+api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=False)
+
+async def validar_api_key(api_key: str = Security(api_key_header)):
+    if api_key != API_KEY_SECRET:
+        raise HTTPException(status_code=403, detail="Acceso denegado: API Key inválida")
+
 db_pool = psycopg2.pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
 
 modelo_v4 = None
@@ -161,32 +185,32 @@ except Exception as e:
 class PropiedadInput(BaseModel):
     tipo_propiedad: str
     barrio_zona: str
-    ambientes: int | None
-    dormitorios: int | None
-    banos: int | None
-    superficie_total_m2: int | None
-    superficie_cubierta_m2: int | None
+    ambientes: int | None = None
+    dormitorios: int | None = None
+    banos: int | None = None
+    superficie_total_m2: int | None = None
+    superficie_cubierta_m2: int | None = None
     estado: str
-    anios_de_antiguedad: int | None
-    piso: int | None
-    orientacion: str | None
-    disposicion: str | None
-    cochera: bool
-    balcon: bool
-    terraza: bool
-    patio: bool
-    pileta: bool
-    parrilla: bool
-    seguridad_24hs: bool
-    ascensor: bool
-    expensas_ars: int
-    baulera: bool
-    sum: bool
-    seguridad_tipo: str
-    camara: bool
-    gym: bool
-    lounge: bool
-    laundry: bool
+    anios_de_antiguedad: int | None = None
+    piso: int | None = None
+    orientacion: str | None = None
+    disposicion: str | None = None
+    cochera: bool = False
+    balcon: bool = False
+    terraza: bool = False
+    patio: bool = False
+    pileta: bool = False
+    parrilla: bool = False
+    seguridad_24hs: bool = False
+    ascensor: bool = False
+    expensas_ars: int = 0
+    baulera: bool = False
+    sum: bool = False
+    seguridad_tipo: str = "Ninguno"
+    camara: bool = False
+    gym: bool = False
+    lounge: bool = False
+    laundry: bool = False
     latitud: float | None = None
     longitud: float | None = None
 
@@ -199,7 +223,10 @@ def health():
     }
 
 
-@app.post("/estimar-precio")
+@app.post(
+    "/estimar-precio",
+    dependencies=[Depends(validar_api_key)],
+)
 def estimar_precio(propiedad: PropiedadInput):
     latitud = propiedad.latitud if propiedad.latitud is not None else COORDENADAS_DEFAULT["lat"]
     longitud = propiedad.longitud if propiedad.longitud is not None else COORDENADAS_DEFAULT["lng"]
@@ -257,7 +284,7 @@ def estimar_precio(propiedad: PropiedadInput):
     }
 
 
-@app.post("/reentrenar")
+@app.post("/reentrenar", dependencies=[Depends(validar_api_key)])
 def reentrenar_api():
     try:
         entrenar_modelo()

@@ -74,6 +74,7 @@ export const DashboardApp = () => {
           .filter((p: any) => p && p.id_publicacion !== undefined && p.id_publicacion !== null)
           .map((p: any) => {
             const esAlq = String(p.tipo_operacion).toLowerCase() === 'alquiler';
+            const precioIA = p.precio_estimado_ia != null ? Number(p.precio_estimado_ia) : null;
             let value: string;
             if (esAlq) {
               const supCubAlq = Number(p.superficie_cubierta) || 0;
