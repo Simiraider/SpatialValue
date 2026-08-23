@@ -4,12 +4,20 @@ import argon2 from 'argon2';
 
 export async function POST({ request }) {
   try {
-    const { usuario, contraseña } = await request.json();
+    const { usuario, email: emailField, contraseña } = await request.json();
+    const busqueda = usuario || emailField;
+
+    if (!busqueda || !contraseña) {
+      return new Response(
+        JSON.stringify({ error: "Faltan campos requeridos" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
     const usuarios = await sql`
       SELECT "id_usuario", "nombre", "contraseña", "email_verificado" 
       FROM "usuarios" 
-      WHERE "nombre" = ${usuario} OR "email" = ${usuario}
+      WHERE "nombre" = ${busqueda} OR "email" = ${busqueda}
     `;
 
     if (usuarios.length === 0) {
@@ -35,10 +43,8 @@ export async function POST({ request }) {
         JSON.stringify({ error: "Usuario o contraseña incorrectos" }), 
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
-    }
-
-    const response = new Response(
-      JSON.stringify({ success: true, message: "Sesión iniciada" }), 
+    }    const response = new Response(
+      JSON.stringify({ success: true, message: "Sesión iniciada", username: user.nombre, id: user.id_usuario }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
 

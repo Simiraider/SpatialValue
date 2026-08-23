@@ -18,7 +18,7 @@ from fastapi import FastAPI, Depends, HTTPException, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
 
-BASE_PATH = Path(__file__).resolve().parent.parent.parent.parent
+BASE_PATH = Path(__file__).resolve().parent.parent
 ENV_PATH = BASE_PATH / ".env.local"
 load_dotenv(dotenv_path=ENV_PATH)
 

@@ -6,7 +6,7 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "concurrently \"python src/pages/Apis/api_ia.py\" \"astro dev\"",
+    "dev": "concurrently \"python server/api_ia.py\" \"astro dev\"",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",

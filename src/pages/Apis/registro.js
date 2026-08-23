@@ -42,15 +42,20 @@ export async function POST({ request }) {
     await sql`
       INSERT INTO "usuarios" ("nombre", "contraseña", "email", "token_verificacion", "email_verificado") 
       VALUES (${usuario}, ${hash}, ${email}, ${tokenVerificacion}, FALSE)
-    `;
-
-    await enviarMailVerificacion(email, usuario, tokenVerificacion);
+    `;    let emailEnviado = false;
+    try {
+      emailEnviado = await enviarMailVerificacion(email, usuario, tokenVerificacion);
+    } catch (emailError) {
+      console.error('Error al enviar email de verificación:', emailError.message);
+    }
 
     return new Response(
       JSON.stringify({ 
-        success: true, 
-        message: "Usuario registrado. Revisa tu casilla de Mailtrap para confirmar la cuenta."
-      }), 
+        success: true,
+        message: emailEnviado
+          ? "Usuario registrado. Revisa tu casilla para confirmar la cuenta."
+          : "Usuario registrado. No pudimos enviar el email de verificación, pero tu cuenta fue creada."
+      }),
       { status: 201, headers: { "Content-Type": "application/json" } }
     );
 
