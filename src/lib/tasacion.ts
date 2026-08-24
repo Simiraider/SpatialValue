@@ -96,15 +96,12 @@ export function calcularValores(data: DatosTasacion): ValoresCalculados {
 }
 
 export function estadoConservacion(n: number): string {
-  if (n >= 9) return 'Muy bueno — A estrenar';
+  if (n >= 9) return 'Muy bueno';
   if (n >= 7) return 'Bueno';
   if (n >= 4) return 'Regular';
   return 'A refaccionar';
 }
 
-export function antiguedadEstimada(n: number): string {
-  if (n >= 9) return 'Menos de 5 años (est.)';
-  if (n >= 7) return 'Entre 5 y 15 años (est.)';
-  if (n >= 4) return 'Entre 15 y 30 años (est.)';
-  return 'Más de 30 años (est.)';
+export function antiguedadInfo(_n: number): string {
+  return 'No informada. Debe verificarse con documentación del inmueble.';
 }
