@@ -171,6 +171,21 @@ export async function POST({ request }) {
       );
     }
 
+    // Auto-crear usuario en Neon si no existe (para evitar foreign key error)
+    try {
+      const existe = await sql`SELECT "id_usuario" FROM "usuarios" WHERE "id_usuario" = ${idUsuarioFinal}`;
+      if (existe.length === 0) {
+        await sql`
+          INSERT INTO "usuarios" ("id_usuario", "nombre", "email", "contraseña", "email_verificado")
+          VALUES (${idUsuarioFinal}, 'Usuario', 'usuario@temp.com', 'supabase-managed', TRUE)
+          ON CONFLICT ("id_usuario") DO NOTHING
+        `;
+        console.log('Usuario auto-creado en Neon:', idUsuarioFinal);
+      }
+    } catch (userError) {
+      console.warn('No se pudo auto-crear usuario:', userError.message);
+    }
+
     let publicacionGuardada = null;
     try {
       const nuevaPublicacion = await sql`
