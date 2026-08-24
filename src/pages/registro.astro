@@ -115,6 +115,7 @@ import "../styles/auth.css";
 
 <script>
   import { setUser } from '../lib/session';
+  import { supabase } from '../lib/supabase';
 
   const form = document.getElementById("register-form") as HTMLFormElement | null;
   const pwd = document.getElementById("register-password") as HTMLInputElement | null;
@@ -166,39 +167,47 @@ import "../styles/auth.css";
     try {
       setMensaje("Registrando usuario...", "#06b6d4");
 
-      const body = {
-        usuario: `${nombre!.value} ${apellido!.value}`.trim(),
-        contraseña: pwd!.value,
-        email: email!.value.trim()
-      };
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const nombreCompleto = `${nombre!.value} ${apellido!.value}`.trim();
+      const emailValue = email!.value.trim();
 
-      let res: Response;
-      try {
-        res = await fetch('/Apis/registro', {
+      // 1. Crear usuario en Supabase Auth (manda email de verificación automáticamente)
+      console.log('[REGISTRO] Intentando signUp con email:', emailValue);
+      const { data, error } = await supabase.auth.signUp({
+        email: emailValue,
+        password: pwd!.value,
+        options: {
+          data: { nombre: nombreCompleto },
+        },
+      });
+      console.log('[REGISTRO] Supabase respuesta:', { user: data?.user?.id, error: error?.message, session: data?.session });
+
+      if (error) {
+        console.error('[REGISTRO] Supabase error:', error);
+        const msg = error.message.includes('already registered')
+          ? 'Este email ya está registrado.'
+          : error.message;
+        setMensaje(msg, "#ef4444");
+        return;
+      }
+
+      // 2. Crear usuario en Neon para las publicaciones
+      if (data.user) {
+        await fetch('/Apis/registro', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-          signal: controller.signal
+          body: JSON.stringify({
+            usuario: nombreCompleto,
+            email: emailValue,
+            supabase_id: data.user.id,
+          }),
         });
-      } finally {
-        clearTimeout(timeoutId);
       }
 
-      const data = await res.json();
-
-      if (res.ok && data?.success) {
-        setMensaje("¡Te enviamos un email! Verificá tu casilla para activar la cuenta.", "#10b981");
-        setTimeout(() => {
-          window.location.href = '/login';
-        }, 3000);
-      } else {
-        setMensaje(`${data?.error || 'Error al crear la cuenta'}`, "#ef4444");
-      }
+      setMensaje("¡Te enviamos un email! Verificá tu casilla para activar la cuenta.", "#10b981");
+      setTimeout(() => { window.location.href = '/login'; }, 3000);
 
     } catch (error) {
-      console.error("Error en la petición:", error);
+      console.error("Error en el registro:", error);
       setMensaje("Error de conexión con el servidor.", "#ef4444");
     } finally {
       if (submitBtn) {

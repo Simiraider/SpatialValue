@@ -84,6 +84,7 @@ import "../styles/auth.css";
 
   <script>
     import { setUser } from '../lib/session';
+    import { supabase } from '../lib/supabase';
 
     const form = document.getElementById('loginForm') as HTMLFormElement;
     const mensajeEstado = document.getElementById('mensaje-estado') as HTMLElement;
@@ -123,17 +124,11 @@ import "../styles/auth.css";
 
     form?.addEventListener('submit', async (e) => {
       e.preventDefault();
-
       if (!validar()) return;
 
       const emailElement = document.getElementById('emailInput') as HTMLInputElement;
       const passwordElement = document.getElementById('passwordInput') as HTMLInputElement;
       const submitBtn = document.getElementById('login-submit') as HTMLButtonElement | null;
-
-      const body = {
-        email: emailElement.value.trim(),
-        contraseña: passwordElement.value
-      };
 
       if (submitBtn) {
         submitBtn.disabled = true;
@@ -142,30 +137,36 @@ import "../styles/auth.css";
 
       try {
         setMensaje("Verificando credenciales...", "#06b6d4");
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-        let res: Response;
-        try {
-          res = await fetch('/Apis/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-            signal: controller.signal
-          });
-        } finally {
-          clearTimeout(timeoutId);
+        // Login con Supabase Auth
+        console.log('[LOGIN] Intentando signIn con email:', emailElement.value.trim());
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: emailElement.value.trim(),
+          password: passwordElement.value,
+        });
+        console.log('[LOGIN] Supabase respuesta:', { user: data?.user?.id, error: error?.message });
+
+        if (error) {
+          const msg = error.message.includes('Invalid login')
+            ? 'Email o contraseña incorrectos.'
+            : error.message.includes('Email not confirmed')
+              ? 'Verificá tu correo electrónico antes de iniciar sesión.'
+              : error.message;
+          setMensaje(msg, "#ef4444");
+          if (demoFallback) demoFallback.classList.remove('hidden');
+          return;
         }
 
-        const data = await res.json().catch(() => null);
-
-        if (res.ok && data?.success) {
+        if (data.user) {
           setMensaje("¡Éxito! Redirigiendo...", "#10b981");
-          setUser({ nombre: data.username, id: data.id });
+          setUser({
+            nombre: data.user.user_metadata?.nombre || data.user.email,
+            id: data.user.id,
+          });
+          // Guardar token de Supabase para las API calls
+          document.cookie = `sb-access-token=${data.session.access_token}; Path=/; Max-Age=3600; SameSite=Lax; Secure`;
+          document.cookie = `usuario_id=${data.user.id}; Path=/; Max-Age=3600; SameSite=Lax; Secure`;
           window.location.href = '/dashboard';
-        } else {
-          setMensaje(`${data?.error || 'Error al iniciar sesión'}`, "#ef4444");
-          if (demoFallback) demoFallback.classList.remove('hidden');
         }
       } catch (error) {
         console.error("Error en la petición:", error);
