@@ -5,6 +5,7 @@ import { chromium } from 'playwright';
 import { Pool } from '@neondatabase/serverless';
 
 const pool = new Pool({ connectionString: process.env.SpatialValueStorage_DATABASE_URL });
+const IA_URL = process.env.IA_URL || 'http://127.0.0.1:8000';
 
 // =========================================================================
 // 2. FUNCIONES AUXILIARES Y HELPER UTILS
@@ -90,23 +91,38 @@ const geocodificarDireccion = async (direccion, barrio) => {
 // 3. FLUJO PRINCIPAL DEL SCRAPER (MAIN ASYNC)
 // =========================================================================
 (async () => {
-    console.log("Iniciando scraper...");
-    
-    // ---------------------------------------------------------------------
-    // A. CONEXIÓN AL NAVEGADOR
-    // ---------------------------------------------------------------------
+    console.log("Iniciando scraper en servidor VPS...");
     let browser;
-    try {
-        browser = await chromium.connectOverCDP('http://localhost:9222');
-    } catch {
-        console.error('Error al conectar con Chrome via CDP (localhost:9222)');
-        process.exit(1);
-    }
-
-    const context = browser.contexts()[0];
-    const page = context.pages()[0] || await context.newPage();
 
     try {
+        // ---------------------------------------------------------------------
+        // A. CONEXIÓN AL NAVEGADOR VIA WEBSHARE PROXY
+        // ---------------------------------------------------------------------
+        browser = await chromium.launch({
+            headless: true,
+            proxy: {
+                server: process.env.WEBSHARE_PROXY_SERVER || 'http://p.webshare.io:80',
+                username: `${process.env.WEBSHARE_USER}-rotate`,
+                password: process.env.WEBSHARE_PASSWORD
+            }
+        });
+
+        const context = await browser.newContext({
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+        });
+
+        const page = await context.newPage();
+
+        // Bloqueo de multimedia para ahorrar ancho de banda del proxy
+        await page.route('**/*', (route) => {
+            const resource = route.request().resourceType();
+            if (['image', 'stylesheet', 'font', 'media'].includes(resource)) {
+                route.abort();
+            } else {
+                route.continue();
+            }
+        });
+
         const PAGINAS_MAXIMAS = 10; 
         let linksTotales = [];
 
@@ -133,7 +149,6 @@ const geocodificarDireccion = async (direccion, barrio) => {
                     console.log(`No se encontró listado en página ${pagina}, deteniendo paginación.`);
                     break;
                 }
-                await page.waitForTimeout(1000);
 
                 const linksPagina = await page.evaluate(() =>
                     Array.from(document.querySelectorAll('a[href]'))
@@ -179,18 +194,24 @@ const geocodificarDireccion = async (direccion, barrio) => {
             console.log(`[${i + 1}/${links.length}] Procesando ${id_propiedad}...`);
 
             const detailPage = await context.newPage();
+            await detailPage.route('**/*', (route) => {
+                if (['image', 'stylesheet', 'font', 'media'].includes(route.request().resourceType())) {
+                    route.abort();
+                } else {
+                    route.continue();
+                }
+            });
+
             try {
                 await detailPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 30000 });
                 await waitForAny(detailPage, ['[class*="price"]', '[class*="Price"]', '[data-qa="price"]'], 10000);
 
-                // ESPERA ASÍNCRONA POR SECCIÓN DE CALIFICACIÓN/ANUNCIANTE
                 await detailPage.waitForSelector('[class*="scoreCard"], [class*="scoreLevel"], [class*="score-title"]', { timeout: 3000 }).catch(() => {});
 
                 // ---------------------------------------------------------
-                // EXTRACCIÓN DE DATOS DESDE EL DOM DE LA PÁGINA (EVALUATE)
+                // EXTRACCIÓN COMPLETA DESDE EL DOM
                 // ---------------------------------------------------------
                 const data = await detailPage.evaluate(() => {
-                    // DESPLEGAR SECCIONES OCULTAS ("VER MÁS")
                     document.querySelectorAll('button, a, div, span').forEach(el => {
                         const t = (el.innerText || '').toLowerCase();
                         if (t === 'ver más' || t === 'ver mas') {
@@ -203,7 +224,6 @@ const geocodificarDireccion = async (direccion, barrio) => {
                     const elTitulo = document.querySelector('h1,[data-qa="title"],[class*="TitleContainer"]');
                     const tituloTexto = elTitulo ? (elTitulo.innerText || elTitulo.textContent || '').trim().toLowerCase() : '';
 
-                    // CÓDIGO DEL ANUNCIANTE
                     let codigo_anunciante = null;
                     const matchCod = textoCompleto.match(/cód\.\s*del\s*anunciante:\s*([^|\n\r]+)/i);
                     if (matchCod) {
@@ -211,7 +231,6 @@ const geocodificarDireccion = async (direccion, barrio) => {
                         if (cand.length >= 2) codigo_anunciante = cand;
                     }
 
-                    // NIVEL DE CALIFICACIÓN DE ANUNCIANTE
                     let calificacion_usuarios = null;
                     const elScore = document.querySelector('div[class*="score-title"], div[class*="scoreTitle"], div[class*="scoreLevel"]');
                     if (elScore) {
@@ -224,7 +243,6 @@ const geocodificarDireccion = async (direccion, barrio) => {
                         if (matchNivel) calificacion_usuarios = parseInt(matchNivel[1], 10);
                     }
 
-                    // DIRECCIÓN Y BARRIO
                     let direccion = null;
                     let barrio_zona = 'Capital Federal';
                     const h4Ubicacion = document.querySelector('#map-section h4, div[class*="section-location-property"] h4');
@@ -241,7 +259,6 @@ const geocodificarDireccion = async (direccion, barrio) => {
                         }
                     }
 
-                    // TIPO DE PROPIEDAD
                     let tipo_propiedad = 'Casa';
                     if (window.location.href.includes('/departamentos-') || tituloTexto.startsWith('departamento')) {
                         tipo_propiedad = 'Departamento';
@@ -249,7 +266,6 @@ const geocodificarDireccion = async (direccion, barrio) => {
                         tipo_propiedad = 'PH';
                     }
 
-                    // COORDENADAS DESDE SCRIPTS JSON EN EL HTML
                     let latitud = null;
                     let longitud = null;
                     const scripts = Array.from(document.querySelectorAll('script'));
@@ -266,7 +282,6 @@ const geocodificarDireccion = async (direccion, barrio) => {
                         }
                     }
 
-                    // CARACTERÍSTICAS TÉCNICAS (METROS, AMBIENTES, ETC)
                     let superficie_total = null;
                     let superficie_cubierta = null;
                     let ambientes = null;
@@ -330,7 +345,6 @@ const geocodificarDireccion = async (direccion, barrio) => {
                     if (!superficie_total && superficie_cubierta) superficie_total = superficie_cubierta;
                     if (!superficie_cubierta && superficie_total) superficie_cubierta = superficie_total;
 
-                    // PRECIO BRUTO
                     let precioUSD = '';
                     const byQa = document.querySelector('[data-qa="price"]');
                     if (byQa) {
@@ -348,7 +362,6 @@ const geocodificarDireccion = async (direccion, barrio) => {
                         }
                     }
 
-                    // EXPENSAS BRUTAS
                     let expensas = 0;
                     const candidatosExp = [...document.querySelectorAll('[class*="xpens"],[class*="Expens"],[data-qa="expenses"]')];
                     for (const el of candidatosExp) {
@@ -425,28 +438,26 @@ const geocodificarDireccion = async (direccion, barrio) => {
                     longitud: data.longitud
                 };
 
-                // CONSULTA A MICROSERVICIO DE IA (PREDICCIÓN PRECIO / GPS)
+                // CONSULTA A MICROSERVICIO DE IA
                 let resultadoIA = {};
                 try {
-                    const resIA = 
-                        await fetch('http://127.0.0.1:8000/estimar-precio', {
+                    const resIA = await fetch(`${IA_URL}/estimar-precio`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-API-KEY': process.env.INTERNAL_API_KEY
+                            'X-API-KEY': process.env.INTERNAL_API_KEY || ''
                         },
                         body: JSON.stringify(propiedadData)
-                        });
+                    });
                     if (resIA.ok) resultadoIA = await resIA.json();
                 } catch (e) {}
 
-                // SISTEMA DE GEOCODIFICACIÓN TRIPLE FALLBACK
+                // GEOCODIFICACIÓN TRIPLE FALLBACK
                 let coordsFinales = (data.latitud && data.longitud)
                     ? { lat: data.latitud, lng: data.longitud }
                     : (resultadoIA.coordenadas || null);
 
                 if (!coordsFinales && data.direccion) {
-                    console.log(`Geocodificando por OpenStreetMap: ${data.direccion}...`);
                     coordsFinales = await geocodificarDireccion(data.direccion, data.barrio_zona);
                     await new Promise(r => setTimeout(r, 1000));
                 }
@@ -456,7 +467,7 @@ const geocodificarDireccion = async (direccion, barrio) => {
                     : null;
 
                 // ---------------------------------------------------------
-                // F. INSERCIÓN EN LA BASE DE DATOS (POSTGRESQL)
+                // F. INSERCIÓN EN LA BASE DE DATOS (POSTGRESQL / NEON)
                 // ---------------------------------------------------------
                 const query = `
                     INSERT INTO propiedades (
@@ -497,7 +508,7 @@ const geocodificarDireccion = async (direccion, barrio) => {
 
                 await pool.query(query, values);
                 nuevos++;
-                console.log(`Guardado: ${id_propiedad} | Precio USD: ${precio_real_usd} | GPS: ${coordsFinales ? 'SÍ' : 'NO'} | Anunciante: ${data.codigo_anunciante || 'N/A'} | Calificación: ${data.calificacion_usuarios ?? 'N/A'}`);
+                console.log(`Guardado: ${id_propiedad} | Precio USD: ${precio_real_usd} | GPS: ${coordsFinales ? 'SÍ' : 'NO'}`);
 
             } catch (err) {
                 console.error(`Error procesando ${id_propiedad}: ${err.message}`);
@@ -511,11 +522,11 @@ const geocodificarDireccion = async (direccion, barrio) => {
         console.log(`\nFinalizado. Nuevas propiedades guardadas: ${nuevos}`);
 
         // -----------------------------------------------------------------
-        // G. REENTRENAMIENTO AUTOMÁTICO DE MODELO IA Y FINALIZACIÓN
+        // G. REENTRENAMIENTO AUTOMÁTICO DE MODELO IA
         // -----------------------------------------------------------------
         if (nuevos > 0) {
             try {
-                await fetch('http://127.0.0.1:8000/reentrenar', {
+                await fetch(`${IA_URL}/reentrenar`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -529,9 +540,6 @@ const geocodificarDireccion = async (direccion, barrio) => {
     } catch (e) {
         console.error(`Error general en la ejecución: ${e.message}`);
     } finally {
-        // =========================================================================
-        // 4. LIBERACIÓN DE RECURSOS Y CIERRE
-        // =========================================================================
         if (browser) await browser.close();
         await pool.end();
     }
