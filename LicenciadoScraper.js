@@ -64,25 +64,28 @@ const calcularFechaPublicacion = (texto) => {
 // GEOCODIFICACIÓN DE RESPALDO CON API OPENSTREETMAP (NOMINATIM)
 const geocodificarDireccion = async (direccion, barrio) => {
     if (!direccion) return null;
-    
+
+    const mapboxToken = process.env.MAPBOX_ACCESS_TOKEN;
+    if (!mapboxToken) {
+        console.warn('MAPBOX_ACCESS_TOKEN no está definido en el entorno.');
+        return null;
+    }
+
     const queryTexto = `${direccion}, ${barrio || 'Capital Federal'}, Buenos Aires, Argentina`;
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryTexto)}`;
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(queryTexto)}.json?access_token=${mapboxToken}&country=ar&limit=1`;
 
     try {
-        const res = await fetch(url, {
-            headers: { 'User-Agent': 'SpatialValueScraper/1.0' }
-        });
+        const res = await fetch(url);
         if (!res.ok) return null;
-        
+
         const data = await res.json();
-        if (data && data.length > 0) {
-            return {
-                lat: parseFloat(data[0].lat),
-                lng: parseFloat(data[0].lon)
-            };
+        if (data && data.features && data.features.length > 0) {
+            // Nota: Mapbox retorna las coordenadas en orden [longitud, latitud]
+            const [lng, lat] = data.features[0].center;
+            return { lat, lng };
         }
     } catch (e) {
-        console.warn(`Error al geocodificar dirección (${direccion}): ${e.message}`);
+        console.warn(`Error al geocodificar con Mapbox (${direccion}): ${e.message}`);
     }
     return null;
 };
