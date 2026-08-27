@@ -104,9 +104,9 @@ const geocodificarDireccion = async (direccion, barrio) => {
         browser = await chromium.launch({
             headless: true,
             proxy: {
-                server: process.env.WEBSHARE_PROXY_SERVER || 'http://p.webshare.io:80',
-                username: `${process.env.WEBSHARE_USER}-rotate`,
-                password: process.env.WEBSHARE_PASSWORD
+                server: process.env.THORDATA_PROXY_SERVER || 'http://k60yqfua.pr.thordata.net:9999',
+                username: process.env.THORDATA_USER,
+                password: process.env.THORDATA_PASSWORD
             }
         });
 
