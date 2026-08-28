@@ -1,8 +1,13 @@
 // =========================================================================
 // 1. IMPORTACIÓN DE MÓDULOS Y CONFIGURACIÓN DE CONEXIONES
 // =========================================================================
+import 'dotenv/config';
 import { chromium } from 'playwright';
-import { Pool } from '@neondatabase/serverless';
+import ws from 'ws';
+import { Pool, neonConfig } from '@neondatabase/serverless';
+
+// Configurar WebSockets para NeonDB en entornos Node.js / Linux VPS
+neonConfig.webSocketConstructor = ws;
 
 const pool = new Pool({ connectionString: process.env.SpatialValueStorage_DATABASE_URL });
 const IA_URL = process.env.IA_URL || 'http://127.0.0.1:8000';
@@ -20,10 +25,10 @@ const waitForAny = async (page, selectors, timeout = 15000) => {
     ).then(r => r ?? null);
 };
 
-// EXTRACCIÓN Y LIMPIEZA DEL PRECIO EN DÓLARES (USD)
+// EXTRACCIÓN Y LIMPIEZA DEL PRECIO EN DÓLARES (USD / U$S / $)
 const parsearPrecioUSD = (texto) => {
     if (!texto) return 0;
-    const match = texto.match(/USD\s*[\$]?\s*([\d.,]+)/i);
+    const match = texto.match(/(?:USD|U\$S|\$)\s*([\d.,]+)/i) || texto.match(/([\d.,]+)/);
     if (!match) return 0;
     const valor = parseFloat(match[1].replace(/\./g, '').replace(',', '.'));
     return (valor >= 100 && valor <= 20000000) ? Math.round(valor) : 0;
@@ -61,7 +66,7 @@ const calcularFechaPublicacion = (texto) => {
     return ahora.toISOString().split('T')[0];
 };
 
-// GEOCODIFICACIÓN DE RESPALDO CON API OPENSTREETMAP (NOMINATIM)
+// GEOCODIFICACIÓN DE RESPALDO CON API MAPBOX
 const geocodificarDireccion = async (direccion, barrio) => {
     if (!direccion) return null;
 
@@ -99,15 +104,19 @@ const geocodificarDireccion = async (direccion, barrio) => {
 
     try {
         // ---------------------------------------------------------------------
-        // A. CONEXIÓN AL NAVEGADOR VIA WEBSHARE PROXY
+        // A. CONEXIÓN AL NAVEGADOR VIA PROXY DESDE VARIABLES DE ENTORNO
         // ---------------------------------------------------------------------
+        const proxyServer = process.env.THORDATA_PROXY_SERVER || process.env.PROXY_SERVER;
+        const proxyUser = process.env.THORDATA_USER || process.env.PROXY_USER;
+        const proxyPass = process.env.THORDATA_PASSWORD || process.env.PROXY_PASS;
+
         browser = await chromium.launch({
             headless: true,
-            proxy: {
-                server: process.env.THORDATA_PROXY_SERVER || 'http://k60yqfua.pr.thordata.net:9999',
-                username: process.env.THORDATA_USER,
-                password: process.env.THORDATA_PASSWORD
-            }
+            proxy: (proxyServer && proxyUser && proxyPass) ? {
+                server: proxyServer,
+                username: proxyUser,
+                password: proxyPass
+            } : undefined
         });
 
         const context = await browser.newContext({
@@ -212,15 +221,45 @@ const geocodificarDireccion = async (direccion, barrio) => {
                 await detailPage.waitForSelector('[class*="scoreCard"], [class*="scoreLevel"], [class*="score-title"]', { timeout: 3000 }).catch(() => {});
 
                 // ---------------------------------------------------------
-                // EXTRACCIÓN COMPLETA DESDE EL DOM
+                // EXTRACCIÓN HÍBRIDA (JSON INTERNO __INITIAL_STATE__ + DOM)
                 // ---------------------------------------------------------
                 const data = await detailPage.evaluate(() => {
+                    // Clics automáticos para desplegar textos ocultos
                     document.querySelectorAll('button, a, div, span').forEach(el => {
                         const t = (el.innerText || '').toLowerCase();
                         if (t === 'ver más' || t === 'ver mas') {
                             try { el.click(); } catch(e){}
                         }
                     });
+
+                    let latitudState = null;
+                    let longitudState = null;
+                    let direccionState = null;
+                    let barrioState = null;
+                    let precioState = '';
+
+                    // 1. Intento de lectura desde __INITIAL_STATE__
+                    try {
+                        const scripts = Array.from(document.querySelectorAll('script'));
+                        const scriptState = scripts.find(s => s.textContent && s.textContent.includes('__INITIAL_STATE__'));
+                        if (scriptState) {
+                            const jsonMatch = scriptState.textContent.match(/__INITIAL_STATE__\s*=\s*({.*?});/s);
+                            if (jsonMatch) {
+                                const state = JSON.parse(jsonMatch[1]);
+                                const posting = state.posting || state.postings?.[0];
+                                if (posting) {
+                                    latitudState = posting.postingLocation?.geolocation?.latitude || null;
+                                    longitudState = posting.postingLocation?.geolocation?.longitude || null;
+                                    direccionState = posting.postingLocation?.address || posting.postingLocation?.name || null;
+                                    barrioState = posting.postingLocation?.location?.name || null;
+                                    const priceObj = posting.priceOperationTypes?.[0]?.prices?.[0];
+                                    if (priceObj) {
+                                        precioState = `${priceObj.currency} ${priceObj.amount}`;
+                                    }
+                                }
+                            }
+                        }
+                    } catch(e) {}
 
                     const textoCompleto = document.body.innerText;
                     const textoLower = textoCompleto.toLowerCase();
@@ -246,11 +285,11 @@ const geocodificarDireccion = async (direccion, barrio) => {
                         if (matchNivel) calificacion_usuarios = parseInt(matchNivel[1], 10);
                     }
 
-                    let direccion = null;
-                    let barrio_zona = 'Capital Federal';
+                    let direccion = direccionState;
+                    let barrio_zona = barrioState || 'Capital Federal';
                     const h4Ubicacion = document.querySelector('#map-section h4, div[class*="section-location-property"] h4');
 
-                    if (h4Ubicacion) {
+                    if (!direccion && h4Ubicacion) {
                         const textoH4 = (h4Ubicacion.innerText || h4Ubicacion.textContent || '').trim();
                         const partes = textoH4.split(',').map(p => p.trim());
 
@@ -269,18 +308,20 @@ const geocodificarDireccion = async (direccion, barrio) => {
                         tipo_propiedad = 'PH';
                     }
 
-                    let latitud = null;
-                    let longitud = null;
-                    const scripts = Array.from(document.querySelectorAll('script'));
-                    for (const script of scripts) {
-                        const content = script.textContent || '';
-                        if (content.includes('latitude') && content.includes('longitude')) {
-                            const latMatch = content.match(/"latitude"\s*:\s*(-?\d+\.\d+)/);
-                            const lngMatch = content.match(/"longitude"\s*:\s*(-?\d+\.\d+)/);
-                            if (latMatch && lngMatch) {
-                                latitud = parseFloat(latMatch[1]);
-                                longitud = parseFloat(lngMatch[1]);
-                                break;
+                    let latitud = latitudState;
+                    let longitud = longitudState;
+                    if (!latitud || !longitud) {
+                        const scripts = Array.from(document.querySelectorAll('script'));
+                        for (const script of scripts) {
+                            const content = script.textContent || '';
+                            if (content.includes('latitude') && content.includes('longitude')) {
+                                const latMatch = content.match(/"latitude"\s*:\s*(-?\d+\.\d+)/);
+                                const lngMatch = content.match(/"longitude"\s*:\s*(-?\d+\.\d+)/);
+                                if (latMatch && lngMatch) {
+                                    latitud = parseFloat(latMatch[1]);
+                                    longitud = parseFloat(lngMatch[1]);
+                                    break;
+                                }
                             }
                         }
                     }
@@ -348,18 +389,20 @@ const geocodificarDireccion = async (direccion, barrio) => {
                     if (!superficie_total && superficie_cubierta) superficie_total = superficie_cubierta;
                     if (!superficie_cubierta && superficie_total) superficie_cubierta = superficie_total;
 
-                    let precioUSD = '';
-                    const byQa = document.querySelector('[data-qa="price"]');
-                    if (byQa) {
-                        precioUSD = byQa.innerText.trim();
-                    } else {
-                        const todosPrecios = [...document.querySelectorAll('[class*="Price"],[class*="price"]')];
-                        for (const el of todosPrecios) {
-                            if (!el.closest('[class*="xpens"],[class*="Expens"]')) {
-                                const txt = el.innerText || el.textContent || '';
-                                if (txt.includes('USD')) {
-                                    precioUSD = txt.trim();
-                                    break;
+                    let precioUSD = precioState;
+                    if (!precioUSD) {
+                        const byQa = document.querySelector('[data-qa="price"]');
+                        if (byQa) {
+                            precioUSD = byQa.innerText.trim();
+                        } else {
+                            const todosPrecios = [...document.querySelectorAll('[class*="Price"],[class*="price"]')];
+                            for (const el of todosPrecios) {
+                                if (!el.closest('[class*="xpens"],[class*="Expens"]')) {
+                                    const txt = el.innerText || el.textContent || '';
+                                    if (txt.includes('USD') || txt.includes('U$S') || txt.includes('$')) {
+                                        precioUSD = txt.trim();
+                                        break;
+                                    }
                                 }
                             }
                         }
