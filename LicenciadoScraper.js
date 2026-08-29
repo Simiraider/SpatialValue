@@ -2,7 +2,7 @@
 // 1. IMPORTACIÓN DE MÓDULOS Y CONFIGURACIÓN DE CONEXIONES
 // =========================================================================
 import 'dotenv/config';
-import { chromium } from 'playwright';
+import { firefox } from 'playwright';
 import ws from 'ws';
 import { Pool, neonConfig } from '@neondatabase/serverless';
 
@@ -25,6 +25,23 @@ const waitForAny = async (page, selectors, timeout = 15000) => {
     ).then(r => r ?? null);
 };
 
+// HELPER PARA EXTRAER SUPERFICIE (NÚMERO INDIVIDUAL O RANGO)
+const parsearSuperficie = (texto) => {
+    if (!texto) return { min: null, max: null, valor: null };
+    const matchRango = texto.match(/(\d+)\s*(?:a|-|hasta)\s*(\d+)/i);
+    if (matchRango) {
+        const min = parseInt(matchRango[1], 10);
+        const max = parseInt(matchRango[2], 10);
+        return { min, max, valor: Math.round((min + max) / 2) };
+    }
+    const matchUnico = texto.match(/(\d+)/);
+    if (matchUnico) {
+        const val = parseInt(matchUnico[1], 10);
+        return { min: val, max: val, valor: val };
+    }
+    return { min: null, max: null, valor: null };
+};
+
 // EXTRACCIÓN Y LIMPIEZA DEL PRECIO EN DÓLARES (USD / U$S / $)
 const parsearPrecioUSD = (texto) => {
     if (!texto) return 0;
@@ -34,36 +51,37 @@ const parsearPrecioUSD = (texto) => {
     return (valor >= 100 && valor <= 20000000) ? Math.round(valor) : 0;
 };
 
-// CÁLCULO DE FECHA RELATIVA A FORMATO ISO (YYYY-MM-DD)
-const calcularFechaPublicacion = (texto) => {
-    const ahora = new Date();
-    if (!texto) return ahora.toISOString().split('T')[0];
+// CÁLCULO DE FECHA RELATIVA PRIORIZANDO TEXTO EXACTO DEL DOM
+const calcularFechaPublicacion = (textoFecha) => {
+    if (!textoFecha) return null;
 
-    const match = texto.match(/publicado\s+(hace\s+[^.|\n\r]+|hoy|ayer)/i);
-    if (!match) return ahora.toISOString().split('T')[0];
+    const limpio = textoFecha.replace(/\s+/g, ' ').trim();
 
-    const frase = match[1].toLowerCase();
-    let diasAtras = 0;
+    const match = limpio.match(/(?:publicado\s+)?hace\s+(\d+)\s*(día|días|dia|dias|mes|meses|año|años|ano|anos)/i);
+    if (match) {
+        const num = parseInt(match[1], 10);
+        const unidad = match[2].toLowerCase();
+        let diasAtras = num;
 
-    if (frase.includes('hoy')) {
-        diasAtras = 0;
-    } else if (frase.includes('ayer')) {
-        diasAtras = 1;
-    } else {
-        const numMatch = frase.match(/(\d+)/);
-        const num = numMatch ? parseInt(numMatch[1], 10) : 1;
-
-        if (frase.includes('dia') || frase.includes('día')) {
-            diasAtras = num;
-        } else if (frase.includes('mes')) {
+        if (unidad.startsWith('mes')) {
             diasAtras = num * 30;
-        } else if (frase.includes('ano') || frase.includes('año')) {
+        } else if (unidad.startsWith('año') || unidad.startsWith('ano')) {
             diasAtras = num * 365;
         }
+
+        const fechaCalculada = new Date();
+        fechaCalculada.setDate(fechaCalculada.getDate() - diasAtras);
+        return fechaCalculada.toISOString().split('T')[0];
     }
 
-    ahora.setDate(ahora.getDate() - diasAtras);
-    return ahora.toISOString().split('T')[0];
+    if (/publicado\s+hoy/i.test(limpio)) return new Date().toISOString().split('T')[0];
+    if (/publicado\s+ayer/i.test(limpio)) {
+        const f = new Date();
+        f.setDate(f.getDate() - 1);
+        return f.toISOString().split('T')[0];
+    }
+
+    return null;
 };
 
 // GEOCODIFICACIÓN DE RESPALDO CON API MAPBOX
@@ -85,7 +103,6 @@ const geocodificarDireccion = async (direccion, barrio) => {
 
         const data = await res.json();
         if (data && data.features && data.features.length > 0) {
-            // Nota: Mapbox retorna las coordenadas en orden [longitud, latitud]
             const [lng, lat] = data.features[0].center;
             return { lat, lng };
         }
@@ -99,18 +116,15 @@ const geocodificarDireccion = async (direccion, barrio) => {
 // 3. FLUJO PRINCIPAL DEL SCRAPER (MAIN ASYNC)
 // =========================================================================
 (async () => {
-    console.log("Iniciando scraper en servidor VPS...");
+    console.log("Iniciando scraper en servidor VPS (Modo Firefox Stealth)...");
     let browser;
 
     try {
-        // ---------------------------------------------------------------------
-        // A. CONEXIÓN AL NAVEGADOR VIA PROXY DESDE VARIABLES DE ENTORNO
-        // ---------------------------------------------------------------------
         const proxyServer = process.env.THORDATA_PROXY_SERVER || process.env.PROXY_SERVER;
         const proxyUser = process.env.THORDATA_USER || process.env.PROXY_USER;
         const proxyPass = process.env.THORDATA_PASSWORD || process.env.PROXY_PASS;
 
-        browser = await chromium.launch({
+        browser = await firefox.launch({
             headless: true,
             proxy: (proxyServer && proxyUser && proxyPass) ? {
                 server: proxyServer,
@@ -120,12 +134,18 @@ const geocodificarDireccion = async (direccion, barrio) => {
         });
 
         const context = await browser.newContext({
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0',
+            locale: 'es-AR',
+            timezoneId: 'America/Argentina/Buenos_Aires',
+            viewport: { width: 1366, height: 768 }
+        });
+
+        await context.addInitScript(() => {
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
         });
 
         const page = await context.newPage();
 
-        // Bloqueo de multimedia para ahorrar ancho de banda del proxy
         await page.route('**/*', (route) => {
             const resource = route.request().resourceType();
             if (['image', 'stylesheet', 'font', 'media'].includes(resource)) {
@@ -141,9 +161,6 @@ const geocodificarDireccion = async (direccion, barrio) => {
         const ES_VENTA = true; 
         const TIPO_OPERACION = ES_VENTA ? 'venta' : 'alquiler';
 
-        // -----------------------------------------------------------------
-        // B. ETAPA 1: PAGINACIÓN Y EXTRAER ENLACES DE PROPIEDADES
-        // -----------------------------------------------------------------
         for (let pagina = 1; pagina <= PAGINAS_MAXIMAS; pagina++) {
             const urlPagina = pagina === 1 
                 ? `https://www.zonaprop.com.ar/casas-${TIPO_OPERACION}-capital-federal.html`
@@ -151,7 +168,7 @@ const geocodificarDireccion = async (direccion, barrio) => {
 
             try {
                 console.log(`Cargando página ${pagina}...`);
-                await page.goto(urlPagina, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                await page.goto(urlPagina, { waitUntil: 'domcontentloaded', timeout: 35000 });
                 
                 const selectorListado = await waitForAny(page, [
                     '[data-qa="posting-card"]', '[data-posting-id]', 'div[class*="posting-card"]', 'ol[class*="postings"] li', 'article'
@@ -184,16 +201,10 @@ const geocodificarDireccion = async (direccion, barrio) => {
             return;
         }
 
-        // -----------------------------------------------------------------
-        // C. ETAPA 2: FILTRADO DE REPETIDOS CONTRA BASE DE DATOS
-        // -----------------------------------------------------------------
         const { rows } = await pool.query('SELECT id_propiedad FROM propiedades');
         const idsProcesados = new Set(rows.map(r => r.id_propiedad));
         let nuevos = 0;
 
-        // -----------------------------------------------------------------
-        // D. ETAPA 3: PROCESAMIENTO DETALLADO PROPIEDAD POR PROPIEDAD
-        // -----------------------------------------------------------------
         for (let i = 0; i < links.length; i++) {
             const link = links[i];
             const idMatch = link.match(/-(\d+)\.html/);
@@ -215,18 +226,64 @@ const geocodificarDireccion = async (direccion, barrio) => {
             });
 
             try {
-                await detailPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 30000 });
-                await waitForAny(detailPage, ['[class*="price"]', '[class*="Price"]', '[data-qa="price"]'], 10000);
+                const response = await detailPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 35000 });
+                
+                const tituloPagina = await detailPage.title();
+                if ((response && (response.status() === 403 || response.status() === 429)) || 
+                    tituloPagina.includes('Cloudflare') || tituloPagina.includes('Just a moment') || tituloPagina.includes('Attention Required')) {
+                    console.warn(`⚠️ Bloqueado por anti-bot en ${id_propiedad}. Omitiendo para reintentar luego.`);
+                    await detailPage.close().catch(() => {});
+                    await new Promise(r => setTimeout(r, 6000));
+                    continue;
+                }
 
-                await detailPage.waitForSelector('[class*="scoreCard"], [class*="scoreLevel"], [class*="score-title"]', { timeout: 3000 }).catch(() => {});
+                await waitForAny(detailPage, ['[class*="price"]', '[class*="Price"]', '[data-qa="price"]'], 8000);
 
-                // ---------------------------------------------------------
-                // EXTRACCIÓN HÍBRIDA (JSON INTERNO __INITIAL_STATE__ + DOM)
-                // ---------------------------------------------------------
-                const data = await detailPage.evaluate(() => {
-                    // Clics automáticos para desplegar textos ocultos
+                await detailPage.evaluate(async () => {
+                    window.scrollTo(0, document.body.scrollHeight / 2);
+                    await new Promise(r => setTimeout(r, 300));
+                    window.scrollTo(0, document.body.scrollHeight);
+                    await new Promise(r => setTimeout(r, 500));
+                });
+
+                try {
+                    await detailPage.waitForSelector('text=/Publicado hace/i', { timeout: 4000 });
+                } catch (e) {
+                    await detailPage.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+                    await detailPage.waitForTimeout(600);
+                }
+
+                const textoFechaNodo = await detailPage.evaluate(() => {
+                    const todos = Array.from(document.querySelectorAll('*'));
+                    const coincidencia = todos.find(n => n.children.length === 0 && /publicado\s+hace/i.test(n.innerText || ''));
+                    if (coincidencia) return coincidencia.innerText;
+
+                    const match = document.body.innerText.match(/publicado\s+hace\s+\d+\s*(?:día|días|dia|dias|mes|meses|año|años|ano|anos)/i);
+                    return match ? match[0] : '';
+                });
+
+                let fechaPublicacionCalculada = calcularFechaPublicacion(textoFechaNodo);
+                if (!fechaPublicacionCalculada) {
+                    console.warn(`⚠️ No se pudo extraer fecha relativa para ${id_propiedad}. Se mantendrá en revisión.`);
+                    fechaPublicacionCalculada = new Date().toISOString().split('T')[0];
+                }
+
+                let textoPestanasAcumulado = '';
+                const pestañasAExplorar = ['Características generales', 'Ambientes', 'Servicios', 'Instalaciones'];
+
+                for (const pestanaNombre of pestañasAExplorar) {
+                    const selectorTab = detailPage.locator(`button:has-text("${pestanaNombre}"), [role="tab"]:has-text("${pestanaNombre}")`).first();
+                    if (await selectorTab.isVisible().catch(() => false)) {
+                        await selectorTab.click({ force: true }).catch(() => {});
+                        await detailPage.waitForTimeout(300);
+                        const textoDomActual = await detailPage.evaluate(() => document.body.innerText);
+                        textoPestanasAcumulado += ' ' + textoDomActual;
+                    }
+                }
+
+                const data = await detailPage.evaluate((textoAdicionalTabs) => {
                     document.querySelectorAll('button, a, div, span').forEach(el => {
-                        const t = (el.innerText || '').toLowerCase();
+                        const t = (el.innerText || '').toLowerCase().trim();
                         if (t === 'ver más' || t === 'ver mas') {
                             try { el.click(); } catch(e){}
                         }
@@ -238,7 +295,6 @@ const geocodificarDireccion = async (direccion, barrio) => {
                     let barrioState = null;
                     let precioState = '';
 
-                    // 1. Intento de lectura desde __INITIAL_STATE__
                     try {
                         const scripts = Array.from(document.querySelectorAll('script'));
                         const scriptState = scripts.find(s => s.textContent && s.textContent.includes('__INITIAL_STATE__'));
@@ -261,10 +317,34 @@ const geocodificarDireccion = async (direccion, barrio) => {
                         }
                     } catch(e) {}
 
-                    const textoCompleto = document.body.innerText;
+                    const textoCompleto = (document.body.innerText + ' ' + textoAdicionalTabs);
                     const textoLower = textoCompleto.toLowerCase();
                     const elTitulo = document.querySelector('h1,[data-qa="title"],[class*="TitleContainer"]');
                     const tituloTexto = elTitulo ? (elTitulo.innerText || elTitulo.textContent || '').trim().toLowerCase() : '';
+
+                    // DETECCIÓN DE ESTADO EN CONSTRUCCIÓN / EN POZO
+                    let esEnConstruccion = false;
+                    if (
+                        textoLower.includes('en construcción') || textoLower.includes('en construccion') ||
+                        textoLower.includes('en pozo') || textoLower.includes('emprendimiento') ||
+                        textoLower.includes('en obra') || textoLower.includes('al pozo')
+                    ) {
+                        esEnConstruccion = true;
+                    }
+
+                    // EXTRACCIÓN DE CANTIDAD DE PISOS / PLANTAS DE LA CASA
+                    let cantidad_pisos = null;
+                    const matchPlantasNum = textoCompleto.match(/(?:cantidad\s+de\s+)?(?:plantas|pisos|niveles)\s*[:=]\s*(\d+)/i);
+                    if (matchPlantasNum) {
+                        cantidad_pisos = parseInt(matchPlantasNum[1], 10);
+                    } else {
+                        const matchPlantasTxt = textoCompleto.match(/(?:en|de)\s*(\d+|\bdos\b|\btres\b|\bcuatro\b|\bcinco\b|\buna\b)\s*(?:plantas|pisos|niveles)/i);
+                        if (matchPlantasTxt) {
+                            const val = matchPlantasTxt[1].toLowerCase();
+                            const mapaNumeros = { 'una': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 'cinco': 5 };
+                            cantidad_pisos = mapaNumeros[val] || parseInt(val, 10) || null;
+                        }
+                    }
 
                     let codigo_anunciante = null;
                     const matchCod = textoCompleto.match(/cód\.\s*del\s*anunciante:\s*([^|\n\r]+)/i);
@@ -344,12 +424,29 @@ const geocodificarDireccion = async (direccion, barrio) => {
                         const txt = (node.innerText || '').trim();
                         const txtLower = txt.toLowerCase();
 
+                        // EXTRACCIÓN DE PLANTAS / PISOS EN CARACTERÍSTICAS TÉCNICAS
+                        if (txtLower.includes('planta') || txtLower.includes('nivel')) {
+                            const m = txt.match(/(\d+)/);
+                            if (m) cantidad_pisos = parseInt(m[1], 10);
+                        }
+
+                        // PARSEO DE SUPERFICIES CON SOPORTE PARA RANGOS (Ej: "50 a 120 m²")
                         if (txtLower.includes('m² cub') || txtLower.includes('m2 cub')) {
-                            const m = txt.match(/(\d+)/);
-                            if (m) superficie_cubierta = parseInt(m[1], 10);
+                            const matchRango = txt.match(/(\d+)\s*(?:a|-|hasta)\s*(\d+)/i);
+                            const matchUnico = txt.match(/(\d+)/);
+                            if (matchRango) {
+                                superficie_cubierta = Math.round((parseInt(matchRango[1], 10) + parseInt(matchRango[2], 10)) / 2);
+                            } else if (matchUnico) {
+                                superficie_cubierta = parseInt(matchUnico[1], 10);
+                            }
                         } else if (txtLower.includes('m²') || txtLower.includes('m2')) {
-                            const m = txt.match(/(\d+)/);
-                            if (m) superficie_total = parseInt(m[1], 10);
+                            const matchRango = txt.match(/(\d+)\s*(?:a|-|hasta)\s*(\d+)/i);
+                            const matchUnico = txt.match(/(\d+)/);
+                            if (matchRango) {
+                                superficie_total = Math.round((parseInt(matchRango[1], 10) + parseInt(matchRango[2], 10)) / 2);
+                            } else if (matchUnico) {
+                                superficie_total = parseInt(matchUnico[1], 10);
+                            }
                         }
 
                         if (txtLower.includes('amb')) {
@@ -369,6 +466,8 @@ const geocodificarDireccion = async (direccion, barrio) => {
 
                         if (txtLower.includes('estrenar')) {
                             anios_de_antiguedad = 0;
+                        } else if (txtLower.includes('en construcción') || txtLower.includes('en pozo') || txtLower.includes('en obra')) {
+                            esEnConstruccion = true;
                         } else if (txtLower.includes('antigüe') || txtLower.includes('antigue') || txtLower.includes('año') || txtLower.includes('ano')) {
                             const m = txt.match(/(\d+)/);
                             if (m) anios_de_antiguedad = parseInt(m[1], 10);
@@ -422,7 +521,6 @@ const geocodificarDireccion = async (direccion, barrio) => {
                     return {
                         textoCompleto,
                         textoLower,
-                        tituloTexto,
                         direccion,
                         barrio_zona,
                         codigo_anunciante,
@@ -436,20 +534,44 @@ const geocodificarDireccion = async (direccion, barrio) => {
                         banos,
                         ambientes,
                         anios_de_antiguedad,
+                        esEnConstruccion,
+                        cantidad_pisos,
                         disposicion,
                         orientacion,
                         luminosidad,
                         latitud,
                         longitud
                     };
-                });
+                }, textoPestanasAcumulado);
 
-                // ---------------------------------------------------------
-                // E. TRANSFORMATION & ENRICHMENT CON SERVICIOS EXTERNOS
-                // ---------------------------------------------------------
                 const precio_real_usd = parsearPrecioUSD(data.precioUSD) || 0;
-                const fechaPublicacionCalculada = calcularFechaPublicacion(data.textoCompleto);
+
+                if (precio_real_usd === 0 && !data.direccion) {
+                    console.warn(`⚠️ Datos incompletos en ${id_propiedad}. Omitiendo registración.`);
+                    continue;
+                }
+
                 const check = (...words) => words.some(w => data.textoLower.includes(w));
+
+                const tieneCamara = check('camara', 'cámara', 'cctv', 'circuito cerrado');
+                const tieneSeguridadFisica = check('seguridad', 'vigilancia', 'guardia', 'totem', 'encargado');
+                const esSeguridad24hs = check('seguridad 24', 'vigilancia 24', '24hs', '24 hs', '24hrs') || tieneSeguridadFisica || tieneCamara;
+
+                // DETERMINAR ESTADO FINAL PARA DB
+                let estadoFinal = 'Usado';
+                if (data.esEnConstruccion) {
+                    estadoFinal = 'En construcción';
+                } else if (data.anios_de_antiguedad === 0) {
+                    estadoFinal = 'A estrenar';
+                }
+
+                // PISO: Si es Casa guarda la cantidad de plantas/pisos, si es Departamento guarda el número de piso
+                let pisoFinal = null;
+                if (data.tipo_propiedad === 'Casa') {
+                    pisoFinal = data.cantidad_pisos || null;
+                } else {
+                    pisoFinal = parseInt(data.textoLower.match(/piso\s*(\d+)/i)?.[1] || '0', 10) || null;
+                }
 
                 const propiedadData = {
                     tipo_propiedad: data.tipo_propiedad,
@@ -459,9 +581,10 @@ const geocodificarDireccion = async (direccion, barrio) => {
                     banos: data.banos || 1,
                     superficie_total_m2: data.superficie_total || null,
                     superficie_cubierta_m2: data.superficie_cubierta || null,
-                    estado: data.anios_de_antiguedad === 0 ? 'A estrenar' : 'Usado',
-                    anios_de_antiguedad: data.anios_de_antiguedad,
-                    piso: parseInt(data.textoLower.match(/piso\s*(\d+)/i)?.[1] || '0', 10) || null,
+                    estado: estadoFinal,
+                    anios_de_antiguedad: data.esEnConstruccion ? 0 : data.anios_de_antiguedad,
+                    piso: pisoFinal,
+                    cantidad_pisos: data.cantidad_pisos || null,
                     orientacion: data.orientacion,
                     disposicion: data.disposicion,
                     cochera: check('cochera', 'garage', 'estacionamiento'),
@@ -470,19 +593,25 @@ const geocodificarDireccion = async (direccion, barrio) => {
                     patio: check('patio'),
                     pileta: check('pileta', 'piscina'),
                     parrilla: check('parrilla', 'quincho'),
-                    seguridad_24hs: check('seguridad 24', 'vigilancia 24', 'vigilancia'),
+                    seguridad_24hs: esSeguridad24hs,
                     ascensor: check('ascensor', 'ascensores', 'elevador'),
                     expensas_ars: data.expensas,
                     baulera: check('baulera'),
                     sum: check('sum', 'salón de usos'),
-                    seguridad_tipo: check('seguridad', 'vigilancia') ? 'Física' : 'Ninguno',
-                    camara: check('camara', 'cámara', 'cctv', 'circuito cerrado'),
+                    seguridad_tipo: tieneSeguridadFisica ? 'Física' : 'Ninguno',
+                    camara: tieneCamara,
                     gym: check('gym', 'gimnasio'),
                     lounge: check('lounge'),
                     laundry: check('laundry', 'lavadero'),
                     latitud: data.latitud,
                     longitud: data.longitud
                 };
+
+                let codigoAnuncianteFinal = data.codigo_anunciante;
+                const codLower = (codigoAnuncianteFinal || '').toLowerCase().trim();
+                if (!codigoAnuncianteFinal || codLower === '13' || codLower === 'acuña' || codLower.length < 3) {
+                    codigoAnuncianteFinal = `REF-${id_propiedad.replace('zp-', '')}`;
+                }
 
                 // CONSULTA A MICROSERVICIO DE IA
                 let resultadoIA = {};
@@ -505,16 +634,21 @@ const geocodificarDireccion = async (direccion, barrio) => {
 
                 if (!coordsFinales && data.direccion) {
                     coordsFinales = await geocodificarDireccion(data.direccion, data.barrio_zona);
-                    await new Promise(r => setTimeout(r, 1000));
+                    await new Promise(r => setTimeout(r, 800));
                 }
 
-                const precioEstimadoIaUsd = resultadoIA.precio_estimado_usd 
+                let precioEstimadoIaUsd = resultadoIA.precio_estimado_usd 
                     ? Math.round(Number(resultadoIA.precio_estimado_usd)) 
                     : null;
 
-                // ---------------------------------------------------------
-                // F. INSERCIÓN EN LA BASE DE DATOS (POSTGRESQL / NEON)
-                // ---------------------------------------------------------
+                if (!precioEstimadoIaUsd && (propiedadData.superficie_cubierta_m2 || propiedadData.superficie_total_m2)) {
+                    const sup = propiedadData.superficie_cubierta_m2 || propiedadData.superficie_total_m2;
+                    const barrioLower = (data.barrio_zona || '').toLowerCase();
+                    const valorM2 = ['belgrano', 'recoleta', 'palermo', 'puerto madero'].some(b => barrioLower.includes(b)) ? 1650 : 1250;
+                    precioEstimadoIaUsd = Math.round(sup * valorM2);
+                }
+
+                // INSERCIÓN EN LA BASE DE DATOS NEON DB
                 const query = `
                     INSERT INTO propiedades (
                         id_propiedad, url, tipo_operacion, fecha_publicacion,
@@ -549,12 +683,12 @@ const geocodificarDireccion = async (direccion, barrio) => {
                     precio_real_usd, precioEstimadoIaUsd, propiedadData.expensas_ars,
                     propiedadData.cochera, propiedadData.balcon, propiedadData.terraza, propiedadData.patio, propiedadData.pileta, propiedadData.parrilla, propiedadData.ascensor, propiedadData.baulera, propiedadData.sum, propiedadData.gym, propiedadData.lounge, propiedadData.laundry,
                     propiedadData.seguridad_24hs, propiedadData.seguridad_tipo, propiedadData.camara,
-                    data.codigo_anunciante, data.calificacion_usuarios
+                    codigoAnuncianteFinal, data.calificacion_usuarios
                 ];
 
                 await pool.query(query, values);
                 nuevos++;
-                console.log(`Guardado: ${id_propiedad} | Precio USD: ${precio_real_usd} | GPS: ${coordsFinales ? 'SÍ' : 'NO'}`);
+                console.log(`Guardado: ${id_propiedad} | Tipo: ${propiedadData.tipo_propiedad} | Estado: ${propiedadData.estado} | Sup M2: ${propiedadData.superficie_total_m2} | Plantas/Piso: ${propiedadData.piso || 'N/A'} | Precio USD: ${precio_real_usd}`);
 
             } catch (err) {
                 console.error(`Error procesando ${id_propiedad}: ${err.message}`);
@@ -562,14 +696,13 @@ const geocodificarDireccion = async (direccion, barrio) => {
                 await detailPage.close().catch(() => {});
             }
 
-            await new Promise(r => setTimeout(r, 800 + Math.random() * 800));
+            // PAUSA ALEATORIA ENTRE PETICIONES
+            await new Promise(r => setTimeout(r, 4000 + Math.random() * 3000));
         }
 
         console.log(`\nFinalizado. Nuevas propiedades guardadas: ${nuevos}`);
 
-        // -----------------------------------------------------------------
-        // G. REENTRENAMIENTO AUTOMÁTICO DE MODELO IA
-        // -----------------------------------------------------------------
+        // REENTRENAMIENTO AUTOMÁTICO DE MODELO IA
         if (nuevos > 0) {
             try {
                 await fetch(`${IA_URL}/reentrenar`, {
