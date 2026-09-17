@@ -8,6 +8,7 @@ import { apiFetch, getCookie } from '../lib/api';
 import { estimarPrecioVenta, valorM2Alquiler, TASA_ARS_USD } from '../lib/mercado';
 import { getUser, getUsuarioId, cerrarSesion, syncSessionAcrossTabs, type SesionUsuario } from '../lib/session';
 import { generarInformePdf } from '../lib/generar-pdf';
+import { normalizeData } from '../lib/normalizar-tasacion';
 
 type Section = 'tasaciones' | 'borradores' | 'indices' | 'config';
 type CargaStatus = 'loading' | 'error' | 'ready';
@@ -237,7 +238,14 @@ export const DashboardApp = () => {
         alert('No se pudieron cargar los datos para generar el PDF.');
         return;
       }
-      await generarInformePdf(resData, getUser()?.nombre);
+      // ObtenerTasacion devuelve la fila cruda de la DB en snake_case;
+      // el generador de PDF necesita los datos normalizados (camelCase).
+      const datosNormalizados = normalizeData(resData);
+      if (!datosNormalizados) {
+        alert('Los datos de la tasación no pudieron procesarse.');
+        return;
+      }
+      await generarInformePdf(datosNormalizados, getUser()?.nombre);
     } catch (error) {
       console.error('Error al generar PDF', error);
       alert('No se pudo generar el PDF. Intentá de nuevo.');

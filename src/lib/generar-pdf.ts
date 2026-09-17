@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { montoEnLetras } from './numero-a-letras';
 import { calcularValores, esAlquiler, estadoConservacion, antiguedadEstimada } from './tasacion';
+import { normalizeData } from './normalizar-tasacion';
 
 const AZUL_OSCURO: [number, number, number] = [30, 58, 95];
 const AZUL_PRIMARIO: [number, number, number] = [37, 99, 235];
@@ -810,7 +811,9 @@ export async function generarInformePdf(
   clienteNombre?: string,
   opciones: OpcionesInforme = {}
 ): Promise<void> {
+  // Normaliza snake_case (DB) a camelCase; si ya viene normalizado, no cambia nada.
+  const datos = normalizeData(data) ?? data;
   const logo = await convertirLogoAPng();
-  const informe = new PdfInforme(data, clienteNombre ?? '—', logo, opciones.guardar ?? null);
+  const informe = new PdfInforme(datos, clienteNombre ?? '—', logo, opciones.guardar ?? null);
   await informe.generar();
 }
