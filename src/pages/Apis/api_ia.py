@@ -1,5 +1,6 @@
 import os
 import json
+import warnings
 from pathlib import Path
 
 import pandas as pd
@@ -69,14 +70,20 @@ db_pool = psycopg2.pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
 modelo_v4 = None
 
 def _extraer_coordenadas(row):
+    lat = pd.to_numeric(row.get("latitud"), errors="coerce")
+    lng = pd.to_numeric(row.get("longitud"), errors="coerce")
+    if pd.notna(lat) and pd.notna(lng) and lat != 0 and lng != 0:
+        return pd.Series([float(lat), float(lng)])
+
+    gps = row.get("coordenadas_gps")
     try:
-        if row["coordenadas_gps"]:
-            coords = json.loads(row["coordenadas_gps"])
+        if gps:
+            coords = json.loads(gps) if isinstance(gps, str) else gps
             return pd.Series([
-                coords.get("lat", COORDENADAS_DEFAULT["lat"]),
-                coords.get("lng", COORDENADAS_DEFAULT["lng"]),
+                float(coords.get("lat", COORDENADAS_DEFAULT["lat"])),
+                float(coords.get("lng", COORDENADAS_DEFAULT["lng"])),
             ])
-    except (json.JSONDecodeError, TypeError, AttributeError):
+    except (json.JSONDecodeError, TypeError, AttributeError, ValueError):
         pass
     return pd.Series([COORDENADAS_DEFAULT["lat"], COORDENADAS_DEFAULT["lng"]])
 
@@ -85,16 +92,61 @@ def _cargar_datos_entrenamiento():
     conn = db_pool.getconn()
     try:
         query = """
-            SELECT
-                tipo_propiedad, barrio_zona, estado, orientacion, disposicion, seguridad_tipo,
-                ambientes, dormitorios, banos, superficie_total_m2, superficie_cubierta_m2,
-                anios_de_antiguedad, piso, cochera, balcon, terraza, patio, pileta,
-                parrilla, seguridad_24hs, ascensor, expensas_ars, baulera, sum,
-                camara, gym, lounge, laundry, coordenadas_gps, precio_real_usd AS precio_usd
-            FROM propiedades
-            WHERE precio_real_usd IS NOT NULL;
+            WITH datos_scraper AS (
+                SELECT
+                    tipo_propiedad, barrio_zona, estado, orientacion, disposicion, seguridad_tipo,
+                    ambientes, dormitorios, banos, superficie_total_m2, superficie_cubierta_m2,
+                    anios_de_antiguedad, piso, cochera, balcon, terraza, patio, pileta,
+                    parrilla, seguridad_24hs, ascensor, expensas_ars, baulera, sum,
+                    camara, gym, lounge, laundry, coordenadas_gps,
+                    NULL::numeric AS latitud, NULL::numeric AS longitud,
+                    precio_real_usd AS precio_usd
+                FROM propiedades
+                WHERE precio_real_usd IS NOT NULL
+            ),
+            datos_usuarios AS (
+                SELECT
+                    p.tipo_propiedad,
+                    p.barrio AS barrio_zona,
+                    COALESCE(p.estado, 'Usado') AS estado,
+                    COALESCE(d.datos->>'orientacion', 'No especificada') AS orientacion,
+                    COALESCE(d.datos->>'disposicion', 'No especificada') AS disposicion,
+                    CASE WHEN COALESCE(d.datos->'comodidades' ? 'Seguridad 24h', false) THEN '24hs' ELSE 'Ninguno' END AS seguridad_tipo,
+                    p.ambientes, p.dormitorios, p.banos,
+                    p.superficie_total AS superficie_total_m2,
+                    p.superficie_cubierta AS superficie_cubierta_m2,
+                    (CASE WHEN d.datos->>'antiguedad' ~ '^[0-9]+$' THEN (d.datos->>'antiguedad')::int END) AS anios_de_antiguedad,
+                    NULL::int AS piso,
+                    COALESCE(d.datos->'comodidades' ? 'Cochera', false) AS cochera,
+                    COALESCE(d.datos->'comodidades' ? 'Balcón', false) AS balcon,
+                    COALESCE(d.datos->'comodidades' ? 'Terraza', false) AS terraza,
+                    COALESCE(d.datos->'comodidades' ? 'Patio', false) AS patio,
+                    COALESCE(d.datos->'comodidades' ? 'Pileta', false) AS pileta,
+                    COALESCE(d.datos->'comodidades' ? 'Parrilla', false) AS parrilla,
+                    COALESCE(d.datos->'comodidades' ? 'Seguridad 24h', false) AS seguridad_24hs,
+                    COALESCE(d.datos->'comodidades' ? 'Ascensor', false) AS ascensor,
+                    p.expensas AS expensas_ars,
+                    COALESCE(d.datos->'comodidades' ? 'Baulera', false) AS baulera,
+                    COALESCE(d.datos->'comodidades' ? 'SUM', false) AS sum,
+                    COALESCE(d.datos->'comodidades' ? 'Cámaras', false) AS camara,
+                    COALESCE(d.datos->'comodidades' ? 'Gimnasio', false) AS gym,
+                    COALESCE(d.datos->'comodidades' ? 'Lounge', false) AS lounge,
+                    COALESCE(d.datos->'comodidades' ? 'Laundry', false) AS laundry,
+                    NULL::text AS coordenadas_gps,
+                    p.latitud, p.longitud,
+                    p.precio_estimado_ia AS precio_usd
+                FROM publicaciones p
+                LEFT JOIN tasacion_detalles d ON d.id_publicacion = p.id_publicacion::text
+                WHERE p.precio_estimado_ia IS NOT NULL
+                  AND p.tipo_operacion = 'venta'
+            )
+            SELECT * FROM datos_scraper
+            UNION ALL
+            SELECT * FROM datos_usuarios
         """
-        return pd.read_sql(query, conn)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            return pd.read_sql(query, conn)
     finally:
         db_pool.putconn(conn)
 

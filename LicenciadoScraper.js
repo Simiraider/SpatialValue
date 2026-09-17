@@ -133,21 +133,22 @@ const parsearPrecioUSD = (texto) => {
 
                     const items = [...document.querySelectorAll('[class*="feature"],[class*="Feature"]')];
                     for (const el of items) {
-                        const txt = (el.innerText || '').toLowerCase();
-                        if (!superficie && txt.match(/m²|m2/i)) {
-                            const n = txt.match(/(\d+)/);
+                        const txt = (el.innerText || '').toLowerCase().trim();
+                        // Capturar número solo si está cerca de la palabra clave (evitar falsos positivos)
+                        if (!superficie && /\d+\s*[mM]²/.test(txt)) {
+                            const n = txt.match(/^.*?(\d+)\s*[mM]²/);
                             if (n) superficie = parseInt(n[1], 10);
                         }
-                        if (!dormitorios && txt.match(/dorm|hab/)) {
-                            const n = txt.match(/(\d+)/);
+                        if (!dormitorios && /dorm|habitaci/.test(txt)) {
+                            const n = txt.match(/(\d+)\s*(?:dorm|habitaci)/);
                             if (n) dormitorios = parseInt(n[1], 10);
                         }
-                        if (!banos && txt.includes('baño')) {
-                            const n = txt.match(/(\d+)/);
+                        if (!banos && /baño/.test(txt)) {
+                            const n = txt.match(/(\d+)\s*baño/);
                             if (n) banos = parseInt(n[1], 10);
                         }
-                        if (!ambientes && txt.includes('ambiente')) {
-                            const n = txt.match(/(\d+)/);
+                        if (!ambientes && /ambiente/.test(txt)) {
+                            const n = txt.match(/(\d+)\s*ambiente/);
                             if (n) ambientes = parseInt(n[1], 10);
                         }
                     }
@@ -183,6 +184,21 @@ const parsearPrecioUSD = (texto) => {
                     if (m) ambientes = parseInt(m[1], 10);
                 }
                 if (!ambientes) ambientes = dormitorios ? dormitorios + 1 : 1;
+
+                // Validaciones de coherencia para evitar datos corruptos
+                if (dormitorios && dormitorios > ambientes && ambientes > 0) {
+                    // Si los dormitorios superan los ambientes, es un error de scraping
+                    console.warn(`Datos incoherentes para ${id_propiedad}: dorm=${dormitorios}, amb=${ambientes}. Usando fallback.`);
+                    dormitorios = Math.min(dormitorios, ambientes);
+                }
+                if (banos && banos > ambientes && ambientes > 0) {
+                    console.warn(`Datos incoherentes para ${id_propiedad}: banos=${banos}, amb=${ambientes}. Usando fallback.`);
+                    banos = Math.max(1, Math.min(banos, ambientes));
+                }
+                if (superficie_total_m2 && superficie_total_m2 > 1000) {
+                    console.warn(`Superficie implausible para ${id_propiedad}: ${superficie_total_m2}m². Descartando.`);
+                    superficie_total_m2 = null;
+                }
 
                 const check = (...words) => words.some(w => data.textoCompleto.includes(w));
                 const barrios = ['palermo', 'recoleta', 'belgrano', 'caballito', 'saavedra', 'san telmo',

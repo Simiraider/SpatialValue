@@ -56,7 +56,6 @@ const VENTA_M2_POR_BARRIO: Record<string, number> = {
   'velez sarsfield': 1600,
 };
 
-/** Todos los barrios de CABA disponibles en el selector de tasación. */
 export const BARRIOS_CABA = [
   'Agronomía', 'Almagro', 'Balvanera', 'Barracas', 'Belgrano', 'Boedo', 'Caballito',
   'Chacarita', 'Coghlan', 'Colegiales', 'Constitución', 'Flores', 'Floresta', 'La Boca',

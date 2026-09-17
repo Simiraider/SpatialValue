@@ -1,5 +1,4 @@
 :root {
-  /* Colores extraídos del logotipo de SpatialValue. */
   --color-bg: #f8fafc;
   --color-bg-muted: #f5f5f5;
   --color-bg-soft: #ffffff;
@@ -11,7 +10,6 @@
   --color-graphite: #2e3036;
   --color-logo-light: #d5d5d5;
 
-  /* Alias conservados para componentes existentes. */
   --color-green: var(--color-brand);
   --color-green-dark: var(--color-brand-dark);
   --color-green-light: #e1f4fb;

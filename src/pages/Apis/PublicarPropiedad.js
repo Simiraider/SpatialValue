@@ -90,6 +90,7 @@ export async function POST({ request }) {
       latitud,
       longitud,
       usuario_id,
+      es_borrador = false,
     } = data;
 
     const idUsuarioFinal =
@@ -173,6 +174,7 @@ export async function POST({ request }) {
 
     let publicacionGuardada = null;
     try {
+      await sql`ALTER TABLE publicaciones ADD COLUMN IF NOT EXISTS estado_tasacion varchar(20) NOT NULL DEFAULT 'completada'`;
       const nuevaPublicacion = await sql`
         INSERT INTO publicaciones (
           id_usuario,
@@ -194,7 +196,8 @@ export async function POST({ request }) {
           barrio,
           ciudad,
           latitud,
-          longitud
+          longitud,
+          estado_tasacion
         )
         VALUES (
           ${idUsuarioFinal},
@@ -216,7 +219,8 @@ export async function POST({ request }) {
           ${barrio || null},
           ${ciudad},
           ${latFinal},
-          ${lngFinal}
+          ${lngFinal},
+          ${es_borrador ? 'borrador' : 'completada'}
         )
         RETURNING *;
       `;

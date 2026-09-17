@@ -5,6 +5,9 @@ on:
     - cron: '0 */12 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
@@ -12,11 +15,13 @@ jobs:
     steps:
     - name: Clonar el repositorio
       uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Configurar Node.js
       uses: actions/setup-node@v4
       with:
-        node-on-version: '20'
+        node-version: '20'
 
     - name: Instalar dependencias
       run: npm install
@@ -26,6 +31,5 @@ jobs:
 
     - name: Correr el Scraper
       env:
-        # Le pasamos la URL de tu base de datos de Neon de forma segura
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        SpatialValueStorage_DATABASE_URL: ${{ secrets.DATABASE_URL }}
       run: node LicenciadoScraper.js

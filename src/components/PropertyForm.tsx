@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
-import { navigate } from '../lib/navigate';
+import { navegarA } from '../lib/navigate';
 import { apiFetch } from '../lib/api';
 import { getUsuarioId } from '../lib/session';
 import { BARRIOS_CABA } from '../lib/mercado';
@@ -38,6 +38,7 @@ export const PropertyForm = () => {
   const [submitting, setSubmitting] = useState(false);
   const [photos, setPhotos] = useState<File[]>([]);
   const [showSlider, setShowSlider] = useState(false);
+  const [guardarComoBorrador, setGuardarComoBorrador] = useState(false);
 
   useEffect(() => { sessionStorage.removeItem('tasacion-draft'); }, []);
   const previews = useMemo(() => photos.map(file => ({ file, url: URL.createObjectURL(file) })), [photos]);
@@ -71,15 +72,16 @@ export const PropertyForm = () => {
       superficie_cubierta: superficieCubierta, superficie_total: superficieTotal, piso: data.piso, antiguedad: Number(data.antiguedad) || null,
       orientacion: data.orientacion || null, disposicion: data.disposicion || null, estadoGeneral: data.estadoGeneral,
       expensas: Number(data.expensas) || 0, comodidades: data.comodidades, fotos: draft.fotos, usuario_id: getUsuarioId() || 'demo-user',
+      es_borrador: guardarComoBorrador,
     };
     try {
       const { ok, data: result } = await apiFetch<any>('/Apis/PublicarPropiedad', { method: 'POST', body: JSON.stringify(body) }, 15000);
       const payload = result?.data;
-      sessionStorage.setItem('tasacion-draft', JSON.stringify({ ...draft, id: payload?.id || `local-${Date.now()}`, demo: !(ok && payload?.saved), precioEstimadoUsd: payload?.precio_estimado_usd ?? null, coordenadas: payload?.coordenadas ?? null }));
+      sessionStorage.setItem('tasacion-draft', JSON.stringify({ ...draft, id: payload?.id || `local-${Date.now()}`, demo: !(ok && payload?.saved), es_borrador: guardarComoBorrador, precioEstimadoUsd: payload?.precio_estimado_usd ?? null, coordenadas: payload?.coordenadas ?? null }));
     } catch (error) {
       console.error(error);
       sessionStorage.setItem('tasacion-draft', JSON.stringify({ ...draft, id: `demo-${Date.now()}`, demo: true }));
-    } finally { setSubmitting(false); navigate('/cargando'); }
+    } finally { setSubmitting(false); navegarA('/cargando'); }
   };
 
   const next = async (event: React.FormEvent) => { event.preventDefault(); if (!validate()) return; if (step < TOTAL_STEPS) setStep(current => current + 1); else await submit(); };
@@ -112,8 +114,8 @@ export const PropertyForm = () => {
         <fieldset className="sv-state"><legend>Estado percibido</legend><div className="sv-state-buttons"><button type="button" className={cn('sv-state-btn', 'sv-state--optimo', data.estadoGeneral >= 8 && 'is-selected')} onClick={() => { update('estadoGeneral', 9); setShowSlider(false); }}>Óptimo</button><button type="button" className={cn('sv-state-btn', 'sv-state--regular', data.estadoGeneral >= 5 && data.estadoGeneral < 8 && 'is-selected')} onClick={() => { update('estadoGeneral', 6); setShowSlider(false); }}>Regular</button><button type="button" className={cn('sv-state-btn', 'sv-state--critico', data.estadoGeneral <= 4 && 'is-selected')} onClick={() => { update('estadoGeneral', 3); setShowSlider(false); }}>Crítico</button></div><button type="button" className="sv-state-toggle" onClick={() => setShowSlider(prev => !prev)}>{showSlider ? 'Ocultar detalle' : '¿Más precisión?'}</button>{showSlider && <div className="sv-slider"><div className="sv-slider-value" style={{ color: data.estadoGeneral >= 8 ? '#16a34a' : data.estadoGeneral >= 5 ? '#d97706' : '#dc2626' }}>{data.estadoGeneral}</div><input type="range" min="1" max="10" value={data.estadoGeneral} onChange={e => update('estadoGeneral', Number(e.target.value))} className="sv-slider-input" /><div className="sv-slider-labels"><span>1 — A refaccionar</span><span>10 — A estrenar</span></div></div>}</fieldset>
       </section>}
       {step === 2 && <section><div className="sv-heading"><p>Paso 2 de 3</p><h1>Extras y amenities</h1><span>Seleccioná todo lo que tenga la propiedad.</span></div><div className="sv-amenities">{AMENITIES.map(amenity => <button key={amenity} type="button" onClick={() => toggleAmenity(amenity)} className={cn(data.comodidades.includes(amenity) && 'is-selected')}>{amenity}</button>)}</div></section>}
-      {step === 3 && <section><div className="sv-heading"><p>Paso 3 de 3</p><h1>Fotos de la propiedad</h1><span>Podés sumar imágenes para complementar el análisis visual.</span></div><label className="sv-upload"><input type="file" accept="image/*" multiple onChange={e => setPhotos(Array.from(e.target.files || []).slice(0, 12))} /><strong>Subí imágenes</strong><span>JPG, PNG o WEBP · hasta 12 fotos</span></label>{previews.length > 0 && <div className="sv-photo-grid">{previews.map(({ file, url }) => <img key={`${file.name}-${file.lastModified}`} src={url} alt={file.name} />)}</div>}</section>}
-      <div className="sv-actions">{step > 1 ? <Button type="button" variant="outline" disabled={submitting} onClick={() => setStep(current => current - 1)}>Atrás</Button> : <Button type="button" variant="outline" onClick={() => navigate('/dashboard')}>Cancelar</Button>}<Button type="submit" variant="primary" isLoading={submitting} disabled={submitting}>{step === TOTAL_STEPS ? 'Finalizar y calcular' : 'Siguiente'}</Button></div>
+      {step === 3 && <section><div className="sv-heading"><p>Paso 3 de 3</p><h1>Fotos de la propiedad</h1><span>Podés sumar imágenes para complementar el análisis visual.</span></div><label className="sv-upload"><input type="file" accept="image/*" multiple onChange={e => setPhotos(Array.from(e.target.files || []).slice(0, 12))} /><strong>Subí imágenes</strong><span>JPG, PNG o WEBP · hasta 12 fotos</span></label>{previews.length > 0 && <div className="sv-photo-grid">{previews.map(({ file, url }) => <img key={`${file.name}-${file.lastModified}`} src={url} alt={file.name} />)}</div>}<label className="sv-borrador-toggle"><input type="checkbox" checked={guardarComoBorrador} onChange={e => setGuardarComoBorrador(e.target.checked)} /><span>Guardar como borrador (podés completarla después desde el Dashboard)</span></label></section>}
+      <div className="sv-actions">{step > 1 ? <Button type="button" variant="outline" disabled={submitting} onClick={() => setStep(current => current - 1)}>Atrás</Button> : <Button type="button" variant="outline" onClick={() => navegarA('/dashboard')}>Cancelar</Button>}<Button type="submit" variant="primary" isLoading={submitting} disabled={submitting}>{step === TOTAL_STEPS ? 'Finalizar y calcular' : 'Siguiente'}</Button></div>
     </form>
   </div>;
 };

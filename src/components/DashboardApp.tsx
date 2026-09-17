@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell, Search, Loader2, RefreshCw, Trash2, Download } from 'lucide-react';
-import { borradores, type TasacionItem } from '../data/mock';
+import { Bell, Search, Loader2, RefreshCw, Trash2, Download, CheckCircle2, Undo2 } from 'lucide-react';
+import { type TasacionItem } from '../data/mock';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
@@ -39,7 +39,7 @@ export const DashboardApp = () => {
   const [status, setStatus] = useState<CargaStatus>('loading');
   const [user, setUser] = useState<SesionUsuario | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
-  const [borradoresState, setBorradoresState] = useState<TasacionItem[]>(borradores);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -103,7 +103,7 @@ export const DashboardApp = () => {
               id: String(p.id_publicacion ?? p.id),
               address: p.direccion || p.titulo || 'Sin dirección',
               value,
-              status: 'completada' as const,
+              status: p.estado_tasacion === 'borrador' ? ('borrador' as const) : ('completada' as const),
             };
           });
         setTasacionesApi(mapped);
@@ -147,15 +147,49 @@ export const DashboardApp = () => {
     setConfirmingId(null);
   };
 
+  const handleToggleEstado = async (t: TasacionItem) => {
+    setTogglingId(t.id);
+    try {
+      const nuevoEstado = t.status === 'borrador' ? 'completada' : 'borrador';
+      const { ok, data: resData } = await apiFetch(
+        '/Apis/ActualizarEstadoTasacion',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            id_publicacion: t.id,
+            estado_tasacion: nuevoEstado,
+            usuario_id: getUsuarioId() ?? undefined,
+          }),
+        },
+        8000
+      );
+
+      if (!ok) {
+        const serverError = (resData as any)?.error;
+        console.error('ActualizarEstadoTasacion: respuesta inesperada', { ok, serverError });
+        alert(
+          serverError
+            ? `No se pudo actualizar la tasación. ${serverError}`
+            : 'No se pudo actualizar la tasación. Intentá de nuevo.'
+        );
+        return;
+      }
+
+      setTasacionesApi((prev) =>
+        prev.map((x) => (x.id === t.id ? { ...x, status: nuevoEstado as TasacionItem['status'] } : x))
+      );
+    } catch (error) {
+      console.error('Error al actualizar el estado de la tasación', error);
+      alert('No se pudo actualizar la tasación. Intentá de nuevo.');
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const handleDelete = async (t: TasacionItem) => {
     if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
     setDeletingId(t.id);
     try {
-      if (section === 'borradores') {
-        setBorradoresState((prev) => prev.filter((x) => x.id !== t.id));
-        return;
-      }
-
       const { ok, data: resData } = await apiFetch(
         '/Apis/BorrarPropiedades',
         {
@@ -222,10 +256,8 @@ export const DashboardApp = () => {
 
   const items =
     section === 'borradores'
-      ? borradoresState
-      : section === 'tasaciones'
-        ? tasacionesApi
-        : [];
+      ? tasacionesApi.filter((t) => t.status === 'borrador')
+      : tasacionesApi.filter((t) => t.status === 'completada');
 
   const filtered = items.filter((t) =>
     t.address.toLowerCase().includes(query.toLowerCase())
@@ -323,13 +355,13 @@ export const DashboardApp = () => {
                 {section === 'borradores' ? 'Mis borradores' : 'Mis tasaciones'}
               </h1>
 
-              {section === 'tasaciones' && status === 'loading' && (
+              {status === 'loading' && (
                 <div className="flex justify-center py-12">
                   <Loader2 className="w-10 h-10 animate-spin text-cyan-500" />
                 </div>
               )}
 
-              {section === 'tasaciones' && status === 'error' && !user?.demo && (
+              {status === 'error' && !user?.demo && (
                 <Card className="text-center py-12">
                   <p className="text-slate-500 text-lg mb-1">
                     No pudimos conectar con el servidor para cargar tus tasaciones.
@@ -344,12 +376,14 @@ export const DashboardApp = () => {
                 </Card>
               )}
 
-              {(section === 'borradores' || status === 'ready' || (status === 'error' && user?.demo)) && (filtered.length === 0 ? (
+              {(status === 'ready' || (status === 'error' && user?.demo)) && (filtered.length === 0 ? (
                 <Card className="text-center py-12">
                   <p className="text-slate-500 text-lg">
                     {isSearching
                       ? 'No hay resultados para tu búsqueda.'
-                      : 'Todavía no tenés tasaciones aquí. ¡Creá una nueva!'}
+                      : section === 'borradores'
+                        ? 'No tenés borradores. Podés guardar una tasación como borrador al crearla.'
+                        : 'Todavía no tenés tasaciones aquí. ¡Creá una nueva!'}
                   </p>
                 </Card>
               ) : (
@@ -371,22 +405,45 @@ export const DashboardApp = () => {
                           </div>
                           <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
                             <p className="text-2xl font-bold text-slate-900">{t.value}</p>
-                            {t.status === 'completada' && (
+                            <div className="flex items-center gap-1">
+                              {t.status === 'completada' && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDownloadPdf(t); }}
+                                  disabled={downloadingId === t.id}
+                                  className="p-2 rounded-lg text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 transition-all disabled:opacity-50"
+                                  aria-label="Descargar informe PDF"
+                                  title="Descargar PDF"
+                                >
+                                  {downloadingId === t.id ? (
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                  ) : (
+                                    <Download className="w-5 h-5" />
+                                  )}
+                                </button>
+                              )}
                               <button
                                 type="button"
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDownloadPdf(t); }}
-                                disabled={downloadingId === t.id}
-                                className="p-2 rounded-lg text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 transition-all disabled:opacity-50"
-                                aria-label="Descargar informe PDF"
-                                title="Descargar PDF"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleToggleEstado(t); }}
+                                disabled={togglingId === t.id}
+                                className={cn(
+                                  "p-2 rounded-lg transition-all disabled:opacity-50",
+                                  t.status === 'borrador'
+                                    ? "text-slate-400 hover:text-teal-600 hover:bg-teal-50"
+                                    : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                                )}
+                                aria-label={t.status === 'borrador' ? 'Marcar como completada' : 'Mover a borradores'}
+                                title={t.status === 'borrador' ? 'Marcar como completada' : 'Mover a borradores'}
                               >
-                                {downloadingId === t.id ? (
+                                {togglingId === t.id ? (
                                   <Loader2 className="w-5 h-5 animate-spin" />
+                                ) : t.status === 'borrador' ? (
+                                  <CheckCircle2 className="w-5 h-5" />
                                 ) : (
-                                  <Download className="w-5 h-5" />
+                                  <Undo2 className="w-5 h-5" />
                                 )}
                               </button>
-                            )}
+                            </div>
                           </div>
                         </Card>
                       </a>

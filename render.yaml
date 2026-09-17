@@ -1,7 +1,3 @@
-# Blueprint de Render para el servicio Python de IA de SpatialValue.
-# Al pushear este archivo a main, Render crea/actualiza el servicio automáticamente.
-# Después del primer deploy hay que pegar el valor de SpatialValueStorage_DATABASE_URL
-# (lo pedimos con "sync: false", o lo seteas en Dashboard > Environment).
 services:
   - type: web
     name: spatial-value-ia

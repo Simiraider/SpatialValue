@@ -1,4 +1,7 @@
 import { getCookie } from './api';
+import { rutaInternaSegura } from './navigate';
+
+export { rutaInternaSegura };
 
 const SV_USER_KEY = 'sv_user';
 
@@ -32,7 +35,7 @@ export function getUsuarioId(): string | null {
 export function cerrarSesion(redirectTo = '/'): void {
   clearUser();
   document.cookie = 'usuario_id=; Max-Age=0; path=/';
-  if (redirectTo) window.location.href = redirectTo;
+  if (redirectTo) window.location.href = rutaInternaSegura(redirectTo);
 }
 
 export function syncSessionAcrossTabs(onLogout: () => void): () => void {

@@ -15,7 +15,7 @@ export async function POST({ request }) {
     if (existe.length > 0) {
       return new Response(
         JSON.stringify({ error: "El nombre de usuario ya está en uso" }), 
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 409, headers: { "Content-Type": "application/json" } }
       );
     }
 
@@ -53,7 +53,7 @@ export async function POST({ request }) {
 
     response.headers.append(
       "Set-Cookie", 
-      `usuario_id=${usuarioId}; Path=/; Max-Age=1800; SameSite=Lax; Secure`
+      `usuario_id=${usuarioId}; Path=/; Max-Age=1800; SameSite=Lax; Secure; HttpOnly`
     );
 
     return response;

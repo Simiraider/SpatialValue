@@ -6,6 +6,13 @@ export async function POST({ request }) {
   try {
     const { email, contraseña } = await request.json();
 
+    if (!email || !contraseña) {
+      return new Response(
+        JSON.stringify({ error: "Email y contraseña son obligatorios" }), 
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     const users = await sql`SELECT * FROM usuarios WHERE email = ${email}`;
     const user = users[0];
 
@@ -31,7 +38,7 @@ export async function POST({ request }) {
 
       response.headers.append(
         "Set-Cookie", 
-        `usuario_id=${user.id_usuario}; Path=/; Max-Age=1800; SameSite=Lax`
+        `usuario_id=${user.id_usuario}; Path=/; Max-Age=1800; SameSite=Lax; Secure; HttpOnly`
       );
 
       return response;
