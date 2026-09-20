@@ -1,6 +1,7 @@
 export const prerender = false;
 import sql from '../../Backend/carga.js';
 import { estimarPrecioVenta } from '../../lib/mercado';
+import { verificarDireccion } from '../../lib/verificar-direccion';
 
 const IA_URL = import.meta.env.IA_URL || process.env.IA_URL || 'http://127.0.0.1:8000';
 const IA_TIMEOUT_MS = 15000;
@@ -15,27 +16,7 @@ const tiene = (comodidades, nombre) =>
   Array.isArray(comodidades) &&
   comodidades.some((a) => normalizar(a) === normalizar(nombre));
 
-const IA_API_KEY = import.meta.env.INTERNAL_API_KEY || process.env.INTERNAL_API_KEY || '';
-
-async function geocodificar(direccion, barrio, ciudad) {
-  const query = `${direccion}, ${barrio || ''}, ${ciudad || 'Buenos Aires'}, Argentina`;
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=ar`;
-  try {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'SpatialValue/1.0 (tasaciones)' },
-      signal: AbortSignal.timeout(5000),
-    });
-    const data = await res.json();
-    if (data && data.length > 0) {
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-    }
-  } catch (e) {
-    console.warn('Geocoding falló:', e.message);
-  }
-  return null;
-}
-
-async function llamarAI(payload) {
+const IA_API_KEY = import.meta.env.INTERNAL_API_KEY || process.env.INTERNAL_API_KEY || '';async function llamarAI(payload) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), IA_TIMEOUT_MS);
   try {
@@ -111,8 +92,22 @@ export async function POST({ request }) {
     const tipoPropiedadDB = String(tipo_propiedad).toLowerCase();
 
     let coordenadasFinales = (latitud && longitud) ? { lat: Number(latitud), lng: Number(longitud) } : null;
+    let barrioCoincide = true;
+    let barrioDetectado = null;
+    let direccionFormateada = null;
+    let fuenteGeocoding = null;
     if (!coordenadasFinales) {
-      coordenadasFinales = await geocodificar(direccion, barrio, ciudad);
+      // Verifica que la dirección exista y que el barrio declarado coincida
+      // con el que reporta Google Maps (fallback Nominatim).
+      const verificacion = await verificarDireccion(direccion, barrio, ciudad);
+      if (verificacion.existe) {
+        coordenadasFinales = { lat: verificacion.lat, lng: verificacion.lng };
+        barrioDetectado = verificacion.barrioDetectado;
+        direccionFormateada = verificacion.direccionFormateada;
+        fuenteGeocoding = verificacion.fuente;
+        // Solo marca discrepancia si el proveedor detectó un barrio conocido.
+        barrioCoincide = verificacion.barrioDetectado ? verificacion.barrioCoincide : true;
+      }
     }
     const latFinal = coordenadasFinales?.lat ?? null;
     const lngFinal = coordenadasFinales?.lng ?? null;
@@ -265,7 +260,12 @@ export async function POST({ request }) {
         data: {
           id: publicacionGuardada?.id_publicacion ?? null,
           precio_estimado_usd: precioEstimadoUsd != null ? Math.round(precioEstimadoUsd) : null,
-          coordenadas: resultadoIA?.coordenadas ?? null,
+          coordenadas: resultadoIA?.coordenadas ?? (latFinal != null ? { lat: latFinal, lng: lngFinal } : null),
+          direccion_verificada: Boolean(latFinal),
+          direccion_formateada: direccionFormateada,
+          barrio_detectado: barrioDetectado,
+          barrio_coincide: barrioCoincide,
+          fuente_geocoding: fuenteGeocoding,
           saved: Boolean(publicacionGuardada),
         },
       }),

@@ -17,6 +17,12 @@ type FormData = {
   orientacion: string; disposicion: string; comodidades: string[]; estadoGeneral: number; expensas: string;
 };
 
+type VerificacionDireccion = {
+  estado: 'idle' | 'verificando' | 'invalida' | 'barrio-distinto' | 'ok' | 'sin-servicio';
+  mensaje?: string;
+  sugerencia?: string | null;
+};
+
 const initialData: FormData = {
   tipoTasacion: 'venta', direccion: '', barrio: '', tipoUnidad: 'Departamento',
   superficieTotal: '', superficieCubierta: '', ambientes: '3', antiguedad: '', banos: '1', dormitorios: '1',
@@ -39,6 +45,7 @@ export const PropertyForm = () => {
   const [photos, setPhotos] = useState<File[]>([]);
   const [showSlider, setShowSlider] = useState(false);
   const [guardarComoBorrador, setGuardarComoBorrador] = useState(false);
+  const [verifDir, setVerifDir] = useState<VerificacionDireccion>({ estado: 'idle' });
 
   useEffect(() => { sessionStorage.removeItem('tasacion-draft'); }, []);
   const previews = useMemo(() => photos.map(file => ({ file, url: URL.createObjectURL(file) })), [photos]);
@@ -55,8 +62,38 @@ export const PropertyForm = () => {
       if (Number(data.superficieTotal) <= 0) next.superficieTotal = 'Ingresá una superficie válida';
       if (Number(data.superficieCubierta) <= 0) next.superficieCubierta = 'Ingresá una superficie válida';
       if (Number(data.superficieCubierta) > Number(data.superficieTotal)) next.superficieCubierta = 'No puede superar la superficie total';
+      // Dirección inexistente según Google Maps: bloquea el avance.
+      if (verifDir.estado === 'invalida') next.direccion = verifDir.mensaje || 'La dirección no existe. Verificala e intentá de nuevo.';
     }
     setErrors(next); return Object.keys(next).length === 0;
+  };
+
+  // Verifica la dirección contra Google Maps (fallback Nominatim) al salir del campo.
+  const verificarDireccionEnBlur = async () => {
+    const direccion = data.direccion.trim();
+    if (!direccion || !data.barrio) { setVerifDir({ estado: 'idle' }); return; }
+    setVerifDir({ estado: 'verificando' });
+    try {
+      const { ok, data: result } = await apiFetch<any>('/Apis/VerificarDireccion', {
+        method: 'POST',
+        body: JSON.stringify({ direccion, barrio: data.barrio, ciudad: 'Ciudad de Buenos Aires' }),
+      }, 8000);
+      const r = result?.data;
+      if (!ok || !r) { setVerifDir({ estado: 'sin-servicio' }); return; }
+      if (!r.existe) {
+        setVerifDir({ estado: 'invalida', mensaje: 'No encontramos esa dirección. Revisá calle, altura y barrio.' });
+      } else if (r.barrioDetectado && !r.barrioCoincide) {
+        setVerifDir({
+          estado: 'barrio-distinto',
+          mensaje: `Según Google Maps, esa dirección pertenece a ${r.barrioDetectado}, no a ${data.barrio}.`,
+          sugerencia: r.barrioDetectado,
+        });
+      } else {
+        setVerifDir({ estado: 'ok' });
+      }
+    } catch {
+      setVerifDir({ estado: 'sin-servicio' });
+    }
   };
 
   const submit = async () => {
@@ -75,7 +112,7 @@ export const PropertyForm = () => {
       es_borrador: guardarComoBorrador,
     };
     try {
-      const { ok, data: result } = await apiFetch<any>('/Apis/PublicarPropiedad', { method: 'POST', body: JSON.stringify(body) }, 15000);
+      const { ok, data: result } = await apiFetch<any>('/Apis/PublicarPropiedad', { method: 'POST', body: JSON.stringify(body) }, 25000);
       const payload = result?.data;
       sessionStorage.setItem('tasacion-draft', JSON.stringify({ ...draft, id: payload?.id || `local-${Date.now()}`, demo: !(ok && payload?.saved), es_borrador: guardarComoBorrador, precioEstimadoUsd: payload?.precio_estimado_usd ?? null, coordenadas: payload?.coordenadas ?? null }));
     } catch (error) {
@@ -94,7 +131,21 @@ export const PropertyForm = () => {
         <div className="sv-choice-row"><Button type="button" variant={data.tipoTasacion === 'venta' ? 'primary' : 'outline'} fullWidth onClick={() => update('tipoTasacion', 'venta')}>Venta</Button><Button type="button" variant={data.tipoTasacion === 'alquiler' ? 'primary' : 'outline'} fullWidth onClick={() => update('tipoTasacion', 'alquiler')}>Alquiler</Button></div>
         <div className="sv-choice-row"><Button type="button" variant={data.tipoUnidad === 'Departamento' ? 'primary' : 'outline'} fullWidth onClick={() => update('tipoUnidad', 'Departamento')}>Departamento</Button><Button type="button" variant={data.tipoUnidad === 'Casa' ? 'primary' : 'outline'} fullWidth onClick={() => update('tipoUnidad', 'Casa')}>Casa</Button></div>
         <div className="sv-grid">
-          <Input label="Dirección" placeholder="Blas Parera 1301" value={data.direccion} onChange={e => update('direccion', e.target.value)} error={errors.direccion} />
+          <div>
+            <Input label="Dirección" placeholder="Blas Parera 1301" value={data.direccion} onChange={e => { update('direccion', e.target.value); if (verifDir.estado !== 'idle') setVerifDir({ estado: 'idle' }); }} onBlur={verificarDireccionEnBlur} error={errors.direccion} />
+            {verifDir.estado === 'verificando' && <p className="text-sm text-slate-500 ml-1 mt-1">Verificando dirección…</p>}
+            {verifDir.estado === 'ok' && <p className="text-sm text-emerald-600 ml-1 mt-1">✓ Dirección verificada</p>}
+            {(verifDir.estado === 'invalida' || verifDir.estado === 'barrio-distinto') && (
+              <p className="text-sm text-amber-600 ml-1 mt-1">
+                {verifDir.mensaje}
+                {verifDir.estado === 'barrio-distinto' && verifDir.sugerencia && (
+                  <button type="button" className="underline font-semibold ml-1" onClick={() => { update('barrio', verifDir.sugerencia!); setVerifDir({ estado: 'ok' }); }}>
+                    Usar {verifDir.sugerencia}
+                  </button>
+                )}
+              </p>
+            )}
+          </div>
           <Selector label="Barrio" value={data.barrio} onChange={value => update('barrio', value)} error={errors.barrio}><option value="">Seleccioná un barrio…</option>{BARRIOS_CABA.map(barrio => <option key={barrio} value={barrio}>{barrio}</option>)}</Selector>
           <Input label="Número de ambientes" type="number" min="0" max="50" value={data.ambientes} onChange={e => update('ambientes', e.target.value)} />
           <Input label="Antigüedad (años)" type="number" min="0" max="200" placeholder="Ej. 8" value={data.antiguedad} onChange={e => update('antiguedad', e.target.value)} />
