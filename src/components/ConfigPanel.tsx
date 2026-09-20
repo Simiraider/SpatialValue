@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Camera, Check, Link2, Loader2, Lock, Mail, Phone, Shield, User, X } from 'lucide-react';
+import { Camera, Check, Globe, Link2, Loader2, Lock, Mail, Phone, Shield, Trash2, User, X } from 'lucide-react';
 import { Button } from './ui/Button';
 import { InstagramIcon, XIcon, LinkedinIcon, FacebookIcon } from './SocialIcons';
 import { apiFetch } from '../lib/api';
-import { actualizarSesion, type SesionUsuario } from '../lib/session';
+import { actualizarSesion, cerrarSesion, type SesionUsuario } from '../lib/session';
 import '../styles/config.css';
 import {
   type ConfigUsuario,
@@ -15,6 +15,8 @@ import {
   limpiarTwitter,
   limpiarLinkedin,
   limpiarFacebook,
+  normalizarSitioWeb,
+  esSitioWebValido,
   reglasPassword,
   passwordValida,
   fileAAvatarBase64,
@@ -56,6 +58,11 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
   const [guardandoPwd, setGuardandoPwd] = useState(false);
   const [errorPwd, setErrorPwd] = useState('');
   const [exitoPwd, setExitoPwd] = useState('');
+  const [confirmarDesactivar, setConfirmarDesactivar] = useState(false);
+  const [confirmarEliminar, setConfirmarEliminar] = useState(false);
+  const [pwdPeligro, setPwdPeligro] = useState('');
+  const [textoConfirmacion, setTextoConfirmacion] = useState('');
+  const [procesandoCuenta, setProcesandoCuenta] = useState(false);
 
   const inputArchivoRef = useRef<HTMLInputElement | null>(null);
   const exitoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -70,6 +77,8 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
         setEmail(String((data as any)?.perfil?.email ?? ''));
         setEmailGuardado(String((data as any)?.perfil?.email ?? ''));
         setNombre(String((data as any)?.perfil?.nombre ?? user?.nombre ?? ''));
+      } else if ((data as any)?.sesion_expirada) {
+        cerrarSesion('/');
       } else {
         setError('No se pudo cargar tu configuración.');
       }
@@ -97,7 +106,8 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
 
   const emailValido = EMAIL_RE.test(email.trim());
   const telefonoValido = validarTelefono(config.telefono);
-  const puedeGuardar = emailValido && telefonoValido && !guardando;
+  const sitioValido = esSitioWebValido(config.sitio_web);
+  const puedeGuardar = emailValido && telefonoValido && sitioValido && !guardando;
 
   const guardarGeneral = async () => {
     setGuardando(true);
@@ -143,6 +153,46 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
       marcar({ avatar: base64 });
     } catch (e) {
       setError((e as Error).message || 'No se pudo procesar la imagen.');
+    }
+  };
+
+  const desactivarCuenta = async () => {
+    setProcesandoCuenta(true);
+    setErrorPwd('');
+    try {
+      const { ok, data } = await apiFetch('/Apis/ActualizarConfigUsuario', {
+        method: 'POST',
+        body: JSON.stringify({ accion: 'desactivar_cuenta' }),
+      }, 10000);
+      if (!ok) {
+        setErrorPwd((data as any)?.error || 'No se pudo desactivar la cuenta.');
+        return;
+      }
+      cerrarSesion('/');
+    } catch {
+      setErrorPwd('No se pudo desactivar la cuenta.');
+    } finally {
+      setProcesandoCuenta(false);
+    }
+  };
+
+  const eliminarCuenta = async () => {
+    setProcesandoCuenta(true);
+    setErrorPwd('');
+    try {
+      const { ok, data } = await apiFetch('/Apis/ActualizarConfigUsuario', {
+        method: 'POST',
+        body: JSON.stringify({ accion: 'eliminar_cuenta', passwordActual: pwdPeligro }),
+      }, 15000);
+      if (!ok) {
+        setErrorPwd((data as any)?.error || 'No se pudo eliminar la cuenta.');
+        return;
+      }
+      cerrarSesion('/');
+    } catch {
+      setErrorPwd('No se pudo eliminar la cuenta.');
+    } finally {
+      setProcesandoCuenta(false);
     }
   };
 
@@ -238,12 +288,21 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
                   type="button"
                   onClick={() => inputArchivoRef.current?.click()}
                   className="configuracion__avatar-boton"
-                  aria-label="Subir foto de perfil"
-                  title="Subir foto"
+                  aria-label="Cambiar foto de perfil"
+                  title="Cambiar foto"
                 >
                   <Camera />
                 </button>
               </div>
+              {config.avatar && (
+                <button
+                  type="button"
+                  onClick={() => marcar({ avatar: '' })}
+                  className="configuracion__avatar-eliminar"
+                >
+                  <Trash2 /> Eliminar foto
+                </button>
+              )}
               <input
                 ref={inputArchivoRef}
                 type="file"
@@ -286,6 +345,9 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
                 {email && !emailValido && (
                   <p className="configuracion__ayuda-error">Ingresá un email válido.</p>
                 )}
+                {!config.mostrar_contacto && (
+                  <p className="configuracion__ayuda-privacidad">Solo visible para vos.</p>
+                )}
               </div>
 
               <div className="configuracion__campo">
@@ -324,7 +386,20 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
         <section className="configuracion__tarjeta">
           <div className="configuracion__lista-campos">
             <div className="configuracion__campo">
-              <label className="configuracion__etiqueta" htmlFor="config-instagram">Instagram</label>
+              <div className="configuracion__etiqueta-fila">
+                <label className="configuracion__etiqueta" htmlFor="config-instagram">Instagram</label>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={config.instagram_publico}
+                  aria-label="Instagram público"
+                  title={config.instagram_publico ? 'Público' : 'Privado'}
+                  onClick={() => marcar({ instagram_publico: !config.instagram_publico })}
+                  className={`configuracion__interruptor configuracion__interruptor--chico${config.instagram_publico ? ' configuracion__interruptor--activo' : ''}`}
+                >
+                  <span className="configuracion__interruptor-amanecer" />
+                </button>
+              </div>
               <div className="configuracion__fila-red">
                 <div className="configuracion__campo-icono">
                   <InstagramIcon className="configuracion__icono" />
@@ -351,7 +426,21 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
             </div>
 
             <div className="configuracion__campo">
-              <label className="configuracion__etiqueta" htmlFor="config-twitter">X (Twitter)</label>
+              <div className="configuracion__etiqueta-fila">
+                <label className="configuracion__etiqueta" htmlFor="config-twitter">X (Twitter)</label>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={config.twitter_publico}
+                  aria-label="X público"
+                  title={config.twitter_publico ? 'Público' : 'Privado'}
+                  onClick={() => marcar({ twitter_publico: !config.twitter_publico })}
+                  className={`configuracion__interruptor configuracion__interruptor--chico${config.twitter_publico ? ' configuracion__interruptor--activo' : ''}`}
+                >
+                  <span className="configuracion__interruptor-amanecer" />
+                </button>
+              </div>
+              <label className="configuracion__etiqueta" htmlFor="config-twitter" hidden>X (Twitter)</label>
               <div className="configuracion__fila-red">
                 <div className="configuracion__campo-icono">
                   <XIcon className="configuracion__icono" />
@@ -378,7 +467,21 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
             </div>
 
             <div className="configuracion__campo">
-              <label className="configuracion__etiqueta" htmlFor="config-linkedin">LinkedIn</label>
+              <div className="configuracion__etiqueta-fila">
+                <label className="configuracion__etiqueta" htmlFor="config-linkedin">LinkedIn</label>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={config.linkedin_publico}
+                  aria-label="LinkedIn público"
+                  title={config.linkedin_publico ? 'Público' : 'Privado'}
+                  onClick={() => marcar({ linkedin_publico: !config.linkedin_publico })}
+                  className={`configuracion__interruptor configuracion__interruptor--chico${config.linkedin_publico ? ' configuracion__interruptor--activo' : ''}`}
+                >
+                  <span className="configuracion__interruptor-amanecer" />
+                </button>
+              </div>
+              <label className="configuracion__etiqueta" htmlFor="config-linkedin" hidden>LinkedIn</label>
               <div className="configuracion__fila-red">
                 <div className="configuracion__campo-icono">
                   <LinkedinIcon className="configuracion__icono" />
@@ -405,7 +508,21 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
             </div>
 
             <div className="configuracion__campo">
-              <label className="configuracion__etiqueta" htmlFor="config-facebook">Facebook</label>
+              <div className="configuracion__etiqueta-fila">
+                <label className="configuracion__etiqueta" htmlFor="config-facebook">Facebook</label>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={config.facebook_publico}
+                  aria-label="Facebook público"
+                  title={config.facebook_publico ? 'Público' : 'Privado'}
+                  onClick={() => marcar({ facebook_publico: !config.facebook_publico })}
+                  className={`configuracion__interruptor configuracion__interruptor--chico${config.facebook_publico ? ' configuracion__interruptor--activo' : ''}`}
+                >
+                  <span className="configuracion__interruptor-amanecer" />
+                </button>
+              </div>
+              <label className="configuracion__etiqueta" htmlFor="config-facebook" hidden>Facebook</label>
               <div className="configuracion__fila-red">
                 <div className="configuracion__campo-icono">
                   <FacebookIcon className="configuracion__icono" />
@@ -430,6 +547,52 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
                 )}
               </div>
             </div>
+
+            <div className="configuracion__campo">
+              <div className="configuracion__etiqueta-fila">
+                <label className="configuracion__etiqueta" htmlFor="config-sitio-web">Sitio web</label>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={config.sitio_publico}
+                  aria-label="Sitio web público"
+                  title={config.sitio_publico ? 'Público' : 'Privado'}
+                  onClick={() => marcar({ sitio_publico: !config.sitio_publico })}
+                  className={`configuracion__interruptor configuracion__interruptor--chico${config.sitio_publico ? ' configuracion__interruptor--activo' : ''}`}
+                >
+                  <span className="configuracion__interruptor-amanecer" />
+                </button>
+              </div>
+              <label className="configuracion__etiqueta" htmlFor="config-sitio-web" hidden>Sitio web</label>
+              <div className="configuracion__fila-red">
+                <div className="configuracion__campo-icono">
+                  <Globe className="configuracion__icono" />
+                  <input
+                    id="config-sitio-web"
+                    type="url"
+                    value={config.sitio_web}
+                    onChange={(e) => marcar({ sitio_web: e.target.value })}
+                    placeholder="tusitio.com"
+                    className={`configuracion__entrada configuracion__entrada--icono${
+                      config.sitio_web && !sitioValido ? ' configuracion__entrada--invalida' : ''
+                    }`}
+                  />
+                </div>
+                {config.sitio_web && sitioValido && (
+                  <a
+                    href={normalizarSitioWeb(config.sitio_web)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="configuracion__enlace-red"
+                  >
+                    Visitar
+                  </a>
+                )}
+              </div>
+              {config.sitio_web && !sitioValido && (
+                <p className="configuracion__ayuda-error">Ingresá una URL válida.</p>
+              )}
+            </div>
           </div>
 
           <div className="configuracion__tarjeta-pie">
@@ -438,32 +601,67 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
             </Button>
           </div>
         </section>
-      )}
-
-      {pestaña === 'privacidad' && (
+      )}      {pestaña === 'privacidad' && (
         <section className="configuracion__tarjeta">
           <div className="configuracion__lista-campos">
-            {([
-              { key: 'perfil_publico', label: 'Visibilidad del perfil', descripcion: 'Otros usuarios pueden ver tu perfil.' },
-              { key: 'mostrar_contacto', label: 'Datos de contacto', descripcion: 'Mostrar tu email y teléfono en el perfil público.' },
-            ] as const).map(({ key, label, descripcion }) => (
-              <div key={key} className="configuracion__interruptor-fila">
-                <div>
-                  <p className="configuracion__interruptor-titulo">{label}</p>
-                  <p className="configuracion__interruptor-descripcion">{descripcion}</p>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={config[key]}
-                  aria-label={label}
-                  onClick={() => marcar({ [key]: !config[key] } as Partial<ConfigUsuario>)}
-                  className={`configuracion__interruptor${config[key] ? ' configuracion__interruptor--activo' : ''}`}
-                >
-                  <span className="configuracion__interruptor-amanecer" />
-                </button>
+            <div className="configuracion__interruptor-fila">
+              <div>
+                <p className="configuracion__interruptor-titulo">Visibilidad del perfil</p>
+                <p className="configuracion__interruptor-descripcion">
+                  Si tu cuenta es privada, solo vos podrás ver tu perfil y tus tasaciones.
+                </p>
               </div>
-            ))}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={config.perfil_publico}
+                aria-label="Visibilidad del perfil"
+                onClick={() => marcar({ perfil_publico: !config.perfil_publico })}
+                className={`configuracion__interruptor${config.perfil_publico ? ' configuracion__interruptor--activo' : ''}`}
+              >
+                <span className="configuracion__interruptor-amanecer" />
+              </button>
+            </div>
+
+            <div className={`configuracion__interruptor-fila${config.perfil_publico ? '' : ' configuracion__interruptor-fila--deshabilitado'}`}>
+              <div>
+                <p className="configuracion__interruptor-titulo">Visibilidad de estadísticas</p>
+                <p className="configuracion__interruptor-descripcion">
+                  Mostrar tus métricas de tasaciones en tu perfil público.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={config.perfil_publico && config.visibilidad_estadisticas}
+                aria-label="Visibilidad de estadísticas"
+                disabled={!config.perfil_publico}
+                onClick={() => marcar({ visibilidad_estadisticas: !config.visibilidad_estadisticas })}
+                className={`configuracion__interruptor${config.perfil_publico && config.visibilidad_estadisticas ? ' configuracion__interruptor--activo' : ''}`}
+              >
+                <span className="configuracion__interruptor-amanecer" />
+              </button>
+            </div>
+
+            <div className={`configuracion__interruptor-fila${config.perfil_publico ? '' : ' configuracion__interruptor-fila--deshabilitado'}`}>
+              <div>
+                <p className="configuracion__interruptor-titulo">Datos de contacto</p>
+                <p className="configuracion__interruptor-descripcion">
+                  Mostrar tu email y teléfono en el perfil público.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={config.perfil_publico && config.mostrar_contacto}
+                aria-label="Datos de contacto"
+                disabled={!config.perfil_publico}
+                onClick={() => marcar({ mostrar_contacto: !config.mostrar_contacto })}
+                className={`configuracion__interruptor${config.perfil_publico && config.mostrar_contacto ? ' configuracion__interruptor--activo' : ''}`}
+              >
+                <span className="configuracion__interruptor-amanecer" />
+              </button>
+            </div>
           </div>
 
           <div className="configuracion__tarjeta-pie">
@@ -552,6 +750,29 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
             <Button type="button" onClick={cambiarPassword} disabled={!puedeCambiarPwd} isLoading={guardandoPwd}>
               Cambiar contraseña
             </Button>
+          </div>
+
+          <div className="configuracion__zona-peligro">
+            <p className="configuracion__peligro-titulo">Zona de peligro</p>
+            <p className="configuracion__peligro-descripcion">
+              Estas acciones afectan permanentemente tu cuenta. Revéalas con cuidado.
+            </p>
+            <div className="configuracion__peligro-acciones">
+              <button
+                type="button"
+                onClick={() => setConfirmarDesactivar(true)}
+                className="configuracion__boton-peligro"
+              >
+                Desactivar mi cuenta
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmarEliminar(true)}
+                className="configuracion__boton-peligro configuracion__boton-peligro--critico"
+              >
+                Eliminar cuenta definitivamente
+              </button>
+            </div>
           </div>
         </section>
       )}
@@ -652,6 +873,18 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
                   <FacebookIcon className="configuracion__boton-red-icono" />
                 </a>
               )}
+              {config.sitio_web && sitioValido && (
+                <a
+                  href={normalizarSitioWeb(config.sitio_web)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="configuracion__boton-red configuracion__boton-red--web"
+                  aria-label="Sitio web"
+                  title="Sitio web"
+                >
+                  <Globe className="configuracion__boton-red-icono" />
+                </a>
+              )}
               {!config.perfil_publico && (
                 <span className="configuracion__perfil-privado">Perfil privado</span>
               )}
@@ -659,6 +892,66 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
           </div>
         </div>
       </section>
+
+      {confirmarDesactivar && (
+        <div className="configuracion__modal-fondo" role="dialog" aria-modal="true" aria-label="Desactivar cuenta">
+          <div className="configuracion__modal">
+            <p className="configuracion__modal-titulo">¿Desactivar tu cuenta?</p>
+            <p className="configuracion__modal-texto">
+              Tu perfil dejará de ser visible y no podrás iniciar sesión. Tus datos se conservan y se pueden
+              restaurar pidiendo soporte.
+            </p>
+            <div className="configuracion__modal-acciones">
+              <button type="button" className="configuracion__modal-cancelar" onClick={() => setConfirmarDesactivar(false)}>
+                Cancelar
+              </button>
+              <button type="button" className="configuracion__boton-peligro" onClick={desactivarCuenta} disabled={procesandoCuenta}>
+                {procesandoCuenta ? 'Desactivando…' : 'Sí, desactivar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmarEliminar && (
+        <div className="configuracion__modal-fondo" role="dialog" aria-modal="true" aria-label="Eliminar cuenta">
+          <div className="configuracion__modal">
+            <p className="configuracion__modal-titulo">¿Eliminar tu cuenta definitivamente?</p>
+            <p className="configuracion__modal-texto">
+              Se borran tu perfil, tu configuración y todas tus tasaciones. Esta acción no se puede deshacer.
+              Escribí <strong>ELIMINAR</strong> y confirmá con tu contraseña.
+            </p>
+            <input
+              type="text"
+              value={textoConfirmacion}
+              onChange={(e) => setTextoConfirmacion(e.target.value)}
+              placeholder="Escribí ELIMINAR"
+              className="configuracion__entrada"
+            />
+            <input
+              type="password"
+              value={pwdPeligro}
+              onChange={(e) => setPwdPeligro(e.target.value)}
+              placeholder="Contraseña actual"
+              autoComplete="current-password"
+              className="configuracion__entrada configuracion__modal-espacio"
+            />
+            <div className="configuracion__modal-acciones">
+              <button type="button" className="configuracion__modal-cancelar" onClick={() => { setConfirmarEliminar(false); setTextoConfirmacion(''); setPwdPeligro(''); }}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="configuracion__boton-peligro configuracion__boton-peligro--critico"
+                onClick={eliminarCuenta}
+                disabled={procesandoCuenta || textoConfirmacion !== 'ELIMINAR' || pwdPeligro.length === 0}
+              >
+                {procesandoCuenta ? 'Eliminando…' : 'Eliminar para siempre'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
