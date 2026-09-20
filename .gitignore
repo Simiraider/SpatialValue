@@ -31,3 +31,4 @@ storage/
 
 .vercel/
 /chrome_scraper_data
+/supabase/.temp

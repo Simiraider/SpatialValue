@@ -1,23 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell, Search, Loader2, RefreshCw, Trash2, Download, CheckCircle2, Undo2 } from 'lucide-react';
+import { Search, Loader2, RefreshCw, Trash2, Download, CheckCircle2, Undo2 } from 'lucide-react';
 import { type TasacionItem } from '../data/mock';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
 import { apiFetch, getCookie } from '../lib/api';
 import { estimarPrecioVenta, valorM2Alquiler, TASA_ARS_USD } from '../lib/mercado';
-import { getUser, getUsuarioId, cerrarSesion, syncSessionAcrossTabs, type SesionUsuario } from '../lib/session';
+import { getUser, getUsuarioId, cerrarSesion, syncSessionAcrossTabs, actualizarSesion, type SesionUsuario } from '../lib/session';
 import { generarInformePdf } from '../lib/generar-pdf';
-import { normalizeData } from '../lib/normalizar-tasacion';
+import { ConfigPanel } from './ConfigPanel';
+import { BuscarUsuarios } from './BuscarUsuarios';
+import { NotificationsBell } from './NotificationsBell';
+import { esConfigUsuario, formatValor, type Moneda } from '../lib/usuario-config';
 
-type Section = 'tasaciones' | 'borradores' | 'indices' | 'config';
+type Section = 'tasaciones' | 'borradores' | 'config' | 'comunidad';
 type CargaStatus = 'loading' | 'error' | 'ready';
 
 const sidebarItems: { id: Section; label: string }[] = [
   { id: 'tasaciones', label: 'Mis tasaciones' },
   { id: 'borradores', label: 'Borradores' },
-  { id: 'indices', label: 'Índices de Mercado' },
   { id: 'config', label: 'Configuración' },
+  { id: 'comunidad', label: 'Comunidad' },
 ];
 
 const statusLabel: Record<TasacionItem['status'], string> = {
@@ -39,6 +42,8 @@ export const DashboardApp = () => {
   const [tasacionesApi, setTasacionesApi] = useState<TasacionItem[]>([]);
   const [status, setStatus] = useState<CargaStatus>('loading');
   const [user, setUser] = useState<SesionUsuario | null>(null);
+  const [moneda, setMoneda] = useState<Moneda>('USD');
+  const [avatar, setAvatar] = useState('');
   const [checkingSession, setCheckingSession] = useState(true);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
@@ -47,13 +52,24 @@ export const DashboardApp = () => {
   const confirmTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setUser(getUser());
+    const u = getUser();
+    setUser(u);
+    setMoneda(u?.moneda ?? 'USD');
+    setAvatar(u?.avatar ?? '');
     if (!getCookie('usuario_id') && !getUser()) {
       window.location.href = '/login';
       return;
     }
 
     setCheckingSession(false);
+
+    apiFetch('/Apis/ObtenerConfigUsuario', {}, 8000).then(({ ok, data }) => {
+      if (ok && esConfigUsuario((data as any)?.config)) {
+        setMoneda((data as any).config.moneda);
+        setAvatar((data as any).config.avatar || '');
+        actualizarSesion({ moneda: (data as any).config.moneda, avatar: (data as any).config.avatar || undefined });
+      }
+    }).catch(() => {});
 
     return syncSessionAcrossTabs(() => {
       window.location.href = '/';
@@ -75,35 +91,33 @@ export const DashboardApp = () => {
           .filter((p: any) => p && p.id_publicacion !== undefined && p.id_publicacion !== null)
           .map((p: any) => {
             const esAlq = String(p.tipo_operacion).toLowerCase() === 'alquiler';
-            let value: string;
+            let valorUsd: number | null = null;
             if (esAlq) {
               const supCubAlq = Number(p.superficie_cubierta) || 0;
               const precioIA = Number(p.precio_estimado_ia);
               if (precioIA > 0) {
-                const alqMensualUsd = Math.round(precioIA * 0.045 / 12);
-                value = `$${alqMensualUsd.toLocaleString('es-AR')} USD/mes`;
+                valorUsd = Math.round(precioIA * 0.045 / 12);
               } else if (supCubAlq > 0) {
-                const alqMensualUsd = Math.round(supCubAlq * valorM2Alquiler(p.barrio || p.ciudad));
-                value = `$${alqMensualUsd.toLocaleString('es-AR')} USD/mes`;
-              } else {
-                value = 'A tasar';
+                valorUsd = Math.round(supCubAlq * valorM2Alquiler(p.barrio || p.ciudad));
               }
             } else {
               const precioIA = Number(p.precio_estimado_ia);
               if (precioIA > 0) {
-                value = `$${Math.round(precioIA).toLocaleString('es-AR')}`;
+                valorUsd = Math.round(precioIA);
               } else {
                 const supCub = Number(p.superficie_cubierta) || 0;
                 const supDesc = Math.max((Number(p.superficie_total) || 0) - supCub, 0);
-                value = supCub > 0
-                  ? `$${estimarPrecioVenta(supCub, supDesc, p.barrio || p.ciudad).toLocaleString('es-AR')}`
-                  : 'A tasar';
+                if (supCub > 0) {
+                  valorUsd = estimarPrecioVenta(supCub, supDesc, p.barrio || p.ciudad);
+                }
               }
             }
             return {
               id: String(p.id_publicacion ?? p.id),
               address: p.direccion || p.titulo || 'Sin dirección',
-              value,
+              value: valorUsd !== null ? formatValor(valorUsd, 'USD') : 'A tasar',
+              valorUsd,
+              esAlquiler: esAlq,
               status: p.estado_tasacion === 'borrador' ? ('borrador' as const) : ('completada' as const),
             };
           });
@@ -273,6 +287,16 @@ export const DashboardApp = () => {
 
   const isSearching = query.trim().length > 0;
 
+  const formatear = (usd: number, alquiler = false) => {
+    if (alquiler) {
+      if (moneda === 'ARS') {
+        return `$${Math.round(usd * TASA_ARS_USD).toLocaleString('es-AR')} ARS/mes`;
+      }
+      return `$${Math.round(usd).toLocaleString('es-AR')} USD/mes`;
+    }
+    return formatValor(usd, moneda);
+  };
+
   return (
     <div className="flex h-screen bg-[#F5F5F5] font-sans overflow-hidden">
       <aside className="w-64 bg-slate-900 text-white flex flex-col" aria-label="Menú principal">
@@ -314,9 +338,7 @@ export const DashboardApp = () => {
             </div>
           </div>
           <div className="flex items-center gap-4 ml-4">
-            <button type="button" className="p-2 text-slate-400 hover:text-slate-600 transition-colors" aria-label="Notificaciones">
-              <Bell className="w-6 h-6" />
-            </button>
+            <NotificationsBell />
             {user && (
               <button
                 type="button"
@@ -326,16 +348,26 @@ export const DashboardApp = () => {
                 Salir
               </button>
             )}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center text-cyan-700 font-bold">
-                {user ? getInitials(user.nombre) : 'U'}
-              </div>
+            <button
+              type="button"
+              onClick={() => setSection('config')}
+              className="flex items-center gap-3 rounded-full p-1 pr-2 hover:bg-slate-100 transition-colors"
+              aria-label="Abrir configuración"
+              title="Configuración"
+            >
+              {avatar ? (
+                <img src={avatar} alt="Avatar" className="w-10 h-10 rounded-full object-cover" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center text-cyan-700 font-bold">
+                  {user ? getInitials(user.nombre) : 'U'}
+                </div>
+              )}
               {user && (
                 <span className="text-sm font-semibold text-slate-700 hidden sm:block">
                   {user.nombre}
                 </span>
               )}
-            </div>
+            </button>
           </div>
         </header>
 
@@ -346,15 +378,16 @@ export const DashboardApp = () => {
             </div>
           )}
 
-          {section === 'indices' && (
-            <Card className="text-center py-12">
-              <p className="text-slate-500 text-lg">Índices de mercado — disponible en un próximo sprint.</p>
-            </Card>
-          )}
+          {section === 'comunidad' && <BuscarUsuarios />}
           {section === 'config' && (
-            <Card className="text-center py-12">
-              <p className="text-slate-500 text-lg">Configuración — disponible en un próximo sprint.</p>
-            </Card>
+            <ConfigPanel
+              user={user}
+              onUserActualizado={(u) => {
+                setUser(u);
+                setMoneda(u.moneda ?? 'USD');
+                setAvatar(u.avatar ?? '');
+              }}
+            />
           )}
 
           {(section === 'tasaciones' || section === 'borradores') && (
@@ -412,7 +445,9 @@ export const DashboardApp = () => {
                             <h3 className="font-semibold text-lg text-slate-800 line-clamp-2 leading-snug">{t.address}</h3>
                           </div>
                           <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-                            <p className="text-2xl font-bold text-slate-900">{t.value}</p>
+                            <p className="text-2xl font-bold text-slate-900">
+                              {t.valorUsd != null ? formatear(t.valorUsd, t.esAlquiler) : t.value}
+                            </p>
                             <div className="flex items-center gap-1">
                               {t.status === 'completada' && (
                                 <button

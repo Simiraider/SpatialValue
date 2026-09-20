@@ -3,4 +3,6 @@ export type TasacionItem = {
   address: string;
   value: string;
   status: 'completada' | 'borrador';
+  valorUsd?: number | null;
+  esAlquiler?: boolean;
 };
