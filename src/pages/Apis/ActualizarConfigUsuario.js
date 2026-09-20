@@ -14,8 +14,15 @@ function esConfigUsuario(v) {
     typeof v.twitter === 'string' &&
     typeof v.linkedin === 'string' &&
     typeof v.facebook === 'string' &&
+    typeof v.sitio_web === 'string' &&
+    typeof v.instagram_publico === 'boolean' &&
+    typeof v.twitter_publico === 'boolean' &&
+    typeof v.linkedin_publico === 'boolean' &&
+    typeof v.facebook_publico === 'boolean' &&
+    typeof v.sitio_publico === 'boolean' &&
     typeof v.perfil_publico === 'boolean' &&
     typeof v.mostrar_contacto === 'boolean' &&
+    typeof v.visibilidad_estadisticas === 'boolean' &&
     (v.moneda === 'USD' || v.moneda === 'ARS')
   );
 }
@@ -67,6 +74,39 @@ export async function POST({ request }) {
     }
 
     const { config, passwordActual } = body;
+
+    if (body.accion === 'desactivar_cuenta') {
+      await sqlConfig`
+        UPDATE "usuarios" SET "cuenta_activa" = false WHERE "id_usuario" = ${usuarioId}
+      `;
+      return new Response(
+        JSON.stringify({ success: true, message: 'Cuenta desactivada' }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (body.accion === 'eliminar_cuenta') {
+      if (!passwordActual) {
+        return respuestaError('Necesitás confirmar con tu contraseña actual', 400);
+      }
+      const users = await sqlIdentidad`
+        SELECT "contraseña" FROM "usuarios" WHERE "id_usuario" = ${usuarioId} LIMIT 1
+      `;
+      if (!users || users.length === 0) {
+        return respuestaError('Usuario no encontrado', 404);
+      }
+      const argon2 = (await import('argon2')).default;
+      const esValida = await argon2.verify(users[0].contraseña, passwordActual);
+      if (!esValida) {
+        return respuestaError('La contraseña es incorrecta', 403);
+      }
+      await sqlConfig`DELETE FROM "usuarios" WHERE "id_usuario" = ${usuarioId}`;
+      await sqlIdentidad`DELETE FROM "usuarios" WHERE "id_usuario" = ${usuarioId}`;
+      return new Response(
+        JSON.stringify({ success: true, message: 'Cuenta eliminada' }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (body.passwordNueva !== undefined) {
       if (!passwordActual || !body.passwordNueva) {
@@ -134,34 +174,52 @@ export async function POST({ request }) {
     const updated = emailFinal
       ? await sqlConfig`
           UPDATE "usuarios" SET
-            "telefono"         = ${config.telefono},
-            "avatar"           = ${config.avatar},
-            "instagram"        = ${config.instagram},
-            "twitter"          = ${config.twitter},
-            "linkedin"         = ${config.linkedin},
-            "facebook"         = ${config.facebook},
-            "perfil_publico"   = ${config.perfil_publico},
-            "mostrar_contacto" = ${config.mostrar_contacto},
-            "moneda"           = ${config.moneda},
-            "email"            = ${emailFinal}
+            "telefono"                 = ${config.telefono},
+            "avatar"                   = ${config.avatar},
+            "instagram"                = ${config.instagram},
+            "twitter"                  = ${config.twitter},
+            "linkedin"                 = ${config.linkedin},
+            "facebook"                 = ${config.facebook},
+            "sitio_web"                = ${config.sitio_web},
+            "instagram_publico"        = ${config.instagram_publico},
+            "twitter_publico"          = ${config.twitter_publico},
+            "linkedin_publico"         = ${config.linkedin_publico},
+            "facebook_publico"         = ${config.facebook_publico},
+            "sitio_publico"            = ${config.sitio_publico},
+            "perfil_publico"           = ${config.perfil_publico},
+            "mostrar_contacto"         = ${config.mostrar_contacto},
+            "visibilidad_estadisticas" = ${config.visibilidad_estadisticas},
+            "moneda"                   = ${config.moneda},
+            "email"                    = ${emailFinal}
           WHERE "id_usuario" = ${usuarioId}
           RETURNING "nombre", "email", "telefono", "avatar", "instagram", "twitter",
-                    "linkedin", "facebook", "perfil_publico", "mostrar_contacto", "moneda"
+                    "linkedin", "facebook", "sitio_web", "instagram_publico", "twitter_publico",
+                    "linkedin_publico", "facebook_publico", "sitio_publico", "perfil_publico",
+                    "mostrar_contacto", "visibilidad_estadisticas", "moneda"
         `
       : await sqlConfig`
           UPDATE "usuarios" SET
-            "telefono"         = ${config.telefono},
-            "avatar"           = ${config.avatar},
-            "instagram"        = ${config.instagram},
-            "twitter"          = ${config.twitter},
-            "linkedin"         = ${config.linkedin},
-            "facebook"         = ${config.facebook},
-            "perfil_publico"   = ${config.perfil_publico},
-            "mostrar_contacto" = ${config.mostrar_contacto},
-            "moneda"           = ${config.moneda}
+            "telefono"                 = ${config.telefono},
+            "avatar"                   = ${config.avatar},
+            "instagram"                = ${config.instagram},
+            "twitter"                  = ${config.twitter},
+            "linkedin"                 = ${config.linkedin},
+            "facebook"                 = ${config.facebook},
+            "sitio_web"                = ${config.sitio_web},
+            "instagram_publico"        = ${config.instagram_publico},
+            "twitter_publico"          = ${config.twitter_publico},
+            "linkedin_publico"         = ${config.linkedin_publico},
+            "facebook_publico"         = ${config.facebook_publico},
+            "sitio_publico"            = ${config.sitio_publico},
+            "perfil_publico"           = ${config.perfil_publico},
+            "mostrar_contacto"         = ${config.mostrar_contacto},
+            "visibilidad_estadisticas" = ${config.visibilidad_estadisticas},
+            "moneda"                   = ${config.moneda}
           WHERE "id_usuario" = ${usuarioId}
           RETURNING "nombre", "email", "telefono", "avatar", "instagram", "twitter",
-                    "linkedin", "facebook", "perfil_publico", "mostrar_contacto", "moneda"
+                    "linkedin", "facebook", "sitio_web", "instagram_publico", "twitter_publico",
+                    "linkedin_publico", "facebook_publico", "sitio_publico", "perfil_publico",
+                    "mostrar_contacto", "visibilidad_estadisticas", "moneda"
         `;
 
     if (emailFinal) {
@@ -187,8 +245,15 @@ export async function POST({ request }) {
         twitter: u.twitter ?? '',
         linkedin: u.linkedin ?? '',
         facebook: u.facebook ?? '',
+        sitio_web: u.sitio_web ?? '',
+        instagram_publico: u.instagram_publico ?? true,
+        twitter_publico: u.twitter_publico ?? true,
+        linkedin_publico: u.linkedin_publico ?? true,
+        facebook_publico: u.facebook_publico ?? true,
+        sitio_publico: u.sitio_publico ?? true,
         perfil_publico: u.perfil_publico ?? true,
         mostrar_contacto: u.mostrar_contacto ?? true,
+        visibilidad_estadisticas: u.visibilidad_estadisticas ?? true,
         moneda: u.moneda === 'ARS' ? 'ARS' : 'USD',
       }
     }), {

@@ -47,7 +47,9 @@ export async function GET({ url, request }) {
 
     const configRows = await sqlConfig`
       SELECT "id_usuario", "avatar", "instagram", "twitter", "linkedin", "facebook",
-             "perfil_publico", "mostrar_contacto"
+             "sitio_web", "instagram_publico", "twitter_publico", "linkedin_publico",
+             "facebook_publico", "sitio_publico", "perfil_publico", "mostrar_contacto",
+             "visibilidad_estadisticas"
       FROM "usuarios"
       WHERE "id_usuario" = ANY(${ids}::uuid[])
     `;
@@ -67,10 +69,11 @@ export async function GET({ url, request }) {
         id: String(u.id_usuario),
         nombre: u.nombre,
         avatar: esPublico ? (c?.avatar || '') : '',
-        instagram: esPublico ? (c?.instagram || '') : '',
-        twitter: esPublico ? (c?.twitter || '') : '',
-        linkedin: esPublico ? (c?.linkedin || '') : '',
-        facebook: esPublico ? (c?.facebook || '') : '',
+        instagram: esPublico && c?.instagram_publico !== false ? (c?.instagram || '') : '',
+        twitter: esPublico && c?.twitter_publico !== false ? (c?.twitter || '') : '',
+        linkedin: esPublico && c?.linkedin_publico !== false ? (c?.linkedin || '') : '',
+        facebook: esPublico && c?.facebook_publico !== false ? (c?.facebook || '') : '',
+        sitio_web: esPublico && c?.sitio_publico !== false ? (c?.sitio_web || '') : '',
         perfil_publico: esPublico,
         mostrar_contacto: esPublico && c ? c.mostrar_contacto !== false : false,
         liked_por_mi: yaLesDiLike.has(String(u.id_usuario)),

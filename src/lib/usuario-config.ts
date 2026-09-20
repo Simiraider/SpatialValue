@@ -9,8 +9,15 @@ export interface ConfigUsuario {
   twitter: string;
   linkedin: string;
   facebook: string;
+  sitio_web: string;
+  instagram_publico: boolean;
+  twitter_publico: boolean;
+  linkedin_publico: boolean;
+  facebook_publico: boolean;
+  sitio_publico: boolean;
   perfil_publico: boolean;
   mostrar_contacto: boolean;
+  visibilidad_estadisticas: boolean;
   moneda: Moneda;
 }
 
@@ -21,8 +28,15 @@ export const CONFIG_VACIO: ConfigUsuario = {
   twitter: '',
   linkedin: '',
   facebook: '',
+  sitio_web: '',
+  instagram_publico: true,
+  twitter_publico: true,
+  linkedin_publico: true,
+  facebook_publico: true,
+  sitio_publico: true,
   perfil_publico: true,
   mostrar_contacto: true,
+  visibilidad_estadisticas: true,
   moneda: 'USD',
 };
 
@@ -36,8 +50,15 @@ export function esConfigUsuario(v: unknown): v is ConfigUsuario {
     typeof c.twitter === 'string' &&
     typeof c.linkedin === 'string' &&
     typeof c.facebook === 'string' &&
+    typeof c.sitio_web === 'string' &&
+    typeof c.instagram_publico === 'boolean' &&
+    typeof c.twitter_publico === 'boolean' &&
+    typeof c.linkedin_publico === 'boolean' &&
+    typeof c.facebook_publico === 'boolean' &&
+    typeof c.sitio_publico === 'boolean' &&
     typeof c.perfil_publico === 'boolean' &&
     typeof c.mostrar_contacto === 'boolean' &&
+    typeof c.visibilidad_estadisticas === 'boolean' &&
     (c.moneda === 'USD' || c.moneda === 'ARS')
   );
 }
@@ -84,6 +105,23 @@ export function linkedinUrl(handle: string): string {
 
 export function facebookUrl(handle: string): string {
   return handle ? `https://facebook.com/${handle}` : '';
+}
+
+export function normalizarSitioWeb(v: string): string {
+  const s = v.trim();
+  if (!s) return '';
+  if (/^https?:\/\//i.test(s)) return s;
+  return `https://${s}`;
+}
+
+export function esSitioWebValido(v: string): boolean {
+  if (!v.trim()) return true;
+  try {
+    const url = new URL(normalizarSitioWeb(v));
+    return url.hostname.includes('.');
+  } catch {
+    return false;
+  }
 }
 
 export interface ReglasPassword {

@@ -9,19 +9,21 @@ function getCookieUsuarioId(request) {
 }
 
 const CAMPOS_CONFIG = `"nombre", "email", "telefono", "avatar", "instagram", "twitter",
-       "linkedin", "facebook", "perfil_publico", "mostrar_contacto", "moneda"`;
+       "linkedin", "facebook", "sitio_web", "instagram_publico", "twitter_publico",
+       "linkedin_publico", "facebook_publico", "sitio_publico", "perfil_publico",
+       "mostrar_contacto", "visibilidad_estadisticas", "moneda"`;
 
 async function asegurarUsuarioEnConfig(usuarioId) {
   const existente = await sqlConfig`
     SELECT "id_usuario" FROM "usuarios" WHERE "id_usuario" = ${usuarioId} LIMIT 1
   `;
-  if (existente.length > 0) return;
+  if (existente.length > 0) return true;
 
   const identidad = await sqlIdentidad`
     SELECT "nombre", "email" FROM "usuarios" WHERE "id_usuario" = ${usuarioId} LIMIT 1
   `;
   if (identidad.length === 0) {
-    throw new Error('Usuario no encontrado en la base de identidad');
+    return false;
   }
 
   await sqlConfig`
@@ -47,7 +49,13 @@ export async function GET({ request, url }) {
       );
     }
 
-    await asegurarUsuarioEnConfig(usuarioId);
+    const identidadOk = await asegurarUsuarioEnConfig(usuarioId);
+    if (!identidadOk) {
+      return new Response(
+        JSON.stringify({ error: 'Sesión no válida', sesion_expirada: true }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
     const rows = await sqlConfig`
       SELECT ${sqlConfig.unsafe(CAMPOS_CONFIG)}
@@ -75,8 +83,15 @@ export async function GET({ request, url }) {
         twitter: u.twitter ?? '',
         linkedin: u.linkedin ?? '',
         facebook: u.facebook ?? '',
+        sitio_web: u.sitio_web ?? '',
+        instagram_publico: u.instagram_publico ?? true,
+        twitter_publico: u.twitter_publico ?? true,
+        linkedin_publico: u.linkedin_publico ?? true,
+        facebook_publico: u.facebook_publico ?? true,
+        sitio_publico: u.sitio_publico ?? true,
         perfil_publico: u.perfil_publico ?? true,
         mostrar_contacto: u.mostrar_contacto ?? true,
+        visibilidad_estadisticas: u.visibilidad_estadisticas ?? true,
         moneda: u.moneda === 'ARS' ? 'ARS' : 'USD',
       }
     }), {
