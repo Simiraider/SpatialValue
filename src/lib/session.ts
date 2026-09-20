@@ -9,6 +9,16 @@ export interface SesionUsuario {
   nombre: string;
   id?: string;
   demo?: boolean;
+  avatar?: string;
+  moneda?: 'USD' | 'ARS';
+}
+
+export function actualizarSesion(cambios: Partial<SesionUsuario>): SesionUsuario | null {
+  const actual = getUser();
+  if (!actual) return null;
+  const nuevo = { ...actual, ...cambios };
+  setUser(nuevo);
+  return nuevo;
 }
 
 export function getUser(): SesionUsuario | null {
@@ -30,6 +40,14 @@ export function clearUser(): void {
 
 export function getUsuarioId(): string | null {
   return getCookie('usuario_id') || getUser()?.id || null;
+}
+
+export function getMoneda(): 'USD' | 'ARS' {
+  return getUser()?.moneda ?? 'USD';
+}
+
+export function setMoneda(moneda: 'USD' | 'ARS'): void {
+  actualizarSesion({ moneda });
 }
 
 export function cerrarSesion(redirectTo = '/'): void {

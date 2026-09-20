@@ -1,0 +1,276 @@
+/* ============================================================
+   Comunidad: buscador de usuarios
+   Bloque raíz: .comunidad
+   ============================================================ */
+
+.comunidad {
+  --comunidad-acento: #06b6d4;
+  --comunidad-acento-hover: #0891b2;
+  --comunidad-texto: #1e293b;
+  --comunidad-texto-suave: #64748b;
+  --comunidad-borde: #e2e8f0;
+}
+
+.comunidad__titulo {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--comunidad-texto);
+  margin: 0 0 0.5rem;
+}
+
+.comunidad__descripcion {
+  font-size: 0.9375rem;
+  color: var(--comunidad-texto-suave);
+  margin: 0 0 1.5rem;
+}
+
+.comunidad__buscador {
+  position: relative;
+  max-width: 32rem;
+  margin-bottom: 1.5rem;
+}
+
+.comunidad__buscador-icono {
+  position: absolute;
+  top: 50%;
+  left: 1rem;
+  transform: translateY(-50%);
+  width: 1.125rem;
+  height: 1.125rem;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.comunidad__buscador-spinner {
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  transform: translateY(-50%);
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--comunidad-acento);
+  animation: comunidad-girar 1s linear infinite;
+}
+
+.comunidad__buscador-entrada {
+  width: 100%;
+  height: 3rem;
+  border-radius: 999px;
+  border: 1px solid var(--comunidad-borde);
+  background: #ffffff;
+  padding: 0 3rem 0 2.75rem;
+  font-size: 0.9375rem;
+  color: var(--comunidad-texto);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.comunidad__buscador-entrada:focus {
+  outline: none;
+  border-color: var(--comunidad-acento);
+  box-shadow: 0 0 0 2px var(--comunidad-acento);
+}
+
+.comunidad__buscador-entrada::placeholder {
+  color: #94a3b8;
+}
+
+@keyframes comunidad-girar {
+  from { transform: translateY(-50%) rotate(0deg); }
+  to { transform: translateY(-50%) rotate(360deg); }
+}
+
+.comunidad__estado {
+  font-size: 0.9375rem;
+  color: var(--comunidad-texto-suave);
+  padding: 2rem 0;
+  text-align: center;
+}
+
+.comunidad__estado--error {
+  color: #dc2626;
+}
+
+.comunidad__resultados {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.comunidad__tarjeta {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  border: 1px solid var(--comunidad-borde);
+  border-radius: 1.25rem;
+  background: #ffffff;
+  padding: 1rem 1.25rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.comunidad__tarjeta:hover {
+  border-color: var(--comunidad-acento);
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.12);
+}
+
+.comunidad__avatar {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.comunidad__avatar-iniciales {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  background: #cffafe;
+  color: #0e7490;
+  flex-shrink: 0;
+}
+
+.comunidad__info {
+  min-width: 0;
+  flex: 1;
+}
+
+.comunidad__nombre {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--comunidad-texto);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comunidad__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.25rem;
+}
+
+.comunidad__meta-icono {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: #94a3b8;
+}
+
+.comunidad__meta-texto {
+  font-size: 0.75rem;
+  color: var(--comunidad-texto-suave);
+}
+
+.comunidad__meta-texto--privado {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.comunidad__acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-shrink: 0;
+}
+
+.comunidad__boton-red {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.625rem;
+  padding: 0.375rem;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.comunidad__boton-red--instagram {
+  background: rgba(225, 48, 108, 0.1);
+  color: #e1306c;
+}
+
+.comunidad__boton-red--instagram:hover {
+  background: rgba(225, 48, 108, 0.2);
+}
+
+.comunidad__boton-red--x {
+  background: rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+}
+
+.comunidad__boton-red--x:hover {
+  background: rgba(15, 23, 42, 0.16);
+}
+
+.comunidad__boton-red-icono {
+  width: 1rem;
+  height: 1rem;
+}
+
+.comunidad__boton-red--linkedin {
+  background: rgba(10, 102, 194, 0.1);
+  color: #0a66c2;
+}
+
+.comunidad__boton-red--linkedin:hover {
+  background: rgba(10, 102, 194, 0.2);
+}
+
+.comunidad__boton-red--facebook {
+  background: rgba(24, 119, 242, 0.1);
+  color: #1877f2;
+}
+
+.comunidad__boton-red--facebook:hover {
+  background: rgba(24, 119, 242, 0.2);
+}
+
+.comunidad__boton-like {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--comunidad-borde);
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 0.4375rem;
+  background: #ffffff;
+  color: #94a3b8;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.comunidad__boton-like:hover {
+  border-color: #f43f5e;
+  color: #f43f5e;
+  background: #fff1f2;
+}
+
+.comunidad__boton-like--activo {
+  border-color: #f43f5e;
+  background: #fff1f2;
+  color: #f43f5e;
+}
+
+.comunidad__boton-like:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.comunidad__boton-like-icono {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.comunidad__boton-like--activo .comunidad__boton-like-icono {
+  fill: #f43f5e;
+}
+
+.comunidad__perfil-privado {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-style: italic;
+}
