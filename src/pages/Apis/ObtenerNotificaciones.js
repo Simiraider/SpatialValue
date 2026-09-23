@@ -1,5 +1,5 @@
 export const prerender = false;
-import sqlConfig from '../../Backend/carga-config.js';
+import sqlConfig, { asegurarEsquemaConfig } from '../../Backend/carga-config.js';
 import sqlIdentidad from '../../Backend/carga.js';
 
 function getCookieUsuarioId(request) {
@@ -17,6 +17,7 @@ function respuestaError(mensaje, status) {
 
 export async function GET({ request }) {
   try {
+    await asegurarEsquemaConfig();
     const usuarioId = getCookieUsuarioId(request);
     if (!usuarioId) {
       return respuestaError('Sesión no válida', 401);
@@ -84,17 +85,11 @@ export async function GET({ request }) {
 
 export async function POST({ request }) {
   try {
+    await asegurarEsquemaConfig();
     const usuarioId = getCookieUsuarioId(request);
     if (!usuarioId) {
       return respuestaError('Sesión no válida', 401);
     }
-
-    await sqlConfig`
-      CREATE TABLE IF NOT EXISTS "usuario_notificaciones_meta" (
-        "id_usuario"  uuid        PRIMARY KEY,
-        "visto_hasta" timestamptz NOT NULL DEFAULT NOW()
-      )
-    `;
 
     await sqlConfig`
       INSERT INTO "usuario_notificaciones_meta" ("id_usuario", "visto_hasta")

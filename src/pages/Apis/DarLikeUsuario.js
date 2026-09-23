@@ -1,5 +1,5 @@
 export const prerender = false;
-import sqlConfig from '../../Backend/carga-config.js';
+import sqlConfig, { asegurarEsquemaConfig } from '../../Backend/carga-config.js';
 import sqlIdentidad from '../../Backend/carga.js';
 
 function getCookieUsuarioId(request) {
@@ -12,6 +12,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 export async function POST({ request }) {
   try {
+    await asegurarEsquemaConfig();
     const emisor = getCookieUsuarioId(request);
     if (!emisor || !UUID_RE.test(emisor)) {
       return new Response(

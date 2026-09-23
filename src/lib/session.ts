@@ -56,6 +56,20 @@ export function cerrarSesion(redirectTo = '/'): void {
   if (redirectTo) window.location.href = rutaInternaSegura(redirectTo);
 }
 
+export function tieneSesion(): boolean {
+  return Boolean(getCookie('usuario_id') || getUser());
+}
+
+export function exigirSesionEnEnlaces(selector = '[data-requiere-login]'): void {
+  document.querySelectorAll<HTMLAnchorElement>(selector).forEach((enlace) => {
+    enlace.addEventListener('click', (evento) => {
+      if (tieneSesion()) return;
+      evento.preventDefault();
+      window.location.href = '/login';
+    });
+  });
+}
+
 export function syncSessionAcrossTabs(onLogout: () => void): () => void {
   const handler = (e: StorageEvent) => {
     if (e.key === SV_USER_KEY && !e.newValue) onLogout();

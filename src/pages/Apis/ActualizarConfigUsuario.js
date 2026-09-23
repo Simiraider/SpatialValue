@@ -1,5 +1,5 @@
 export const prerender = false;
-import sqlConfig from '../../Backend/carga-config.js';
+import sqlConfig, { asegurarEsquemaConfig } from '../../Backend/carga-config.js';
 import sqlIdentidad from '../../Backend/carga.js';
 
 const AVATAR_MAX_BYTES = 300_000;
@@ -62,6 +62,7 @@ async function asegurarUsuarioEnConfig(usuarioId) {
 
 export async function POST({ request }) {
   try {
+    await asegurarEsquemaConfig();
     const usuarioId = getCookieUsuarioId(request);
 
     if (!usuarioId || usuarioId === 'undefined' || usuarioId === 'null') {
