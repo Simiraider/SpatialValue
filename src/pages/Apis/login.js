@@ -1,6 +1,6 @@
 export const prerender = false;
 import sql from '../../Backend/carga.js';
-import sqlConfig from '../../Backend/carga-config.js';
+import sqlConfig, { asegurarEsquemaConfig } from '../../Backend/carga-config.js';
 import argon2 from 'argon2';
 
 export async function POST({ request }) {
@@ -28,6 +28,7 @@ export async function POST({ request }) {
 
     let cuentaActiva = true;
     try {
+      await asegurarEsquemaConfig();
       const configRows = await sqlConfig`
         SELECT "cuenta_activa" FROM "usuarios" WHERE "id_usuario" = ${user.id_usuario} LIMIT 1
       `;
@@ -58,7 +59,7 @@ export async function POST({ request }) {
 
       response.headers.append(
         "Set-Cookie", 
-        `usuario_id=${user.id_usuario}; Path=/; Max-Age=604800; SameSite=Lax; Secure; HttpOnly`
+        `usuario_id=${user.id_usuario}; Path=/; Max-Age=604800; SameSite=Lax; Secure`
       );
 
       return response;

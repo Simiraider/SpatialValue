@@ -1,9 +1,10 @@
 export const prerender = false;
 import sqlIdentidad from '../../Backend/carga.js';
-import sqlConfig from '../../Backend/carga-config.js';
+import sqlConfig, { asegurarEsquemaConfig } from '../../Backend/carga-config.js';
 
 export async function GET({ url, request }) {
   try {
+    await asegurarEsquemaConfig();
     const query = (url.searchParams.get('q') || '').trim();
 
     const cookies = request.headers.get('cookie') || '';

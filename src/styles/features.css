@@ -30,16 +30,16 @@
 }
 
 .feature-card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.9rem;
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  gap: 1.5rem;
   min-height: 360px;
-  background: #ffffff;
+  background: #f4f4f4;
   border: 1px solid rgba(0,135,192,.08);
-  border-radius: 2rem;
-  padding: 2rem;
-  text-align: left;
+  border-radius: 1.25rem;
+  padding: 2.5rem 2rem;
+  text-align: center;
   box-shadow: 0 5px 12px rgba(0,135,192,.06), 0 1px 3px rgba(15,23,42,.06);
   transition: transform .2s ease, box-shadow .2s ease;
 }
@@ -49,38 +49,28 @@
 }
 
 .feature-icon {
-  width: 7.5rem;
-  height: 7.5rem;
+  width: 5.5rem;
+  height: 5.5rem;
   margin: 0;
-  background: #e1f4fb;
-  border-radius: 1.5rem;
+  background: transparent;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .feature-icon img {
-  width: 4.25rem;
-  height: 4.25rem;
+  width: 5.5rem;
+  height: 5.5rem;
   object-fit: contain;
 }
 
-.feature-card h3 {
-  font-size: 1.8rem;
-  font-weight: 800;
-  margin: 0 0 0.5rem;
-  color: var(--color-text);
-}
-
 .feature-card p {
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: #242424;
-  line-height: 1.55;
+  line-height: 1.6;
   margin: 0;
-}
-
-.feature-text {
-  max-width: 20rem;
+  max-width: 19rem;
 }
 
 .team-section {
@@ -131,5 +121,6 @@
   .feature-card {
     max-width: 28rem;
     margin: 0 auto;
+    min-height: 0;
   }
 }

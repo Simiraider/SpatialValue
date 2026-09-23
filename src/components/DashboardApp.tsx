@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Search, Loader2, RefreshCw, Trash2, Download, CheckCircle2, Undo2 } from 'lucide-react';
+import { Search, Loader2, RefreshCw, Trash2, Download, CheckCircle2, Undo2, SlidersHorizontal, PanelLeftClose, PanelLeftOpen, Home, Building2 } from 'lucide-react';
 import { type TasacionItem } from '../data/mock';
-import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
 import { apiFetch, getCookie } from '../lib/api';
 import { estimarPrecioVenta, valorM2Alquiler, TASA_ARS_USD } from '../lib/mercado';
 import { getUser, getUsuarioId, cerrarSesion, syncSessionAcrossTabs, actualizarSesion, type SesionUsuario } from '../lib/session';
 import { generarInformePdf } from '../lib/generar-pdf';
+import { normalizeData } from '../lib/normalizar-tasacion';
 import { ConfigPanel } from './ConfigPanel';
 import { BuscarUsuarios } from './BuscarUsuarios';
 import { NotificationsBell } from './NotificationsBell';
 import { esConfigUsuario, formatValor, type Moneda } from '../lib/usuario-config';
+import '../styles/dashboard.css';
 
 type Section = 'tasaciones' | 'borradores' | 'config' | 'comunidad';
 type CargaStatus = 'loading' | 'error' | 'ready';
@@ -24,7 +25,7 @@ const sidebarItems: { id: Section; label: string }[] = [
 ];
 
 const statusLabel: Record<TasacionItem['status'], string> = {
-  completada: 'Completada',
+  completada: 'Tasación lista a tasar',
   borrador: 'Borrador',
 };
 
@@ -35,6 +36,16 @@ const getInitials = (nombre: string) =>
     .slice(0, 2)
     .map((word) => word[0]?.toUpperCase() ?? '')
     .join('');
+
+const formatUltimaVez = (iso: string | null | undefined): string | null => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const min = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (min < 1) return 'Últ. vez abierto: ahora';
+  if (min < 60) return `Últ. vez abierto: ayer a las ${d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`;
+  return `Últ. vez abierto: ${d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}`;
+};
 
 export const DashboardApp = () => {
   const [section, setSection] = useState<Section>('tasaciones');
@@ -49,6 +60,7 @@ export const DashboardApp = () => {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [sidebarVisible, setSidebarVisible] = useState(true);
   const confirmTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -56,7 +68,7 @@ export const DashboardApp = () => {
     setUser(u);
     setMoneda(u?.moneda ?? 'USD');
     setAvatar(u?.avatar ?? '');
-    if (!getCookie('usuario_id') && !getUser()) {
+    if (!getCookie('usuario_id') || !getUser()) {
       window.location.href = '/login';
       return;
     }
@@ -68,6 +80,8 @@ export const DashboardApp = () => {
         setMoneda((data as any).config.moneda);
         setAvatar((data as any).config.avatar || '');
         actualizarSesion({ moneda: (data as any).config.moneda, avatar: (data as any).config.avatar || undefined });
+      } else if ((data as any)?.sesion_expirada) {
+        cerrarSesion('/login');
       }
     }).catch(() => {});
 
@@ -119,6 +133,8 @@ export const DashboardApp = () => {
               valorUsd,
               esAlquiler: esAlq,
               status: p.estado_tasacion === 'borrador' ? ('borrador' as const) : ('completada' as const),
+              tipo: String(p.tipo_propiedad || '').toLowerCase().startsWith('casa') ? ('Casa' as const) : ('Departamento' as const),
+              ultimaVez: p.fecha_modificacion || p.fecha_creacion || p.created_at || null,
             };
           });
         setTasacionesApi(mapped);
@@ -252,8 +268,6 @@ export const DashboardApp = () => {
         alert('No se pudieron cargar los datos para generar el PDF.');
         return;
       }
-      // ObtenerTasacion devuelve la fila cruda de la DB en snake_case;
-      // el generador de PDF necesita los datos normalizados (camelCase).
       const datosNormalizados = normalizeData(resData);
       if (!datosNormalizados) {
         alert('Los datos de la tasación no pudieron procesarse.');
@@ -270,8 +284,8 @@ export const DashboardApp = () => {
 
   if (checkingSession) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#F5F5F5]">
-        <Loader2 className="w-10 h-10 animate-spin text-cyan-500" />
+      <div className="dashboard dashboard--cargando">
+        <Loader2 className="dashboard__spinner" />
       </div>
     );
   }
@@ -298,21 +312,20 @@ export const DashboardApp = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#F5F5F5] font-sans overflow-hidden">
-      <aside className="w-64 bg-slate-900 text-white flex flex-col" aria-label="Menú principal">
-        <div className="p-6 mt-4">
-          <a href="/" className="text-2xl font-bold text-white tracking-tight">SpatialValue</a>
-        </div>
-        <nav className="flex-1 px-4 space-y-2 mt-4" aria-label="Secciones">
+    <div className={cn("dashboard", !sidebarVisible && "dashboard--sidebar-oculto")}>
+      <div className="dashboard__sidebar-zona">
+        <aside className="dashboard__sidebar" aria-label="Menú principal">
+          <div className="dashboard__sidebar-marca">
+            <a href="/" className="dashboard__logo">SpatialValue</a>
+          </div>
+        <nav className="dashboard__sidebar-nav" aria-label="Secciones">
           {sidebarItems.map((item) => (
             <button
               key={item.id}
               type="button"
               className={cn(
-                "w-full flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-colors",
-                section === item.id
-                  ? "bg-slate-800 text-white"
-                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                "dashboard__nav-item",
+                section === item.id && "dashboard__nav-item--activo"
               )}
               onClick={() => setSection(item.id)}
             >
@@ -321,29 +334,52 @@ export const DashboardApp = () => {
           ))}
         </nav>
       </aside>
+      <button
+        type="button"
+        onClick={() => setSidebarVisible((v) => !v)}
+        className="dashboard__boton-panel"
+        aria-label={sidebarVisible ? 'Ocultar menú' : 'Mostrar menú'}
+        aria-expanded={sidebarVisible}
+        title={sidebarVisible ? 'Ocultar menú' : 'Mostrar menú'}
+      >
+        {sidebarVisible ? (
+          <PanelLeftClose className="dashboard__boton-panel-icono" aria-hidden />
+        ) : (
+          <PanelLeftOpen className="dashboard__boton-panel-icono" aria-hidden />
+        )}
+      </button>
+      </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden relative">
-        <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 shadow-sm z-10">
-          <div className="flex-1 max-w-xl">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+      <div className="dashboard__contenido">
+        <header className="dashboard__cabecera">
+          <div className="dashboard__buscador-zona">
+            <div className="dashboard__buscador">
+              <Search className="dashboard__buscador-icono" aria-hidden />
               <input
                 id="buscar-tasacion"
                 type="search"
                 placeholder="Buscar Tasación..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="w-full bg-[#F5F5F5] rounded-full pl-12 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-shadow border-0"
+                className="dashboard__buscador-entrada"
               />
             </div>
           </div>
-          <div className="flex items-center gap-4 ml-4">
+          <div className="dashboard__cabecera-acciones">
+            <button
+              type="button"
+              className="dashboard__boton-filtros"
+              aria-label="Filtros"
+            >
+              <SlidersHorizontal className="dashboard__boton-filtros-icono" aria-hidden />
+              Filtros
+            </button>
             <NotificationsBell />
             {user && (
               <button
                 type="button"
                 onClick={() => cerrarSesion('/')}
-                className="text-sm font-medium text-slate-400 hover:text-slate-600 transition-colors"
+                className="dashboard__boton-salir"
               >
                 Salir
               </button>
@@ -351,19 +387,19 @@ export const DashboardApp = () => {
             <button
               type="button"
               onClick={() => setSection('config')}
-              className="flex items-center gap-3 rounded-full p-1 pr-2 hover:bg-slate-100 transition-colors"
+              className="dashboard__perfil"
               aria-label="Abrir configuración"
               title="Configuración"
             >
               {avatar ? (
-                <img src={avatar} alt="Avatar" className="w-10 h-10 rounded-full object-cover" />
+                <img src={avatar} alt="Avatar" className="dashboard__perfil-avatar" />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center text-cyan-700 font-bold">
+                <div className="dashboard__perfil-iniciales">
                   {user ? getInitials(user.nombre) : 'U'}
                 </div>
               )}
               {user && (
-                <span className="text-sm font-semibold text-slate-700 hidden sm:block">
+                <span className="dashboard__perfil-nombre">
                   {user.nombre}
                 </span>
               )}
@@ -371,9 +407,9 @@ export const DashboardApp = () => {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-8 relative z-0 pb-24">
+        <main className="dashboard__principal">
           {user?.demo && (
-            <div className="mb-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700">
+            <div className="dashboard__aviso-demo">
               <strong>Modo demo:</strong> no se pudo conectar con el servidor. Estás viendo datos de ejemplo.
             </div>
           )}
@@ -391,161 +427,158 @@ export const DashboardApp = () => {
           )}
 
           {(section === 'tasaciones' || section === 'borradores') && (
-            <>
-              <h1 className="text-3xl font-bold text-slate-900 mb-8">
-                {section === 'borradores' ? 'Mis borradores' : 'Mis tasaciones'}
-              </h1>
+            <div className="dashboard__panel">
+              <button
+                type="button"
+                onClick={() => (window.location.href = '/tasacion')}
+                className="dashboard__boton-nueva"
+                aria-label="Nueva tasación"
+                title="Nueva tasación"
+              >
+                +
+              </button>
 
               {status === 'loading' && (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="w-10 h-10 animate-spin text-cyan-500" />
+                <div className="dashboard__cargando">
+                  <Loader2 className="dashboard__spinner" />
                 </div>
               )}
 
               {status === 'error' && !user?.demo && (
-                <Card className="text-center py-12">
-                  <p className="text-slate-500 text-lg mb-1">
+                <div className="dashboard__error">
+                  <p className="dashboard__error-titulo">
                     No pudimos conectar con el servidor para cargar tus tasaciones.
                   </p>
-                  <p className="text-slate-400 text-sm mb-6">
+                  <p className="dashboard__error-detalle">
                     Revisá tu conexión o intentá de nuevo en unos segundos.
                   </p>
                   <Button type="button" variant="outline" onClick={fetchTasaciones} id="btn-reintentar">
                     <RefreshCw className="w-4 h-4 mr-2" aria-hidden />
                     Reintentar
                   </Button>
-                </Card>
+                </div>
               )}
 
               {(status === 'ready' || (status === 'error' && user?.demo)) && (filtered.length === 0 ? (
-                <Card className="text-center py-12">
-                  <p className="text-slate-500 text-lg">
+                <div className="dashboard__vacio">
+                  <p className="dashboard__vacio-texto">
                     {isSearching
                       ? 'No hay resultados para tu búsqueda.'
                       : section === 'borradores'
                         ? 'No tenés borradores. Podés guardar una tasación como borrador al crearla.'
                         : 'Todavía no tenés tasaciones aquí. ¡Creá una nueva!'}
                   </p>
-                </Card>
+                </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div className="dashboard__grilla">
                   {filtered.map((t) => (
-                    <div key={t.id} className="group relative">
-                      <a href={`/reporte?id=${t.id}`} className="block h-full">
-                        <Card className="h-full hover:shadow-md transition-shadow border border-transparent group-hover:border-cyan-200 p-6 flex flex-col justify-between cursor-pointer">
-                          <div>
-                            <div className="flex items-start justify-between mb-4">
-                              <span className={cn(
-                                "text-xs font-semibold px-3 py-1 rounded-full",
-                                t.status === 'completada' ? "bg-teal-100 text-teal-700" : "bg-yellow-100 text-yellow-700"
-                              )}>
-                                {statusLabel[t.status]}
-                              </span>
-                            </div>
-                            <h3 className="font-semibold text-lg text-slate-800 line-clamp-2 leading-snug">{t.address}</h3>
-                          </div>
-                          <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-                            <p className="text-2xl font-bold text-slate-900">
-                              {t.valorUsd != null ? formatear(t.valorUsd, t.esAlquiler) : t.value}
-                            </p>
-                            <div className="flex items-center gap-1">
-                              {t.status === 'completada' && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDownloadPdf(t); }}
-                                  disabled={downloadingId === t.id}
-                                  className="p-2 rounded-lg text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 transition-all disabled:opacity-50"
-                                  aria-label="Descargar informe PDF"
-                                  title="Descargar PDF"
-                                >
-                                  {downloadingId === t.id ? (
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                  ) : (
-                                    <Download className="w-5 h-5" />
-                                  )}
-                                </button>
-                              )}
+                    <div key={t.id} className="dashboard__item">
+                      <a href={`/reporte?id=${t.id}`} className="dashboard__tarjeta-enlace">
+                        <article className="dashboard__tarjeta">
+                          <div className="dashboard__tarjeta-fila">
+                            {t.tipo === 'Casa' ? (
+                              <Home className="dashboard__tarjeta-icono" aria-hidden />
+                            ) : (
+                              <Building2 className="dashboard__tarjeta-icono" aria-hidden />
+                            )}
+                            <h3 className="dashboard__tarjeta-direccion">{t.address}</h3>
+                            {t.status === 'completada' && (
                               <button
                                 type="button"
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleToggleEstado(t); }}
-                                disabled={togglingId === t.id}
-                                className={cn(
-                                  "p-2 rounded-lg transition-all disabled:opacity-50",
-                                  t.status === 'borrador'
-                                    ? "text-slate-400 hover:text-teal-600 hover:bg-teal-50"
-                                    : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-                                )}
-                                aria-label={t.status === 'borrador' ? 'Marcar como completada' : 'Mover a borradores'}
-                                title={t.status === 'borrador' ? 'Marcar como completada' : 'Mover a borradores'}
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDownloadPdf(t); }}
+                                disabled={downloadingId === t.id}
+                                className="dashboard__tarjeta-accion"
+                                aria-label="Descargar informe PDF"
+                                title="Descargar PDF"
                               >
-                                {togglingId === t.id ? (
-                                  <Loader2 className="w-5 h-5 animate-spin" />
-                                ) : t.status === 'borrador' ? (
-                                  <CheckCircle2 className="w-5 h-5" />
+                                {downloadingId === t.id ? (
+                                  <Loader2 className="dashboard__tarjeta-accion-icono dashboard__tarjeta-accion-icono--cargando" />
                                 ) : (
-                                  <Undo2 className="w-5 h-5" />
+                                  <Download className="dashboard__tarjeta-accion-icono" />
                                 )}
                               </button>
-                            </div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); startConfirm(t.id); }}
+                              className="dashboard__tarjeta-accion dashboard__tarjeta-accion--peligro"
+                              aria-label={`Eliminar tasación de ${t.address}`}
+                              title="Eliminar tasación"
+                            >
+                              <Trash2 className="dashboard__tarjeta-accion-icono" aria-hidden />
+                            </button>
                           </div>
-                        </Card>
+                          <div className="dashboard__tarjeta-pie">
+                            <span className="dashboard__tarjeta-fecha">
+                              {formatUltimaVez(t.ultimaVez) ?? (t.valorUsd != null ? formatear(t.valorUsd, t.esAlquiler) : t.value)}
+                            </span>
+                            <span className={cn(
+                              "dashboard__tarjeta-estado",
+                              t.status === 'completada'
+                                ? "dashboard__tarjeta-estado--lista"
+                                : "dashboard__tarjeta-estado--borrador"
+                            )}>
+                              {statusLabel[t.status]}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleToggleEstado(t); }}
+                              disabled={togglingId === t.id}
+                              className={cn(
+                                "dashboard__tarjeta-estado-accion",
+                                t.status !== 'borrador' && "dashboard__tarjeta-estado-accion--lista"
+                              )}
+                              aria-label={t.status === 'borrador' ? 'Marcar como completada' : 'Mover a borradores'}
+                              title={t.status === 'borrador' ? 'Marcar como completada' : 'Mover a borradores'}
+                            >
+                              {togglingId === t.id ? (
+                                <Loader2 className="dashboard__tarjeta-estado-accion-icono dashboard__tarjeta-estado-accion-icono--cargando" />
+                              ) : t.status === 'borrador' ? (
+                                <CheckCircle2 className="dashboard__tarjeta-estado-accion-icono" />
+                              ) : (
+                                <Undo2 className="dashboard__tarjeta-estado-accion-icono" />
+                              )}
+                            </button>
+                          </div>
+                        </article>
                       </a>
 
-                      {confirmingId === t.id ? (
+                      {confirmingId === t.id && (
                         <div
-                          className="absolute top-3 right-3 z-20 flex items-center gap-1.5 rounded-xl bg-white shadow-lg border border-slate-200 px-2 py-1.5"
+                          className="dashboard__confirmar"
                           role="dialog"
                           aria-label={`Confirmar eliminación de ${t.address}`}
                         >
-                          <span className="text-xs font-medium text-slate-600 whitespace-nowrap">¿Eliminar?</span>
+                          <span className="dashboard__confirmar-pregunta">¿Eliminar?</span>
                           <button
                             type="button"
                             id={`btn-confirmar-borrar-${t.id}`}
                             disabled={deletingId === t.id}
                             onClick={() => handleDelete(t)}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold px-2.5 py-1.5 transition-colors disabled:opacity-60 disabled:cursor-wait"
+                            className="dashboard__confirmar-borrar"
                           >
                             {deletingId === t.id ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden />
+                              <Loader2 className="dashboard__confirmar-borrar-icono dashboard__confirmar-borrar-icono--cargando" aria-hidden />
                             ) : (
-                              <Trash2 className="w-3.5 h-3.5" aria-hidden />
+                              <Trash2 className="dashboard__confirmar-borrar-icono" aria-hidden />
                             )}
                             {deletingId === t.id ? 'Borrando…' : 'Borrar'}
                           </button>
                           <button
                             type="button"
                             onClick={cancelConfirm}
-                            className="rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 text-xs font-medium px-2 py-1.5 transition-colors"
+                            className="dashboard__confirmar-cancelar"
                           >
                             Cancelar
                           </button>
                         </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => startConfirm(t.id)}
-                          className="absolute top-3 right-3 z-10 p-2 rounded-lg bg-white/80 backdrop-blur border border-slate-200 shadow-sm text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all opacity-70 hover:opacity-100"
-                          aria-label={`Eliminar tasación de ${t.address}`}
-                          title="Eliminar tasación"
-                        >
-                          <Trash2 className="w-4 h-4" aria-hidden />
-                        </button>
                       )}
                     </div>
                   ))}
                 </div>
               ))}
-            </>
+            </div>
           )}
-
-          <a
-            href="/tasacion"
-            className="fixed bottom-8 right-8 w-16 h-16 bg-cyan-500 hover:bg-cyan-600 text-white rounded-full flex items-center justify-center text-4xl font-light shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 z-50"
-            aria-label="Nueva tasación"
-            title="Nueva tasación"
-          >
-            +
-          </a>
         </main>
       </div>
     </div>

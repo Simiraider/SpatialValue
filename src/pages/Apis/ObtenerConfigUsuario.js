@@ -1,5 +1,5 @@
 export const prerender = false;
-import sqlConfig from '../../Backend/carga-config.js';
+import sqlConfig, { asegurarEsquemaConfig } from '../../Backend/carga-config.js';
 import sqlIdentidad from '../../Backend/carga.js';
 
 function getCookieUsuarioId(request) {
@@ -31,10 +31,12 @@ async function asegurarUsuarioEnConfig(usuarioId) {
     VALUES (${usuarioId}, ${identidad[0].nombre}, ${identidad[0].email}, '')
     ON CONFLICT ("id_usuario") DO NOTHING
   `;
+  return true;
 }
 
 export async function GET({ request, url }) {
   try {
+    await asegurarEsquemaConfig();
     const usuarioId = getCookieUsuarioId(request) || url.searchParams.get('usuario_id');
 
     const esValido = usuarioId &&

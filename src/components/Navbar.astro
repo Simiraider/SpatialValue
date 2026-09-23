@@ -10,59 +10,60 @@ import Logo from "./Logo.astro";
 
     <nav class="nav-links" aria-label="Navegación principal">
       <a href="/dashboard">Dashboard</a>
-      <a href="/#tasa-tu-propiedad">Tasá tu propiedad</a>
+      <a href="/tasacion" data-requiere-login>Tasá tu propiedad</a>
       <a href="/#sobre-tasaciones">Sobre las tasaciones</a>
       <a href="/#quienes-somos">Quiénes somos</a>
     </nav>
 
     <div class="nav-right">
       <a href="/login" class="nav-login">Iniciar sesión</a>
-      <a href="/#tasa-tu-propiedad" class="button-primary">Comenzá a tasar</a>
+      <a href="/tasacion" class="button-primary" data-requiere-login>Comenzá a tasar</a>
     </div>
   </div>
 </header>
 
 <script>
+  import { getUser, exigirSesionEnEnlaces } from '../lib/session';
+
   const navRight = document.querySelector('.nav-right');
+
+  const ICONO_PERSONA = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.2" r="3.4" /><path d="M5.5 19.5c.9-3.3 3.4-5.1 6.5-5.1s5.6 1.8 6.5 5.1" /></svg>`;
 
   const aplicarSesion = () => {
     if (!navRight) return;
-    try {
-      const raw = localStorage.getItem('sv_user');
-      if (!raw) return;
-      const user = JSON.parse(raw);
-      if (!user?.nombre) return;
+    const user = getUser();
+    if (!user?.nombre) return;
 
-      const saludo = document.createElement('span');
-      saludo.className = 'nav-user';
-      saludo.textContent = `Hola, ${user.nombre}`;
+    const perfil = document.createElement('a');
+    perfil.className = 'nav-profile';
+    perfil.href = '/dashboard';
+    perfil.title = 'Mi perfil';
 
-      const dashboardLink = document.createElement('a');
-      dashboardLink.href = '/dashboard';
-      dashboardLink.className = 'button-primary';
-      dashboardLink.textContent = 'Ir al dashboard';
-
-      const logoutLink = document.createElement('a');
-      logoutLink.href = '/';
-      logoutLink.className = 'nav-login';
-      logoutLink.textContent = 'Salir';
-      logoutLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        localStorage.removeItem('sv_user');
-        document.cookie = 'usuario_id=; Max-Age=0; path=/';
-        window.location.href = '/';
-      });
-
-      navRight.replaceChildren(saludo, dashboardLink, logoutLink);
-    } catch {
+    const avatar = document.createElement('span');
+    avatar.className = 'nav-profile-avatar';
+    if (user.avatar) {
+      const img = document.createElement('img');
+      img.src = user.avatar;
+      img.alt = `Foto de perfil de ${user.nombre}`;
+      avatar.appendChild(img);
+    } else {
+      avatar.innerHTML = ICONO_PERSONA;
     }
+
+    const nombre = document.createElement('span');
+    nombre.className = 'nav-profile-name';
+    nombre.textContent = user.nombre;
+
+    perfil.append(avatar, nombre);
+    navRight.replaceChildren(perfil);
   };
 
   aplicarSesion();
+  exigirSesionEnEnlaces();
 
   window.addEventListener('storage', (e) => {
-    if (e.key === 'sv_user' && !e.newValue) {
-      window.location.href = '/';
+    if (e.key === 'sv_user') {
+      window.location.reload();
     }
   });
 </script>
