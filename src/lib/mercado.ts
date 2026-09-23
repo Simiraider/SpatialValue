@@ -34,6 +34,7 @@ const VENTA_M2_POR_BARRIO: Record<string, number> = {
   'parque avellaneda': 1450,
   velez: 1600,
   montecastro: 1650,
+  'monte castro': 1650,
   'floresta': 1550,
   'villa real': 1650,
   'villa luro': 1550,
@@ -84,6 +85,14 @@ export function valorM2Venta(barrio?: string | null): number {
 export function valorM2Alquiler(barrio?: string | null): number {
   return Math.max(1, Math.round((valorM2Venta(barrio) * RENTABILIDAD_ANUAL_ALQUILER) / 12));
 }
+
+export const VALORES_M2_POR_BARRIO: Record<string, { venta: number; alquiler: number }> =
+  Object.fromEntries(
+    Object.entries(VENTA_M2_POR_BARRIO).map(([clave, venta]) => [
+      clave,
+      { venta, alquiler: Math.max(1, Math.round((venta * RENTABILIDAD_ANUAL_ALQUILER) / 12)) },
+    ])
+  );
 
 export function estimarPrecioVenta(supCub: number, supDesc: number, barrio?: string | null): number {
   const m2Venta = valorM2Venta(barrio);

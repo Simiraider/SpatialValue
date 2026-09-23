@@ -97,15 +97,12 @@ export async function POST({ request }) {
     let direccionFormateada = null;
     let fuenteGeocoding = null;
     if (!coordenadasFinales) {
-      // Verifica que la dirección exista y que el barrio declarado coincida
-      // con el que reporta Google Maps (fallback Nominatim).
       const verificacion = await verificarDireccion(direccion, barrio, ciudad);
       if (verificacion.existe) {
         coordenadasFinales = { lat: verificacion.lat, lng: verificacion.lng };
         barrioDetectado = verificacion.barrioDetectado;
         direccionFormateada = verificacion.direccionFormateada;
         fuenteGeocoding = verificacion.fuente;
-        // Solo marca discrepancia si el proveedor detectó un barrio conocido.
         barrioCoincide = verificacion.barrioDetectado ? verificacion.barrioCoincide : true;
       }
     }

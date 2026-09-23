@@ -1,7 +1,3 @@
-// Geocodificación y validación de direcciones.
-// Proveedor primario: Google Maps Geocoding API (si hay GOOGLE_MAPS_API_KEY / VITE_GOOGLE_MAPS_API_KEY).
-// Fallback: Nominatim (OpenStreetMap), como se venía usando.
-
 export interface ResultadoGeocoding {
   existe: boolean;
   lat: number | null;
@@ -43,7 +39,6 @@ function normalizar(texto: string | null | undefined): string {
     .trim();
 }
 
-/** Normaliza el nombre de un barrio detectado contra el listado oficial de CABA. */
 export function canonizarBarrio(nombre: string | null | undefined): string | null {
   const clave = normalizar(nombre);
   if (!clave) return null;
@@ -52,7 +47,6 @@ export function canonizarBarrio(nombre: string | null | undefined): string | nul
   return parcial ? BARRIOS_CABA[parcial] : null;
 }
 
-/** true si dos nombres de barrio refieren al mismo barrio de CABA (tolera acentos/formato). */
 export function barriosCoinciden(a: string | null | undefined, b: string | null | undefined): boolean {
   const na = canonizarBarrio(a);
   const nb = canonizarBarrio(b);
@@ -61,10 +55,8 @@ export function barriosCoinciden(a: string | null | undefined, b: string | null 
 }
 
 function getEnvKey(): string {
-  // Astro/Vite expone variables de entorno de servidor y de build (públicas con prefijo VITE_).
   const env: any =
     typeof import.meta !== 'undefined' && (import.meta as any).env ? (import.meta as any).env : {};
-  // En el servidor también puede estar como variable de entorno de Node (runtime Vercel).
   const nodeEnv = (globalThis as any)?.process?.env;
   const deProcess = nodeEnv?.GOOGLE_MAPS_API_KEY || '';
   return String(env.GOOGLE_MAPS_API_KEY || env.VITE_GOOGLE_MAPS_API_KEY || deProcess || '').trim();
@@ -96,7 +88,6 @@ async function geocodificarGoogle(query: string, apiKey: string): Promise<Result
     const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
     const data = await res.json();
     if (data.status !== 'OK' || !Array.isArray(data.results) || data.results.length === 0) {
-      // ZERO_RESULTS = la dirección no existe; REQUEST_DENIED / OVER_QUERY_LIMIT = sin key válida → probar fallback
       if (data.status === 'ZERO_RESULTS') return null;
       console.warn('Google Geocoding status:', data.status, data.error_message || '');
       return null;
@@ -110,7 +101,7 @@ async function geocodificarGoogle(query: string, apiKey: string): Promise<Result
       direccionFormateada: r.formatted_address ?? null,
       barrioDetectado: barrio,
       ciudadDetectada: ciudad,
-      barrioCoincide: false, // se calcula afuera, comparando con el barrio declarado
+      barrioCoincide: false,
       fuente: 'google',
     };
   } catch (e: any) {
@@ -146,10 +137,6 @@ async function geocodificarNominatim(query: string): Promise<ResultadoGeocoding 
   }
 }
 
-/**
- * Verifica que la dirección exista y, si es posible, que el barrio declarado coincida
- * con el que detecta el proveedor de geocodificación.
- */
 export async function verificarDireccion(
   direccion: string,
   barrio?: string | null,

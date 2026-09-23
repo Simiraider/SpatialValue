@@ -32,7 +32,11 @@ const formatFecha = (iso: string) => {
   return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
 };
 
-export const NotificationsBell = () => {
+interface Props {
+  enSidebar?: boolean;
+}
+
+export const NotificationsBell = ({ enSidebar = false }: Props) => {
   const [abierta, setAbierta] = useState(false);
   const [notificaciones, setNotificaciones] = useState<NotificacionLike[]>([]);
   const [noVistos, setNoVistos] = useState(0);
@@ -47,7 +51,6 @@ export const NotificationsBell = () => {
         setNoVistos((data as any).no_vistos || 0);
       }
     } catch {
-      /* silencioso: la campana es secundaria */
     }
   }, []);
 
@@ -85,7 +88,6 @@ export const NotificationsBell = () => {
         setNoVistos(0);
         setNotificaciones((prev) => prev.map((n) => ({ ...n, no_visto: false })));
       } catch {
-        /* no bloquea la UI */
       } finally {
         setCargando(false);
       }
@@ -93,7 +95,7 @@ export const NotificationsBell = () => {
   };
 
   return (
-    <div className="notificaciones" ref={contenedorRef}>
+    <div className={`notificaciones${enSidebar ? ' notificaciones--sidebar' : ''}`} ref={contenedorRef}>
       <button
         type="button"
         onClick={abrir}

@@ -1,8 +1,3 @@
-// Normaliza los datos de una tasación a un formato único (camelCase),
-// sin importar si vienen de la base de datos (snake_case), del draft de
-// sessionStorage (camelCase con strings) o ya normalizados.
-// Lo consumen ReportPage y el generador de PDF (generar-pdf.ts).
-
 type FilaDB = Record<string, any>;
 export type TasacionNormalizada = Record<string, any>;
 
