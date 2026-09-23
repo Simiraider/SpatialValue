@@ -1,15 +1,11 @@
-/* ============================================================
-   Campana de notificaciones del dashboard
-   Bloque raíz: .notificaciones
-   ============================================================ */
-
 .notificaciones {
-  --notif-acento: #06b6d4;
+  --notif-acento: #0087c0;
   --notif-peligro: #f43f5e;
   position: relative;
 }
 
 .notificaciones__campana {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -121,8 +117,8 @@
   justify-content: center;
   font-size: 0.75rem;
   font-weight: 700;
-  background: #cffafe;
-  color: #0e7490;
+  background: #e1f4fb;
+  color: #006b99;
   flex-shrink: 0;
 }
 
@@ -157,4 +153,22 @@
   text-align: center;
   font-size: 0.8125rem;
   color: #94a3b8;
+}
+
+.notificaciones--sidebar .notificaciones__campana {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  color: #64748b;
+}
+
+.notificaciones--sidebar .notificaciones__campana:hover {
+  background: var(--dash-acento-suave, #e1f4fb);
+  color: var(--dash-acento, #0087c0);
+}
+
+.notificaciones--sidebar .notificaciones__desplegable {
+  left: calc(100% + 0.75rem);
+  right: auto;
+  top: 0;
 }

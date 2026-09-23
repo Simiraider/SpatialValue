@@ -62,13 +62,11 @@ export const PropertyForm = () => {
       if (Number(data.superficieTotal) <= 0) next.superficieTotal = 'Ingresá una superficie válida';
       if (Number(data.superficieCubierta) <= 0) next.superficieCubierta = 'Ingresá una superficie válida';
       if (Number(data.superficieCubierta) > Number(data.superficieTotal)) next.superficieCubierta = 'No puede superar la superficie total';
-      // Dirección inexistente según Google Maps: bloquea el avance.
       if (verifDir.estado === 'invalida') next.direccion = verifDir.mensaje || 'La dirección no existe. Verificala e intentá de nuevo.';
     }
     setErrors(next); return Object.keys(next).length === 0;
   };
 
-  // Verifica la dirección contra Google Maps (fallback Nominatim) al salir del campo.
   const verificarDireccionEnBlur = async () => {
     const direccion = data.direccion.trim();
     if (!direccion || !data.barrio) { setVerifDir({ estado: 'idle' }); return; }

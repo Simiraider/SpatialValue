@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Search, Loader2, RefreshCw, Trash2, Download, CheckCircle2, Undo2, SlidersHorizontal, PanelLeftClose, PanelLeftOpen, Home, Building2 } from 'lucide-react';
+import { Search, Loader2, RefreshCw, Trash2, Download, CheckCircle2, Undo2, SlidersHorizontal, PanelLeftClose, PanelLeftOpen, Settings, Home, Building2 } from 'lucide-react';
 import { type TasacionItem } from '../data/mock';
 import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
@@ -10,18 +10,28 @@ import { generarInformePdf } from '../lib/generar-pdf';
 import { normalizeData } from '../lib/normalizar-tasacion';
 import { ConfigPanel } from './ConfigPanel';
 import { BuscarUsuarios } from './BuscarUsuarios';
+import { IndicadoresMercado } from './IndicadoresMercado';
 import { NotificationsBell } from './NotificationsBell';
 import { esConfigUsuario, formatValor, type Moneda } from '../lib/usuario-config';
 import '../styles/dashboard.css';
 
-type Section = 'tasaciones' | 'borradores' | 'config' | 'comunidad';
+type Section = 'tasaciones' | 'borradores' | 'indicadores' | 'config' | 'comunidad';
+type Orden = 'predeterminado' | 'recientes' | 'mayor-precio' | 'menor-precio' | 'mas-antiguo';
 type CargaStatus = 'loading' | 'error' | 'ready';
 
 const sidebarItems: { id: Section; label: string }[] = [
   { id: 'tasaciones', label: 'Mis tasaciones' },
-  { id: 'borradores', label: 'Borradores' },
-  { id: 'config', label: 'Configuración' },
+  { id: 'borradores', label: 'Mis borradores' },
+  { id: 'indicadores', label: 'Indicadores de mercado' },
   { id: 'comunidad', label: 'Comunidad' },
+];
+
+const opcionesOrden: { id: Orden; label: string }[] = [
+  { id: 'predeterminado', label: 'Predeterminado' },
+  { id: 'recientes', label: 'Recientes' },
+  { id: 'mayor-precio', label: 'Mayor precio' },
+  { id: 'menor-precio', label: 'Menor precio' },
+  { id: 'mas-antiguo', label: 'Más antiguo' },
 ];
 
 const statusLabel: Record<TasacionItem['status'], string> = {
@@ -43,13 +53,58 @@ const formatUltimaVez = (iso: string | null | undefined): string | null => {
   if (Number.isNaN(d.getTime())) return null;
   const min = Math.floor((Date.now() - d.getTime()) / 60000);
   if (min < 1) return 'Últ. vez abierto: ahora';
-  if (min < 60) return `Últ. vez abierto: ayer a las ${d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`;
+  if (min < 60) return `Últ. vez abierto: hace ${min} min`;
+  const inicioHoy = new Date();
+  inicioHoy.setHours(0, 0, 0, 0);
+  const dias = Math.floor((inicioHoy.getTime() - new Date(d).setHours(0, 0, 0, 0)) / 86400000);
+  if (dias === 1) {
+    return `Últ. vez abierto: ayer a las ${d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`;
+  }
+  if (dias > 1 && dias < 7) return `Últ. vez abierto: hace ${dias} días`;
   return `Últ. vez abierto: ${d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}`;
+};
+
+const fechaTasacion = (t: TasacionItem): number => {
+  if (!t.ultimaVez) return Number.NaN;
+  const tiempo = new Date(t.ultimaVez).getTime();
+  return Number.isNaN(tiempo) ? Number.NaN : tiempo;
+};
+
+const ordenarTasaciones = (lista: TasacionItem[], orden: Orden): TasacionItem[] => {
+  const copia = [...lista];
+  switch (orden) {
+    case 'recientes':
+      return copia.sort((a, b) => (fechaTasacion(b) || 0) - (fechaTasacion(a) || 0));
+    case 'mas-antiguo':
+      return copia.sort((a, b) => {
+        const fa = fechaTasacion(a);
+        const fb = fechaTasacion(b);
+        if (Number.isNaN(fa) && Number.isNaN(fb)) return 0;
+        if (Number.isNaN(fa)) return 1;
+        if (Number.isNaN(fb)) return -1;
+        return fa - fb;
+      });
+    case 'mayor-precio':
+      return copia.sort((a, b) => (b.valorUsd ?? -Infinity) - (a.valorUsd ?? -Infinity));
+    case 'menor-precio':
+      return copia.sort((a, b) => {
+        const va = a.valorUsd;
+        const vb = b.valorUsd;
+        if (va == null && vb == null) return 0;
+        if (va == null) return 1;
+        if (vb == null) return -1;
+        return va - vb;
+      });
+    default:
+      return copia;
+  }
 };
 
 export const DashboardApp = () => {
   const [section, setSection] = useState<Section>('tasaciones');
   const [query, setQuery] = useState('');
+  const [orden, setOrden] = useState<Orden>('predeterminado');
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
   const [tasacionesApi, setTasacionesApi] = useState<TasacionItem[]>([]);
   const [status, setStatus] = useState<CargaStatus>('loading');
   const [user, setUser] = useState<SesionUsuario | null>(null);
@@ -62,6 +117,7 @@ export const DashboardApp = () => {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const confirmTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const filtrosRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const u = getUser();
@@ -166,6 +222,24 @@ export const DashboardApp = () => {
     if (!confirmingId) return;
     document.getElementById(`btn-confirmar-borrar-${confirmingId}`)?.focus();
   }, [confirmingId]);
+
+  useEffect(() => {
+    if (!filtrosAbiertos) return;
+    const onClickFuera = (e: MouseEvent) => {
+      if (filtrosRef.current && !filtrosRef.current.contains(e.target as Node)) {
+        setFiltrosAbiertos(false);
+      }
+    };
+    const onEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFiltrosAbiertos(false);
+    };
+    document.addEventListener('mousedown', onClickFuera);
+    document.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('mousedown', onClickFuera);
+      document.removeEventListener('keydown', onEscape);
+    };
+  }, [filtrosAbiertos]);
 
   const startConfirm = (id: string) => {
     setConfirmingId(id);
@@ -295,9 +369,11 @@ export const DashboardApp = () => {
       ? tasacionesApi.filter((t) => t.status === 'borrador')
       : tasacionesApi.filter((t) => t.status === 'completada');
 
-  const filtered = items.filter((t) =>
+  const filtradas = items.filter((t) =>
     t.address.toLowerCase().includes(query.toLowerCase())
   );
+
+  const lista = ordenarTasaciones(filtradas, orden);
 
   const isSearching = query.trim().length > 0;
 
@@ -313,99 +389,140 @@ export const DashboardApp = () => {
 
   return (
     <div className={cn("dashboard", !sidebarVisible && "dashboard--sidebar-oculto")}>
-      <div className="dashboard__sidebar-zona">
-        <aside className="dashboard__sidebar" aria-label="Menú principal">
-          <div className="dashboard__sidebar-marca">
-            <a href="/" className="dashboard__logo">SpatialValue</a>
-          </div>
-        <nav className="dashboard__sidebar-nav" aria-label="Secciones">
-          {sidebarItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={cn(
-                "dashboard__nav-item",
-                section === item.id && "dashboard__nav-item--activo"
-              )}
-              onClick={() => setSection(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-      </aside>
-      <button
-        type="button"
-        onClick={() => setSidebarVisible((v) => !v)}
-        className="dashboard__boton-panel"
-        aria-label={sidebarVisible ? 'Ocultar menú' : 'Mostrar menú'}
-        aria-expanded={sidebarVisible}
-        title={sidebarVisible ? 'Ocultar menú' : 'Mostrar menú'}
-      >
-        {sidebarVisible ? (
-          <PanelLeftClose className="dashboard__boton-panel-icono" aria-hidden />
-        ) : (
-          <PanelLeftOpen className="dashboard__boton-panel-icono" aria-hidden />
-        )}
-      </button>
-      </div>
+      <header className="dashboard__cabecera">
+        <a href="/" className="dashboard__cabecera-marca" aria-label="SpatialValue - Inicio">
+          <img src="/logo.svg" alt="SpatialValue" className="dashboard__logo-img" />
+        </a>
 
-      <div className="dashboard__contenido">
-        <header className="dashboard__cabecera">
-          <div className="dashboard__buscador-zona">
-            <div className="dashboard__buscador">
-              <Search className="dashboard__buscador-icono" aria-hidden />
-              <input
-                id="buscar-tasacion"
-                type="search"
-                placeholder="Buscar Tasación..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="dashboard__buscador-entrada"
-              />
-            </div>
+        <div className="dashboard__buscador-zona">
+          <div className="dashboard__buscador">
+            <Search className="dashboard__buscador-icono" aria-hidden />
+            <input
+              id="buscar-tasacion"
+              type="search"
+              placeholder="Buscar Tasación..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="dashboard__buscador-entrada"
+            />
           </div>
-          <div className="dashboard__cabecera-acciones">
+        </div>
+
+        <div className="dashboard__cabecera-acciones">
+          <div className="filtros" ref={filtrosRef}>
             <button
               type="button"
-              className="dashboard__boton-filtros"
+              className={cn("dashboard__boton-filtros", filtrosAbiertos && "dashboard__boton-filtros--activo")}
               aria-label="Filtros"
+              aria-haspopup="listbox"
+              aria-expanded={filtrosAbiertos}
+              onClick={() => setFiltrosAbiertos((v) => !v)}
             >
               <SlidersHorizontal className="dashboard__boton-filtros-icono" aria-hidden />
               Filtros
             </button>
-            <NotificationsBell />
-            {user && (
-              <button
-                type="button"
-                onClick={() => cerrarSesion('/')}
-                className="dashboard__boton-salir"
-              >
-                Salir
-              </button>
+
+            {filtrosAbiertos && (
+              <div className="filtros__desplegable" role="listbox" aria-label="Ordenar tasaciones">
+                {opcionesOrden.map((op) => (
+                  <button
+                    key={op.id}
+                    type="button"
+                    role="option"
+                    aria-selected={orden === op.id}
+                    className={cn("filtros__opcion", orden === op.id && "filtros__opcion--activa")}
+                    onClick={() => {
+                      setOrden(op.id);
+                      setFiltrosAbiertos(false);
+                    }}
+                  >
+                    {op.label}
+                  </button>
+                ))}
+              </div>
             )}
+          </div>
+
+          {user && (
+            <button
+              type="button"
+              onClick={() => cerrarSesion('/')}
+              className="dashboard__boton-salir"
+            >
+              Salir
+            </button>
+          )}
+
+          <div className="dashboard__perfil" title="Tu perfil">
+            {avatar ? (
+              <img src={avatar} alt="Avatar" className="dashboard__perfil-avatar" />
+            ) : (
+              <div className="dashboard__perfil-iniciales">
+                {user ? getInitials(user.nombre) : 'U'}
+              </div>
+            )}
+            {user && (
+              <span className="dashboard__perfil-nombre">
+                {user.nombre}
+              </span>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <div className="dashboard__cuerpo">
+        <aside className="dashboard__sidebar" aria-label="Menú principal">
+          <div className="dashboard__sidebar-superior">
+            <NotificationsBell enSidebar />
+          </div>
+
+          <nav className="dashboard__sidebar-nav" aria-label="Secciones">
+            {sidebarItems.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={cn(
+                  "dashboard__nav-item",
+                  section === item.id && "dashboard__nav-item--activo"
+                )}
+                onClick={() => setSection(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="dashboard__sidebar-pie">
             <button
               type="button"
               onClick={() => setSection('config')}
-              className="dashboard__perfil"
-              aria-label="Abrir configuración"
+              className={cn(
+                "dashboard__boton-config",
+                section === 'config' && "dashboard__boton-config--activo"
+              )}
+              aria-label="Configuración"
+              aria-pressed={section === 'config'}
               title="Configuración"
             >
-              {avatar ? (
-                <img src={avatar} alt="Avatar" className="dashboard__perfil-avatar" />
-              ) : (
-                <div className="dashboard__perfil-iniciales">
-                  {user ? getInitials(user.nombre) : 'U'}
-                </div>
-              )}
-              {user && (
-                <span className="dashboard__perfil-nombre">
-                  {user.nombre}
-                </span>
-              )}
+              <Settings className="dashboard__boton-config-icono" aria-hidden />
             </button>
           </div>
-        </header>
+        </aside>
+
+        <button
+          type="button"
+          onClick={() => setSidebarVisible((v) => !v)}
+          className="dashboard__boton-panel"
+          aria-label={sidebarVisible ? 'Ocultar menú' : 'Mostrar menú'}
+          aria-expanded={sidebarVisible}
+          title={sidebarVisible ? 'Ocultar menú' : 'Mostrar menú'}
+        >
+          {sidebarVisible ? (
+            <PanelLeftClose className="dashboard__boton-panel-icono" aria-hidden />
+          ) : (
+            <PanelLeftOpen className="dashboard__boton-panel-icono" aria-hidden />
+          )}
+        </button>
 
         <main className="dashboard__principal">
           {user?.demo && (
@@ -415,6 +532,7 @@ export const DashboardApp = () => {
           )}
 
           {section === 'comunidad' && <BuscarUsuarios />}
+          {section === 'indicadores' && <IndicadoresMercado />}
           {section === 'config' && (
             <ConfigPanel
               user={user}
@@ -452,14 +570,14 @@ export const DashboardApp = () => {
                   <p className="dashboard__error-detalle">
                     Revisá tu conexión o intentá de nuevo en unos segundos.
                   </p>
-                  <Button type="button" variant="outline" onClick={fetchTasaciones} id="btn-reintentar">
+                  <Button type="button" variant="outline" onClick={fetchTasaciones} id="boton-reintentar-error">
                     <RefreshCw className="w-4 h-4 mr-2" aria-hidden />
                     Reintentar
                   </Button>
                 </div>
               )}
 
-              {(status === 'ready' || (status === 'error' && user?.demo)) && (filtered.length === 0 ? (
+              {(status === 'ready' || (status === 'error' && user?.demo)) && (lista.length === 0 ? (
                 <div className="dashboard__vacio">
                   <p className="dashboard__vacio-texto">
                     {isSearching
@@ -471,7 +589,7 @@ export const DashboardApp = () => {
                 </div>
               ) : (
                 <div className="dashboard__grilla">
-                  {filtered.map((t) => (
+                  {lista.map((t) => (
                     <div key={t.id} className="dashboard__item">
                       <a href={`/reporte?id=${t.id}`} className="dashboard__tarjeta-enlace">
                         <article className="dashboard__tarjeta">

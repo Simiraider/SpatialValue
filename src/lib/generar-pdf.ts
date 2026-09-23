@@ -811,7 +811,6 @@ export async function generarInformePdf(
   clienteNombre?: string,
   opciones: OpcionesInforme = {}
 ): Promise<void> {
-  // Normaliza snake_case (DB) a camelCase; si ya viene normalizado, no cambia nada.
   const datos = normalizeData(data) ?? data;
   const logo = await convertirLogoAPng();
   const informe = new PdfInforme(datos, clienteNombre ?? '—', logo, opciones.guardar ?? null);

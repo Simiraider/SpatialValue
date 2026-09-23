@@ -1,11 +1,6 @@
-/* ============================================================
-   Comunidad: buscador de usuarios
-   Bloque raíz: .comunidad
-   ============================================================ */
-
 .comunidad {
-  --comunidad-acento: #06b6d4;
-  --comunidad-acento-hover: #0891b2;
+  --comunidad-acento: #0087c0;
+  --comunidad-acento-hover: #006b99;
   --comunidad-texto: #1e293b;
   --comunidad-texto-suave: #64748b;
   --comunidad-borde: #e2e8f0;
@@ -109,7 +104,7 @@
 
 .comunidad__tarjeta:hover {
   border-color: var(--comunidad-acento);
-  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.12);
+  box-shadow: 0 4px 12px rgba(0, 135, 192, 0.12);
 }
 
 .comunidad__avatar {
@@ -129,8 +124,8 @@
   justify-content: center;
   font-weight: 700;
   font-size: 1rem;
-  background: #cffafe;
-  color: #0e7490;
+  background: #e1f4fb;
+  color: #006b99;
   flex-shrink: 0;
 }
 
