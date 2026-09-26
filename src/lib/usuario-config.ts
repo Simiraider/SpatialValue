@@ -1,4 +1,5 @@
 import { TASA_ARS_USD } from './mercado';
+import { dolarActual } from './dolar';
 
 export type Moneda = 'USD' | 'ARS';
 
@@ -147,7 +148,7 @@ export function passwordValida(pwd: string): boolean {
 
 export function formatValor(usd: number, moneda: Moneda): string {
   if (moneda === 'ARS') {
-    return `$${Math.round(usd * TASA_ARS_USD).toLocaleString('es-AR')} ARS`;
+    return `$${Math.round(usd * dolarActual()).toLocaleString('es-AR')} ARS`;
   }
   return `$${Math.round(usd).toLocaleString('es-AR')} USD`;
 }

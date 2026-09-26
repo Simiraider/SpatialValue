@@ -1,23 +1,30 @@
 export const prerender = false;
 import sqlIdentidad from '../../Backend/carga.js';
 import sqlConfig, { asegurarEsquemaConfig } from '../../Backend/carga-config.js';
+import { resolverUsuarioId, permitirFrecuencia, ipDePeticion } from '../../Backend/sesion.js';
+
+const escaparLike = (v) => v.replace(/([\\%_])/g, '\\$1');
 
 export async function GET({ url, request }) {
   try {
     await asegurarEsquemaConfig();
-    const query = (url.searchParams.get('q') || '').trim();
 
-    const cookies = request.headers.get('cookie') || '';
-    const m = cookies.match(/(?:^|;\s*)usuario_id=([^;]+)/);
-    const usuarioActual = (m ? decodeURIComponent(m[1]) : null)
-      || url.searchParams.get('usuario_id');
+    if (!permitirFrecuencia(`buscar:${ipDePeticion(request)}`, 30)) {
+      return new Response(
+        JSON.stringify({ error: 'Demasiadas búsquedas. Esperá un momento.' }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
-    if (!usuarioActual || usuarioActual === 'undefined' || usuarioActual === 'null') {
+    const usuarioActual = resolverUsuarioId(request);
+    if (!usuarioActual) {
       return new Response(
         JSON.stringify({ error: 'No has iniciado sesión' }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
+
+    const query = (url.searchParams.get('q') || '').trim().slice(0, 50);
 
     if (query.length < 2) {
       return new Response(JSON.stringify({ success: true, resultados: [] }), {
@@ -26,7 +33,7 @@ export async function GET({ url, request }) {
       });
     }
 
-    const patron = `%${query}%`;
+    const patron = `%${escaparLike(query)}%`;
 
     const usuarios = await sqlIdentidad`
       SELECT "id_usuario", "nombre"

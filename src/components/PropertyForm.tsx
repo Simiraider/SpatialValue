@@ -1,4 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { Building2, Check, Home, KeyRound, TrendingUp } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { navegarA } from '../lib/navigate';
@@ -7,7 +9,8 @@ import { getUsuarioId } from '../lib/session';
 import { BARRIOS_CABA } from '../lib/mercado';
 import { cn } from '../lib/utils';
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
+const PASOS = ['Ubicación', 'Características', 'Extras', 'Fotos'];
 const AMENITIES = ['Seguridad 24h', 'Ascensor', 'Cochera', 'Gimnasio', 'Baulera', 'Cámaras', 'Balcón', 'Lounge', 'Terraza', 'Pileta', 'Patio', 'Parrilla', 'Laundry'];
 
 type FormData = {
@@ -30,11 +33,25 @@ const initialData: FormData = {
 };
 
 function Selector({ label, value, onChange, children, error }: { label: string; value: string; onChange: (value: string) => void; children: React.ReactNode; error?: string }) {
-  return <div className="flex flex-col space-y-1.5 w-full">
-    <label className="text-sm font-semibold text-slate-700 ml-1">{label}</label>
-    <select className={cn('sv-control', error && 'ring-2 ring-red-500')} value={value} onChange={(e) => onChange(e.target.value)}>{children}</select>
-    {error && <p className="text-sm text-red-500 ml-1">{error}</p>}
+  return <div className="tasacion__campo">
+    <label className="tasacion__etiqueta">{label}</label>
+    <select className={cn('tasacion__control', error && 'tasacion__control--invalido')} value={value} onChange={(e) => onChange(e.target.value)}>{children}</select>
+    {error && <p className="tasacion__error">{error}</p>}
   </div>;
+}
+
+function TarjetaEleccion({ icono: Icono, titulo, activo, onClick }: { icono: LucideIcon; titulo: string; activo: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={activo}
+      className={cn('tasacion__eleccion-card', activo && 'tasacion__eleccion-card--activa')}
+    >
+      <Icono className="tasacion__eleccion-icono" aria-hidden />
+      <span>{titulo}</span>
+    </button>
+  );
 }
 
 export const PropertyForm = () => {
@@ -54,32 +71,43 @@ export const PropertyForm = () => {
   const update = <K extends keyof FormData>(field: K, value: FormData[K]) => setData(prev => ({ ...prev, [field]: value }));
   const toggleAmenity = (amenity: string) => update('comodidades', data.comodidades.includes(amenity) ? data.comodidades.filter(item => item !== amenity) : [...data.comodidades, amenity]);
 
+  const supTotalNum = Number(data.superficieTotal) || 0;
+  const supCubiertaNum = Number(data.superficieCubierta) || 0;
+  const descubiertos = supTotalNum > 0 && supCubiertaNum > 0 && supTotalNum >= supCubiertaNum
+    ? Math.round(supTotalNum - supCubiertaNum)
+    : null;
+
   const validate = () => {
     const next: Record<string, string> = {};
     if (step === 1) {
       if (!data.direccion.trim()) next.direccion = 'Ingresá la dirección';
-      if (!data.barrio) next.barrio = 'Seleccioná el barrio';
+      if (verifDir.estado === 'invalida') next.direccion = verifDir.mensaje || 'La dirección no existe. Verificala e intentá de nuevo.';
+    }
+    if (step === 2) {
       if (Number(data.superficieTotal) <= 0) next.superficieTotal = 'Ingresá una superficie válida';
       if (Number(data.superficieCubierta) <= 0) next.superficieCubierta = 'Ingresá una superficie válida';
       if (Number(data.superficieCubierta) > Number(data.superficieTotal)) next.superficieCubierta = 'No puede superar la superficie total';
-      if (verifDir.estado === 'invalida') next.direccion = verifDir.mensaje || 'La dirección no existe. Verificala e intentá de nuevo.';
     }
-    setErrors(next); return Object.keys(next).length === 0;
+    setErrors(next);
+    return Object.keys(next).length === 0;
   };
 
   const verificarDireccionEnBlur = async () => {
     const direccion = data.direccion.trim();
-    if (!direccion || !data.barrio) { setVerifDir({ estado: 'idle' }); return; }
+    if (!direccion) { setVerifDir({ estado: 'idle' }); return; }
     setVerifDir({ estado: 'verificando' });
     try {
       const { ok, data: result } = await apiFetch<any>('/Apis/VerificarDireccion', {
         method: 'POST',
-        body: JSON.stringify({ direccion, barrio: data.barrio, ciudad: 'Ciudad de Buenos Aires' }),
+        body: JSON.stringify({ direccion, barrio: data.barrio || null, ciudad: 'Ciudad de Buenos Aires' }),
       }, 8000);
       const r = result?.data;
       if (!ok || !r) { setVerifDir({ estado: 'sin-servicio' }); return; }
       if (!r.existe) {
         setVerifDir({ estado: 'invalida', mensaje: 'No encontramos esa dirección. Revisá calle, altura y barrio.' });
+      } else if (!data.barrio && r.barrioCanonizado) {
+        setVerifDir({ estado: 'ok' });
+        update('barrio', r.barrioCanonizado);
       } else if (r.barrioDetectado && !r.barrioCoincide) {
         setVerifDir({
           estado: 'barrio-distinto',
@@ -89,8 +117,7 @@ export const PropertyForm = () => {
       } else {
         setVerifDir({ estado: 'ok' });
       }
-    } catch {
-      setVerifDir({ estado: 'sin-servicio' });
+    } catch {      setVerifDir({ estado: 'sin-servicio' });
     }
   };
 
@@ -119,36 +146,60 @@ export const PropertyForm = () => {
     } finally { setSubmitting(false); navegarA('/cargando'); }
   };
 
-  const next = async (event: React.FormEvent) => { event.preventDefault(); if (!validate()) return; if (step < TOTAL_STEPS) setStep(current => current + 1); else await submit(); };
+  const next = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!validate()) return; if (step < TOTAL_STEPS) setStep(current => current + 1); else await submit(); };
 
-  return <div className="sv-form">
-    <div className="sv-progress" aria-label={`Paso ${step} de ${TOTAL_STEPS}`}>{[1, 2, 3].map((item, index) => <React.Fragment key={item}><span className={cn('sv-progress-dot', step >= item && 'is-active')}>{item}</span>{index < 2 && <span className={cn('sv-progress-line', step > item && 'is-active')} />}</React.Fragment>)}</div>
-    <form onSubmit={next} noValidate className="sv-form-card">
+  return <div className="tasacion">
+    <div className="tasacion__progreso" aria-label={`Paso ${step} de ${TOTAL_STEPS}`}>
+      {[1, 2, 3, 4].map((item, index) => (
+        <React.Fragment key={item}>
+          <span className={cn('tasacion__progreso-paso', step >= item && 'tasacion__progreso-paso--activa')}>
+            <span className="tasacion__progreso-numero">{item}</span>
+            <span className="tasacion__progreso-etiqueta">{PASOS[item - 1]}</span>
+          </span>
+          {index < TOTAL_STEPS - 1 && <span className={cn('tasacion__progreso-linea', step > item && 'tasacion__progreso-linea--activa')} />}
+        </React.Fragment>
+      ))}
+    </div>
+    <form onSubmit={next} noValidate className="tasacion__tarjeta">
       {step === 1 && <section>
-        <div className="sv-heading"><p>Paso 1 de 3</p><h1>Datos generales</h1><span>Contanos las características principales de la propiedad.</span></div>
-        <div className="sv-choice-row"><Button type="button" variant={data.tipoTasacion === 'venta' ? 'primary' : 'outline'} fullWidth onClick={() => update('tipoTasacion', 'venta')}>Venta</Button><Button type="button" variant={data.tipoTasacion === 'alquiler' ? 'primary' : 'outline'} fullWidth onClick={() => update('tipoTasacion', 'alquiler')}>Alquiler</Button></div>
-        <div className="sv-choice-row"><Button type="button" variant={data.tipoUnidad === 'Departamento' ? 'primary' : 'outline'} fullWidth onClick={() => update('tipoUnidad', 'Departamento')}>Departamento</Button><Button type="button" variant={data.tipoUnidad === 'Casa' ? 'primary' : 'outline'} fullWidth onClick={() => update('tipoUnidad', 'Casa')}>Casa</Button></div>
-        <div className="sv-grid">
-          <div>
+        <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">Paso 1 de {TOTAL_STEPS}</p><h1 className="tasacion__encabezado-titulo">Ubicación</h1><span className="tasacion__encabezado-sub">Contanos dónde está la propiedad y verificamos la dirección al instante.</span></div>
+        <div className="tasacion__eleccion">
+          <TarjetaEleccion icono={TrendingUp} titulo="Venta" activo={data.tipoTasacion === 'venta'} onClick={() => update('tipoTasacion', 'venta')} />
+          <TarjetaEleccion icono={KeyRound} titulo="Alquiler" activo={data.tipoTasacion === 'alquiler'} onClick={() => update('tipoTasacion', 'alquiler')} />
+        </div>
+        <div className="tasacion__grilla tasacion__grilla--ubicacion">
+          <div className="tasacion__campo">
             <Input label="Dirección" placeholder="Blas Parera 1301" value={data.direccion} onChange={e => { update('direccion', e.target.value); if (verifDir.estado !== 'idle') setVerifDir({ estado: 'idle' }); }} onBlur={verificarDireccionEnBlur} error={errors.direccion} />
-            {verifDir.estado === 'verificando' && <p className="text-sm text-slate-500 ml-1 mt-1">Verificando dirección…</p>}
-            {verifDir.estado === 'ok' && <p className="text-sm text-emerald-600 ml-1 mt-1">✓ Dirección verificada</p>}
+            {verifDir.estado === 'verificando' && <p className="tasacion__verificacion">Verificando dirección…</p>}
+            {verifDir.estado === 'ok' && <p className="tasacion__verificacion tasacion__verificacion--ok">✓ Dirección verificada</p>}
             {(verifDir.estado === 'invalida' || verifDir.estado === 'barrio-distinto') && (
-              <p className="text-sm text-amber-600 ml-1 mt-1">
+              <p className="tasacion__verificacion tasacion__verificacion--aviso">
                 {verifDir.mensaje}
                 {verifDir.estado === 'barrio-distinto' && verifDir.sugerencia && (
-                  <button type="button" className="underline font-semibold ml-1" onClick={() => { update('barrio', verifDir.sugerencia!); setVerifDir({ estado: 'ok' }); }}>
+                  <button type="button" className="tasacion__verificacion-boton" onClick={() => { update('barrio', verifDir.sugerencia!); setVerifDir({ estado: 'ok' }); }}>
                     Usar {verifDir.sugerencia}
                   </button>
                 )}
               </p>
             )}
           </div>
-          <Selector label="Barrio" value={data.barrio} onChange={value => update('barrio', value)} error={errors.barrio}><option value="">Seleccioná un barrio…</option>{BARRIOS_CABA.map(barrio => <option key={barrio} value={barrio}>{barrio}</option>)}</Selector>
+          <Selector label="Barrio (opcional — lo detectamos de la dirección)" value={data.barrio} onChange={value => update('barrio', value)}><option value="">Detectar automáticamente…</option>{BARRIOS_CABA.map(barrio => <option key={barrio} value={barrio}>{barrio}</option>)}</Selector>
+        </div>
+      </section>}
+      {step === 2 && <section>
+        <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">Paso 2 de {TOTAL_STEPS}</p><h1 className="tasacion__encabezado-titulo">Características</h1><span className="tasacion__encabezado-sub">Las variables clave que usa el modelo para tasar.</span></div>
+        <div className="tasacion__eleccion">
+          <TarjetaEleccion icono={Building2} titulo="Departamento" activo={data.tipoUnidad === 'Departamento'} onClick={() => update('tipoUnidad', 'Departamento')} />
+          <TarjetaEleccion icono={Home} titulo="Casa" activo={data.tipoUnidad === 'Casa'} onClick={() => update('tipoUnidad', 'Casa')} />
+        </div>
+        <div className="tasacion__grilla">
           <Input label="Número de ambientes" type="number" min="0" max="50" value={data.ambientes} onChange={e => update('ambientes', e.target.value)} />
           <Input label="Antigüedad (años)" type="number" min="0" max="200" placeholder="Ej. 8" value={data.antiguedad} onChange={e => update('antiguedad', e.target.value)} />
           <Input label="Superficie total (m²)" type="number" min="1" value={data.superficieTotal} onChange={e => update('superficieTotal', e.target.value)} error={errors.superficieTotal} />
-          <Input label="Superficie cubierta (m²)" type="number" min="1" value={data.superficieCubierta} onChange={e => update('superficieCubierta', e.target.value)} error={errors.superficieCubierta} />
+          <div className="tasacion__campo">
+            <Input label="Superficie cubierta (m²)" type="number" min="1" value={data.superficieCubierta} onChange={e => update('superficieCubierta', e.target.value)} error={errors.superficieCubierta} />
+            {descubiertos !== null && <p className="tasacion__hint">Descubiertos: {descubiertos} m²</p>}
+          </div>
           <Input label="Baños" type="number" min="0" max="30" value={data.banos} onChange={e => update('banos', e.target.value)} />
           <Input label="Dormitorios" type="number" min="0" max="30" value={data.dormitorios} onChange={e => update('dormitorios', e.target.value)} />
           {data.tipoUnidad === 'Departamento' ? (
@@ -160,11 +211,27 @@ export const PropertyForm = () => {
           <Selector label="Disposición" value={data.disposicion} onChange={value => update('disposicion', value)}><option value="">Seleccioná la disposición…</option>{['Frente', 'Contrafrente', 'Interno', 'Lateral'].map(option => <option key={option}>{option}</option>)}</Selector>
           {data.tipoTasacion === 'alquiler' && <Input label="Expensas mensuales (ARS)" type="number" min="0" placeholder="Ej. 150000" value={data.expensas} onChange={e => update('expensas', e.target.value)} />}
         </div>
-        <fieldset className="sv-state"><legend>Estado percibido</legend><div className="sv-state-buttons"><button type="button" className={cn('sv-state-btn', 'sv-state--optimo', data.estadoGeneral >= 8 && 'is-selected')} onClick={() => { update('estadoGeneral', 9); setShowSlider(false); }}>Óptimo</button><button type="button" className={cn('sv-state-btn', 'sv-state--regular', data.estadoGeneral >= 5 && data.estadoGeneral < 8 && 'is-selected')} onClick={() => { update('estadoGeneral', 6); setShowSlider(false); }}>Regular</button><button type="button" className={cn('sv-state-btn', 'sv-state--critico', data.estadoGeneral <= 4 && 'is-selected')} onClick={() => { update('estadoGeneral', 3); setShowSlider(false); }}>Crítico</button></div><button type="button" className="sv-state-toggle" onClick={() => setShowSlider(prev => !prev)}>{showSlider ? 'Ocultar detalle' : '¿Más precisión?'}</button>{showSlider && <div className="sv-slider"><div className="sv-slider-value" style={{ color: data.estadoGeneral >= 8 ? '#16a34a' : data.estadoGeneral >= 5 ? '#d97706' : '#dc2626' }}>{data.estadoGeneral}</div><input type="range" min="1" max="10" value={data.estadoGeneral} onChange={e => update('estadoGeneral', Number(e.target.value))} className="sv-slider-input" /><div className="sv-slider-labels"><span>1 — A refaccionar</span><span>10 — A estrenar</span></div></div>}</fieldset>
+        <fieldset className="tasacion__estado"><legend>Estado percibido</legend><div className="tasacion__estado-botones"><button type="button" className={cn('tasacion__estado-btn', 'tasacion__estado-btn--optimo', data.estadoGeneral >= 8 && 'tasacion__estado-btn--seleccionado')} onClick={() => { update('estadoGeneral', 9); setShowSlider(false); }}>Óptimo</button><button type="button" className={cn('tasacion__estado-btn', 'tasacion__estado-btn--regular', data.estadoGeneral >= 5 && data.estadoGeneral < 8 && 'tasacion__estado-btn--seleccionado')} onClick={() => { update('estadoGeneral', 6); setShowSlider(false); }}>Regular</button><button type="button" className={cn('tasacion__estado-btn', 'tasacion__estado-btn--critico', data.estadoGeneral <= 4 && 'tasacion__estado-btn--seleccionado')} onClick={() => { update('estadoGeneral', 3); setShowSlider(false); }}>Crítico</button></div><button type="button" className="tasacion__estado-toggle" onClick={() => setShowSlider(prev => !prev)}>{showSlider ? 'Ocultar detalle' : '¿Más precisión?'}</button>{showSlider && <div className="tasacion__slider"><div className="tasacion__slider-valor" style={{ color: data.estadoGeneral >= 8 ? '#16a34a' : data.estadoGeneral >= 5 ? '#d97706' : '#dc2626' }}>{data.estadoGeneral}</div><input type="range" min="1" max="10" value={data.estadoGeneral} onChange={e => update('estadoGeneral', Number(e.target.value))} className="tasacion__slider-input" /><div className="tasacion__slider-labels"><span>1 — A refaccionar</span><span>10 — A estrenar</span></div></div>}</fieldset>
       </section>}
-      {step === 2 && <section><div className="sv-heading"><p>Paso 2 de 3</p><h1>Extras y amenities</h1><span>Seleccioná todo lo que tenga la propiedad.</span></div><div className="sv-amenities">{AMENITIES.map(amenity => <button key={amenity} type="button" onClick={() => toggleAmenity(amenity)} className={cn(data.comodidades.includes(amenity) && 'is-selected')}>{amenity}</button>)}</div></section>}
-      {step === 3 && <section><div className="sv-heading"><p>Paso 3 de 3</p><h1>Fotos de la propiedad</h1><span>Podés sumar imágenes para complementar el análisis visual.</span></div><label className="sv-upload"><input type="file" accept="image/*" multiple onChange={e => setPhotos(Array.from(e.target.files || []).slice(0, 12))} /><strong>Subí imágenes</strong><span>JPG, PNG o WEBP · hasta 12 fotos</span></label>{previews.length > 0 && <div className="sv-photo-grid">{previews.map(({ file, url }) => <img key={`${file.name}-${file.lastModified}`} src={url} alt={file.name} />)}</div>}<label className="sv-borrador-toggle"><input type="checkbox" checked={guardarComoBorrador} onChange={e => setGuardarComoBorrador(e.target.checked)} /><span>Guardar como borrador (podés completarla después desde el Dashboard)</span></label></section>}
-      <div className="sv-actions">{step > 1 ? <Button type="button" variant="outline" disabled={submitting} onClick={() => setStep(current => current - 1)}>Atrás</Button> : <Button type="button" variant="outline" onClick={() => navegarA('/dashboard')}>Cancelar</Button>}<Button type="submit" variant="primary" isLoading={submitting} disabled={submitting}>{step === TOTAL_STEPS ? 'Finalizar y calcular' : 'Siguiente'}</Button></div>
+      {step === 3 && <section>
+        <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">Paso 3 de {TOTAL_STEPS}</p><h1 className="tasacion__encabezado-titulo">Extras y amenities</h1><span className="tasacion__encabezado-sub">Seleccioná todo lo que tenga la propiedad.</span></div>
+        <div className="tasacion__amenities">{AMENITIES.map(amenity => {
+          const seleccionado = data.comodidades.includes(amenity);
+          return (
+            <button key={amenity} type="button" aria-pressed={seleccionado} onClick={() => toggleAmenity(amenity)} className={cn('tasacion__amenity', seleccionado && 'tasacion__amenity--seleccionado')}>
+              {seleccionado && <Check className="tasacion__amenity-check" aria-hidden />}
+              {amenity}
+            </button>
+          );
+        })}</div>
+      </section>}
+      {step === 4 && <section>
+        <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">Paso 4 de {TOTAL_STEPS}</p><h1 className="tasacion__encabezado-titulo">Fotos de la propiedad</h1><span className="tasacion__encabezado-sub">Podés sumar imágenes para complementar el análisis visual.</span></div>
+        <label className="tasacion__subida"><input type="file" accept="image/*" multiple onChange={e => setPhotos(Array.from(e.target.files || []).slice(0, 12))} /><strong>Subí imágenes</strong><span>JPG, PNG o WEBP · hasta 12 fotos</span></label>
+        {previews.length > 0 && <div className="tasacion__fotos">{previews.map(({ file, url }) => <img key={`${file.name}-${file.lastModified}`} src={url} alt={file.name} />)}</div>}
+        <label className="tasacion__borrador"><input type="checkbox" checked={guardarComoBorrador} onChange={e => setGuardarComoBorrador(e.target.checked)} /><span>Guardar como borrador (podés completarla después desde el Dashboard)</span></label>
+      </section>}
+      <div className="tasacion__acciones">{step > 1 ? <Button type="button" variant="outline" disabled={submitting} onClick={() => setStep(current => current - 1)}>Atrás</Button> : <Button type="button" variant="outline" onClick={() => navegarA('/dashboard')}>Cancelar</Button>}<Button type="submit" variant="primary" isLoading={submitting} disabled={submitting}>{step === TOTAL_STEPS ? 'Finalizar y calcular' : 'Siguiente'}</Button></div>
     </form>
   </div>;
 };

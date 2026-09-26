@@ -7,7 +7,7 @@ import pandas as pd
 import psycopg2
 from psycopg2 import pool
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor
@@ -65,6 +65,14 @@ COLUMNAS_NUMERICAS = [
 ]
 
 app = FastAPI(title="API IA Estimador")
+
+INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
+
+def _verificar_api_key(x_api_key: str | None) -> None:
+    if not INTERNAL_API_KEY:
+        return
+    if not x_api_key or x_api_key != INTERNAL_API_KEY:
+        raise HTTPException(status_code=401, detail="API key inválida")
 db_pool = psycopg2.pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
 
 modelo_v4 = None
@@ -139,6 +147,7 @@ def _cargar_datos_entrenamiento():
                 LEFT JOIN tasacion_detalles d ON d.id_publicacion = p.id_publicacion::text
                 WHERE p.precio_estimado_ia IS NOT NULL
                   AND p.tipo_operacion = 'venta'
+                  AND COALESCE(d.datos->>'fuente_precio', '') = 'ia'
             )
             SELECT * FROM datos_scraper
             UNION ALL
@@ -178,6 +187,24 @@ def entrenar_modelo():
         return
 
     df = _preparar_features(df)
+
+    precios = pd.to_numeric(df["precio_usd"], errors="coerce")
+    superficies = pd.to_numeric(df["superficie_cubierta_m2"], errors="coerce").clip(lower=1)
+    df = df.assign(precio_m2=precios / superficies)
+
+    def _filtrar_outliers(g: pd.DataFrame) -> pd.DataFrame:
+        if len(g) < 20:
+            return g
+        q1 = g["precio_m2"].quantile(0.05)
+        q3 = g["precio_m2"].quantile(0.95)
+        return g[(g["precio_m2"] >= q1) & (g["precio_m2"] <= q3)]
+
+    antes = len(df)
+    filtrado = df.groupby("barrio_zona", group_keys=False).apply(_filtrar_outliers)
+    if not filtrado.empty:
+        df = filtrado
+    df = df.drop(columns=["precio_m2"])
+    print(f"Filtro de outliers por barrio: {antes - len(df)} filas descartadas de {antes}")
 
     X = df[COLUMNAS_TEXTO + COLUMNAS_NUMERICAS]
     y = df["precio_usd"].fillna(df["precio_usd"].median())
@@ -252,7 +279,8 @@ def health():
 
 
 @app.post("/estimar-precio")
-def estimar_precio(propiedad: PropiedadInput):
+def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(default=None)):
+    _verificar_api_key(x_api_key)
     latitud = propiedad.latitud if propiedad.latitud is not None else COORDENADAS_DEFAULT["lat"]
     longitud = propiedad.longitud if propiedad.longitud is not None else COORDENADAS_DEFAULT["lng"]
 
@@ -310,7 +338,8 @@ def estimar_precio(propiedad: PropiedadInput):
 
 
 @app.post("/reentrenar")
-def reentrenar_api():
+def reentrenar_api(x_api_key: str | None = Header(default=None)):
+    _verificar_api_key(x_api_key)
     try:
         entrenar_modelo()
         return {"status": "success", "message": "Modelo re-entrenado exitosamente."}

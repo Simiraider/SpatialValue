@@ -1,5 +1,6 @@
 export const prerender = false;
 import sql from '../../Backend/carga.js';
+import { resolverUsuarioId } from '../../Backend/sesion.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -10,17 +11,7 @@ export async function POST({ request }) {
     const id_publicacion = data.id_publicacion || data.id;
     const nuevoEstado = data.estado_tasacion;
 
-    const cookieHeader = request.headers.get("cookie") || "";
-    const cookies = Object.fromEntries(
-      cookieHeader.split("; ").filter(Boolean).map((c) => {
-        const [key, ...v] = c.split("=");
-        return [key, v.join("=")];
-      })
-    );
-
-    const usuarioActual = [cookies.usuario_id, data.usuario_id, data.id_usuario].find(
-      (v) => v && v !== "undefined" && v !== "null"
-    );
+    const usuarioActual = resolverUsuarioId(request);
 
     if (!usuarioActual) {
       return new Response(

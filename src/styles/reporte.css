@@ -95,6 +95,13 @@
   color: var(--color-primary-600);
 }
 
+.ReportePage-valueRango {
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
 .ReportePage-section {
   margin-bottom: 2rem;
   padding: 1.5rem;

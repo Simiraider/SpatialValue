@@ -1,14 +1,13 @@
 export const prerender = false;
 import sql from '../../Backend/carga.js';
+import { resolverUsuarioId } from '../../Backend/sesion.js';
 
-export async function GET({ url }) {
+export async function GET({ request }) {
   try {
-    const usuarioId = url.searchParams.get('usuario_id');
+    // Identidad solo desde la cookie firmada: sin sesión no se devuelven datos.
+    const usuarioActual = resolverUsuarioId(request);
 
-    const esUsuarioValido = usuarioId && 
-                            usuarioId !== 'undefined' && 
-                            usuarioId !== 'null' && 
-                            usuarioId.trim() !== '';
+    const esUsuarioValido = usuarioActual && usuarioActual.trim() !== '';
 
     let publicaciones;
 
@@ -17,7 +16,7 @@ export async function GET({ url }) {
         SELECT p.*, u."nombre" as autor 
         FROM "publicaciones" p
         JOIN "usuarios" u ON p.id_usuario = u.id_usuario
-        WHERE p.id_usuario = ${usuarioId}
+        WHERE p.id_usuario = ${usuarioActual}
         ORDER BY p.fecha_creacion DESC
       `;
     } else {

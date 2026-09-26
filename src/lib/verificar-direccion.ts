@@ -27,6 +27,9 @@ const BARRIOS_CABA: Record<string, string> = {
   'villa pueyrredon': 'Villa Pueyrredón', 'villa real': 'Villa Real',
   'villa riachuelo': 'Villa Riachuelo', 'villa santa rita': 'Villa Santa Rita',
   'villa soldati': 'Villa Soldati', 'villa urquiza': 'Villa Urquiza',
+  once: 'Balvanera', congreso: 'Balvanera', abasto: 'Balvanera',
+  microcentro: 'San Nicolás', tribunales: 'San Nicolás', catalinas: 'San Nicolás',
+  'las canitas': 'Palermo', 'bajo belgrano': 'Belgrano',
 };
 
 function normalizar(texto: string | null | undefined): string {

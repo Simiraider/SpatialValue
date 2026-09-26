@@ -1,17 +1,17 @@
 export const prerender = false;
 import sqlConfig, { asegurarEsquemaConfig } from '../../Backend/carga-config.js';
 import sqlIdentidad from '../../Backend/carga.js';
+import { resolverUsuarioId } from '../../Backend/sesion.js';
 
 function getCookieUsuarioId(request) {
-  const cookies = request.headers.get('cookie') || '';
-  const m = cookies.match(/(?:^|;\s*)usuario_id=([^;]+)/);
-  return m ? decodeURIComponent(m[1]) : null;
+  return resolverUsuarioId(request);
 }
 
 const CAMPOS_CONFIG = `"nombre", "email", "telefono", "avatar", "instagram", "twitter",
        "linkedin", "facebook", "sitio_web", "instagram_publico", "twitter_publico",
        "linkedin_publico", "facebook_publico", "sitio_publico", "perfil_publico",
-       "mostrar_contacto", "visibilidad_estadisticas", "moneda"`;
+       "mostrar_contacto", "visibilidad_estadisticas", "moneda",
+       "email_verificado", "telefono_verificado"`;
 
 async function asegurarUsuarioEnConfig(usuarioId) {
   const existente = await sqlConfig`
@@ -34,10 +34,10 @@ async function asegurarUsuarioEnConfig(usuarioId) {
   return true;
 }
 
-export async function GET({ request, url }) {
+export async function GET({ request }) {
   try {
     await asegurarEsquemaConfig();
-    const usuarioId = getCookieUsuarioId(request) || url.searchParams.get('usuario_id');
+    const usuarioId = getCookieUsuarioId(request);
 
     const esValido = usuarioId &&
       usuarioId !== 'undefined' &&
@@ -95,6 +95,8 @@ export async function GET({ request, url }) {
         mostrar_contacto: u.mostrar_contacto ?? true,
         visibilidad_estadisticas: u.visibilidad_estadisticas ?? true,
         moneda: u.moneda === 'ARS' ? 'ARS' : 'USD',
+        email_verificado: u.email_verificado ?? false,
+        telefono_verificado: u.telefono_verificado ?? false,
       }
     }), {
       status: 200,
