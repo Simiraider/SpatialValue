@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
+import { idFirmado } from '../src/Backend/sesion.js';
 
 const MODO_DEV = process.argv.includes('--dev');
 const OK = '\x1b[32m✔\x1b[0m';
@@ -149,7 +150,7 @@ async function obtenerSesion(base) {
   } catch {}
   if (login?.ok) {
     const cookie = login.headers.getSetCookie().find((c) => c.startsWith('usuario_id='));
-    if (cookie) return { id: cookie.split(';')[0].split('=')[1], via: 'login' };
+    if (cookie) return { id: cookie.split(';')[0].split('=')[1].split('.')[0], via: 'login' };
   }
 
   let registro = null;
@@ -163,7 +164,7 @@ async function obtenerSesion(base) {
   } catch {}
   if (registro?.status === 201) {
     const cookie = registro.headers.getSetCookie().find((c) => c.startsWith('usuario_id='));
-    if (cookie) return { id: cookie.split(';')[0].split('=')[1], via: 'registro' };
+    if (cookie) return { id: cookie.split(';')[0].split('=')[1].split('.')[0], via: 'registro' };
   }
 
   try {
@@ -201,7 +202,7 @@ async function capaApis(base) {
     registrar('APIs backend', 'mal', 'no se pudo crear sesión de prueba (login/registro/DB)');
     return;
   }
-  const cookie = `usuario_id=${sesion.id}`;
+  const cookie = `usuario_id=${idFirmado(sesion.id)}`;
   let okCount = 0;
   const total = 5;
 
@@ -302,7 +303,7 @@ async function capaIA() {
   try {
     const estimacion = await fetch(`${IA_URL}/estimar-precio`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-API-KEY': env.INTERNAL_API_KEY || '' },
     body: JSON.stringify({
       tipo_propiedad: 'Departamento',
       barrio_zona: 'Palermo',

@@ -1,18 +1,19 @@
 export const prerender = false;
 import sql from '../../Backend/carga.js';
+import { resolverUsuarioId } from '../../Backend/sesion.js';
 
-export async function GET({ url }) {
+export async function GET({ url, request }) {
   try {
     const id = url.searchParams.get('id');
-    const usuarioId = url.searchParams.get('usuario_id');
     const barrio = url.searchParams.get('barrio');
     const superficie = Number(url.searchParams.get('superficie')) || 0;
     const tipoOperacion = url.searchParams.get('tipo_operacion') || 'venta';
 
+    const usuarioId = resolverUsuarioId(request);
     if (!usuarioId) {
       return new Response(
-        JSON.stringify({ error: "Falta el usuario" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Sesión no válida" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
       );
     }
 

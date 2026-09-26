@@ -5,7 +5,8 @@ import { type TasacionItem } from '../data/mock';
 import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
 import { apiFetch, getCookie } from '../lib/api';
-import { estimarPrecioVenta, valorM2Alquiler, TASA_ARS_USD } from '../lib/mercado';
+import { estimarPrecioVenta, valorM2Alquiler } from '../lib/mercado';
+import { cargarDolar, dolarActual } from '../lib/dolar';
 import { getUser, getUsuarioId, cerrarSesion, syncSessionAcrossTabs, actualizarSesion, type SesionUsuario } from '../lib/session';
 import { generarInformePdf } from '../lib/generar-pdf';
 import { normalizeData } from '../lib/normalizar-tasacion';
@@ -401,7 +402,7 @@ export const DashboardApp = () => {
   const formatear = (usd: number, alquiler = false) => {
     if (alquiler) {
       if (moneda === 'ARS') {
-        return `$${Math.round(usd * TASA_ARS_USD).toLocaleString('es-AR')} ARS/mes`;
+        return `$${Math.round(usd * dolarActual()).toLocaleString('es-AR')} ARS/mes`;
       }
       return `$${Math.round(usd).toLocaleString('es-AR')} USD/mes`;
     }

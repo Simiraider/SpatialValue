@@ -2,6 +2,7 @@ export const prerender = false;
 import sqlConfig, { asegurarEsquemaConfig } from '../../Backend/carga-config.js';
 import sqlIdentidad from '../../Backend/carga.js';
 import crypto from 'node:crypto';
+import { resolverUsuarioId, permitirFrecuencia, ipDePeticion } from '../../Backend/sesion.js';
 
 const AVATAR_MAX_BYTES = 300_000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -29,9 +30,7 @@ function esConfigUsuario(v) {
 }
 
 function getCookieUsuarioId(request) {
-  const cookies = request.headers.get('cookie') || '';
-  const m = cookies.match(/(?:^|;\s*)usuario_id=([^;]+)/);
-  return m ? decodeURIComponent(m[1]) : null;
+  return resolverUsuarioId(request);
 }
 
 function respuestaError(mensaje, status) {
@@ -112,6 +111,12 @@ async function asegurarUsuarioEnConfig(usuarioId) {
 export async function POST({ request }) {
   try {
     await asegurarEsquemaConfig();
+
+    // Anti abuso: máx 30 acciones por IP cada 5 minutos.
+    if (!permitirFrecuencia(`config:${ipDePeticion(request)}`, 30)) {
+      return respuestaError('Demasiadas acciones seguidas. Esperá un momento.', 429);
+    }
+
     const usuarioId = getCookieUsuarioId(request);
 
     if (!usuarioId || usuarioId === 'undefined' || usuarioId === 'null') {

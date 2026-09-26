@@ -35,7 +35,6 @@ export const BuscarUsuarios = () => {
   const [resultados, setResultados] = useState<ResultadoUsuario[]>([]);
   const [buscando, setBuscando] = useState(false);
   const [error, setError] = useState('');
-  const [buscoAlgo, setBuscoAlgo] = useState(false);
   const [likesDados, setLikesDados] = useState<Set<string>>(new Set());
   const [likeEnCurso, setLikeEnCurso] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

@@ -1,10 +1,28 @@
 export const prerender = false;
 import sql from '../../Backend/carga.js';
 import { estimarPrecioVenta } from '../../lib/mercado';
-import { verificarDireccion } from '../../lib/verificar-direccion';
+import { verificarDireccion, canonizarBarrio } from '../../lib/verificar-direccion';
+import { resolverUsuarioId, permitirFrecuencia, ipDePeticion } from '../../Backend/sesion.js';
 
 const IA_URL = import.meta.env.IA_URL || process.env.IA_URL || 'http://127.0.0.1:8000';
 const IA_TIMEOUT_MS = 15000;
+
+const AMENITIES_VALIDOS = new Set([
+  'Seguridad 24h', 'Ascensor', 'Cochera', 'Gimnasio', 'Baulera', 'Cámaras',
+  'Balcón', 'Lounge', 'Terraza', 'Pileta', 'Patio', 'Parrilla', 'Laundry', 'SUM',
+]);
+const MAX_TITULO = 200;
+const MAX_DESCRIPCION = 2000;
+const MAX_FOTOS = 12;
+const MAX_COMODIDADES = 30;
+
+const numeroEnRango = (v, min, max, defecto) => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return defecto;
+  return Math.min(Math.max(Math.round(n), min), max);
+};
+
+const textoLimpio = (v, max) => String(v ?? '').trim().slice(0, max);
 
 const normalizar = (valor) => String(valor || '')
   .normalize('NFD')
@@ -16,7 +34,8 @@ const tiene = (comodidades, nombre) =>
   Array.isArray(comodidades) &&
   comodidades.some((a) => normalizar(a) === normalizar(nombre));
 
-const IA_API_KEY = import.meta.env.INTERNAL_API_KEY || process.env.INTERNAL_API_KEY || '';async function llamarAI(payload) {
+const IA_API_KEY = import.meta.env.INTERNAL_API_KEY || process.env.INTERNAL_API_KEY || '';
+async function llamarAI(payload) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), IA_TIMEOUT_MS);
   try {
@@ -42,56 +61,81 @@ const IA_API_KEY = import.meta.env.INTERNAL_API_KEY || process.env.INTERNAL_API_
 
 export async function POST({ request }) {
   try {
-    const data = await request.json();
-
-    const {
-      titulo,
-      descripcion,
-      tipo_operacion = 'venta',
-      tipo_propiedad = 'Departamento',
-      precio,
-      moneda = 'USD',
-      expensas = 0,
-      direccion,
-      barrio,
-      ciudad = 'Buenos Aires',
-      ambientes = 1,
-      dormitorios = 0,
-      banos = 1,
-      cocheras = 0,
-      superficie_cubierta,
-      superficie_total,
-      piso,
-      antiguedad,
-      anios_de_antiguedad,
-      orientacion,
-      disposicion,
-      comodidades,
-      fotos = [],
-      latitud,
-      longitud,
-      usuario_id,
-      es_borrador = false,
-    } = data;
-
-    const idUsuarioFinal =
-      [usuario_id, data.id_usuario].find(
-        (v) => v && v !== 'undefined' && v !== 'null'
-      ) || null;
-    const estadoGeneral = data.estado_general ?? data.estadoGeneral;
-
-    if (!titulo || !direccion || !idUsuarioFinal) {
+    if (!permitirFrecuencia(`publicar:${ipDePeticion(request)}`, 20, 3_600_000)) {
       return new Response(
-        JSON.stringify({ error: "Faltan campos obligatorios (título, dirección o usuario)" }),
+        JSON.stringify({ error: "Demasiadas publicaciones seguidas. Probá de nuevo más tarde." }),
+        { status: 429, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const raw = await request.json().catch(() => null);
+    if (!raw || typeof raw !== 'object') {
+      return new Response(
+        JSON.stringify({ error: "Cuerpo de la petición inválido" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    const superficieCubierta = Number(superficie_cubierta) || 0;
-    const superficieTotal = Number(superficie_total) || superficieCubierta;
-    const tipoPropiedadDB = String(tipo_propiedad).toLowerCase();
+    const idUsuarioFinal = resolverUsuarioId(request);
+    if (!idUsuarioFinal) {
+      return new Response(
+        JSON.stringify({ error: "Sesión no válida. Volvé a iniciar sesión." }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
-    let coordenadasFinales = (latitud && longitud) ? { lat: Number(latitud), lng: Number(longitud) } : null;
+    const titulo = textoLimpio(raw.titulo, MAX_TITULO);
+    const descripcion = textoLimpio(raw.descripcion, MAX_DESCRIPCION);
+    const direccion = textoLimpio(raw.direccion, 200);
+    const barrio = textoLimpio(raw.barrio, 100);
+    const ciudad = textoLimpio(raw.ciudad, 100) || 'Buenos Aires';
+    const tipoOperacionRaw = String(raw.tipo_operacion ?? 'venta').toLowerCase();
+    const tipo_operacion = tipoOperacionRaw === 'alquiler' ? 'alquiler' : 'venta';
+    const tipo_propiedad = String(raw.tipo_propiedad ?? 'Departamento') === 'Casa' ? 'Casa' : 'Departamento';
+    const moneda = String(raw.moneda ?? 'USD') === 'ARS' ? 'ARS' : 'USD';
+
+    const comodidades = (Array.isArray(raw.comodidades) ? raw.comodidades : [])
+      .slice(0, MAX_COMODIDADES)
+      .map((c) => String(c ?? '').trim())
+      .filter((c) => c && AMENITIES_VALIDOS.has(c));
+
+    const fotos = (Array.isArray(raw.fotos) ? raw.fotos : [])
+      .slice(0, MAX_FOTOS)
+      .map((f) => ({
+        name: textoLimpio(f?.name, 120),
+        size: numeroEnRango(f?.size, 0, 20_000_000, 0),
+        type: textoLimpio(f?.type, 50),
+      }));
+
+    if (!titulo || !direccion) {
+      return new Response(
+        JSON.stringify({ error: "Faltan campos obligatorios (título o dirección)" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const superficieCubierta = numeroEnRango(raw.superficie_cubierta, 1, 10000, 0);
+    const superficieTotal = Math.max(numeroEnRango(raw.superficie_total, 1, 10000, superficieCubierta), superficieCubierta);
+    const ambientes = numeroEnRango(raw.ambientes, 1, 50, 1);
+    const dormitorios = numeroEnRango(raw.dormitorios, 0, 30, 0);
+    const banos = numeroEnRango(raw.banos, 0, 30, 1);
+    const cocheras = numeroEnRango(raw.cocheras, 0, 10, 0);
+    const expensas = numeroEnRango(raw.expensas, 0, 10_000_000, 0);
+    const estadoGeneralRaw = Number(raw.estado_general ?? raw.estadoGeneral ?? 7);
+    const estadoGeneral = Number.isFinite(estadoGeneralRaw) ? Math.min(Math.max(estadoGeneralRaw, 1), 10) : 7;
+    const piso = raw.piso ? parseInt(String(raw.piso).replace(/[^0-9]/g, ''), 10) || null : null;
+    const antiguedad = numeroEnRango(raw.antiguedad ?? raw.anios_de_antiguedad, 0, 200, 0) || null;
+    const orientacion = textoLimpio(raw.orientacion, 30) || null;
+    const disposicion = textoLimpio(raw.disposicion, 30) || null;
+    const es_borrador = Boolean(raw.es_borrador);
+
+    let coordenadasFinales = null;
+    const latRaw = Number(raw.latitud);
+    const lngRaw = Number(raw.longitud);
+    if (Number.isFinite(latRaw) && Number.isFinite(lngRaw) && Math.abs(latRaw) <= 90 && Math.abs(lngRaw) <= 180) {
+      coordenadasFinales = { lat: latRaw, lng: lngRaw };
+    }
+
     let barrioCoincide = true;
     let barrioDetectado = null;
     let direccionFormateada = null;
@@ -108,42 +152,43 @@ export async function POST({ request }) {
     }
     const latFinal = coordenadasFinales?.lat ?? null;
     const lngFinal = coordenadasFinales?.lng ?? null;
+    const barrioFinal = canonizarBarrio(barrio || canonizarBarrio(barrioDetectado)) || barrio || null;
 
     const payloadIA = {
-      tipo_propiedad: tipo_propiedad === 'Casa' ? 'Casa' : 'Departamento',
-      barrio_zona: barrio || ciudad || 'Capital Federal',
-      ambientes: Number(ambientes) || 1,
-      dormitorios: dormitorios ? Number(dormitorios) : null,
-      banos: banos ? Number(banos) : null,
+      tipo_propiedad,
+      barrio_zona: barrioFinal || ciudad || 'Capital Federal',
+      ambientes,
+      dormitorios: dormitorios || null,
+      banos: banos || null,
       superficie_total_m2: superficieTotal || null,
       superficie_cubierta_m2: superficieCubierta || null,
-      estado: Number(estadoGeneral) >= 8 ? 'A estrenar' : 'Usado',
-      anios_de_antiguedad: antiguedad != null ? Number(antiguedad) : (anios_de_antiguedad != null ? Number(anios_de_antiguedad) : null),
-      piso: piso ? parseInt(String(piso).replace(/[^0-9]/g, ''), 10) || null : null,
-      orientacion: orientacion || null,
-      disposicion: disposicion || null,
+      estado: estadoGeneral >= 8 ? 'A estrenar' : 'Usado',
+      anios_de_antiguedad: antiguedad,
+      piso,
+      orientacion,
+      disposicion,
       cochera: tiene(comodidades, 'Cochera'),
-      balcon: tiene(comodidades, 'Balcón') || tiene(comodidades, 'Balcon'),
+      balcon: tiene(comodidades, 'Balcón'),
       terraza: tiene(comodidades, 'Terraza'),
       patio: tiene(comodidades, 'Patio'),
       pileta: tiene(comodidades, 'Pileta'),
       parrilla: tiene(comodidades, 'Parrilla'),
       seguridad_24hs: tiene(comodidades, 'Seguridad 24h'),
       ascensor: tiene(comodidades, 'Ascensor'),
-      expensas_ars: Number(expensas) || 0,
+      expensas_ars: expensas,
       baulera: tiene(comodidades, 'Baulera'),
       sum: tiene(comodidades, 'SUM'),
       seguridad_tipo: tiene(comodidades, 'Seguridad 24h') ? '24hs' : 'Ninguno',
-      camara: tiene(comodidades, 'Cámaras') || tiene(comodidades, 'Camaras'),
+      camara: tiene(comodidades, 'Cámaras'),
       gym: tiene(comodidades, 'Gimnasio'),
       lounge: tiene(comodidades, 'Lounge'),
       laundry: tiene(comodidades, 'Laundry'),
-      tipo_operacion: String(tipo_operacion || 'venta').toLowerCase(),
+      tipo_operacion,
       ...(latFinal != null ? { latitud: latFinal } : {}),
       ...(lngFinal != null ? { longitud: lngFinal } : {}),
     };
 
-    const esAlquiler = String(tipo_operacion || 'venta').toLowerCase() === 'alquiler';
+    const esAlquiler = tipo_operacion === 'alquiler';
 
     let resultadoIA = null;
     let precioEstimadoUsd = null;
@@ -151,17 +196,30 @@ export async function POST({ request }) {
     resultadoIA = await llamarAI(payloadIA);
     precioEstimadoUsd = resultadoIA?.precio_estimado_usd ?? null;
 
+    const referenciaLocal = estimarPrecioVenta(
+      superficieCubierta,
+      Math.max(superficieTotal - superficieCubierta, 0),
+      barrioFinal || ciudad
+    );
+
     let precioFinal;
-    if (precioEstimadoUsd != null) {
-      precioFinal = Math.round(precioEstimadoUsd);
+    let fuentePrecio;
+    if (!esAlquiler && precioEstimadoUsd != null && precioEstimadoUsd > 0) {
+      const dentroDeBanda = precioEstimadoUsd >= referenciaLocal * 0.6 && precioEstimadoUsd <= referenciaLocal * 1.5;
+      if (dentroDeBanda) {
+        precioFinal = Math.round(precioEstimadoUsd);
+        fuentePrecio = 'ia';
+      } else {
+        precioFinal = referenciaLocal;
+        fuentePrecio = 'modelo-local';
+        console.warn(`IA fuera de banda (${Math.round(precioEstimadoUsd)} vs referencia ${referenciaLocal}): se usa estimación local`);
+      }
     } else if (esAlquiler) {
-      precioFinal = Number(precio) || 0;
+      precioFinal = 0;
+      fuentePrecio = 'sin-estimacion';
     } else {
-      precioFinal = estimarPrecioVenta(
-        superficieCubierta,
-        Math.max(superficieTotal - superficieCubierta, 0),
-        barrio || ciudad
-      );
+      precioFinal = referenciaLocal;
+      fuentePrecio = 'modelo-local';
     }
 
     let publicacionGuardada = null;
@@ -196,19 +254,19 @@ export async function POST({ request }) {
           ${titulo},
           ${descripcion || null},
           ${tipo_operacion},
-          ${tipoPropiedadDB},
+          ${tipo_propiedad.toLowerCase()},
           ${precioFinal},
           ${precioEstimadoUsd != null ? Math.round(precioEstimadoUsd) : null},
           ${moneda},
           ${expensas},
           ${superficieTotal || null},
           ${superficieCubierta || null},
-          ${Number(ambientes) || 1},
+          ${ambientes},
           ${dormitorios},
           ${banos},
           ${cocheras},
           ${direccion},
-          ${barrio || null},
+          ${barrioFinal},
           ${ciudad},
           ${latFinal},
           ${lngFinal},
@@ -229,12 +287,14 @@ export async function POST({ request }) {
           await sql`ALTER TABLE tasacion_detalles ALTER COLUMN id_publicacion TYPE TEXT USING id_publicacion::text`;
         } catch (e) {}
         const detalles = JSON.stringify({
-          antiguedad: payloadIA.anios_de_antiguedad,
-          orientacion: payloadIA.orientacion,
-          disposicion: payloadIA.disposicion,
-          estadoGeneral: Number(estadoGeneral) || null,
-          comodidades: Array.isArray(comodidades) ? comodidades : [],
-          fotos: Array.isArray(fotos) ? fotos : [],
+          antiguedad,
+          orientacion,
+          disposicion,
+          estadoGeneral,
+          comodidades,
+          fotos,
+          fuente_precio: fuentePrecio,
+          referencia_local_usd: referenciaLocal,
         });
         await sql`
           INSERT INTO tasacion_detalles (id_publicacion, datos)
@@ -253,7 +313,7 @@ export async function POST({ request }) {
         success: true,
         message: publicacionGuardada
           ? "Publicación creada con éxito"
-          : "Tasación estimada (no guardada: usuario inválido o servicio de datos no disponible)",
+          : "Tasación estimada (no guardada: servicio de datos no disponible)",
         data: {
           id: publicacionGuardada?.id_publicacion ?? null,
           precio_estimado_usd: precioEstimadoUsd != null ? Math.round(precioEstimadoUsd) : null,
@@ -263,6 +323,7 @@ export async function POST({ request }) {
           barrio_detectado: barrioDetectado,
           barrio_coincide: barrioCoincide,
           fuente_geocoding: fuenteGeocoding,
+          fuente_precio: fuentePrecio,
           saved: Boolean(publicacionGuardada),
         },
       }),

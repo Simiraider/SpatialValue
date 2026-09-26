@@ -1,22 +1,12 @@
 export const prerender = false;
 import sql from '../../Backend/carga.js';
+import { resolverUsuarioId } from '../../Backend/sesion.js';
 
 export async function GET({ url, request }) {
   try {
     const id = url.searchParams.get('id');
-    const usuarioIdQuery = url.searchParams.get('usuario_id');
 
-    const cookieHeader = request.headers.get("cookie") || "";
-    const cookies = Object.fromEntries(
-      cookieHeader.split("; ").filter(Boolean).map((c) => {
-        const [key, ...v] = c.split("=");
-        return [key, v.join("=")];
-      })
-    );
-
-    const usuarioActual = [cookies.usuario_id, usuarioIdQuery].find(
-      (v) => v && v !== "undefined" && v !== "null"
-    );
+    const usuarioActual = resolverUsuarioId(request);
 
     if (!id || id === "undefined" || id === "null") {
       return new Response(

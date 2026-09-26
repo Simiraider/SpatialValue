@@ -1,11 +1,10 @@
 export const prerender = false;
 import sqlConfig, { asegurarEsquemaConfig } from '../../Backend/carga-config.js';
 import sqlIdentidad from '../../Backend/carga.js';
+import { resolverUsuarioId } from '../../Backend/sesion.js';
 
 function getCookieUsuarioId(request) {
-  const cookies = request.headers.get('cookie') || '';
-  const m = cookies.match(/(?:^|;\s*)usuario_id=([^;]+)/);
-  return m ? decodeURIComponent(m[1]) : null;
+  return resolverUsuarioId(request);
 }
 
 function respuestaError(mensaje, status) {

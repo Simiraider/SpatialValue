@@ -1,11 +1,10 @@
 export const prerender = false;
 import sqlConfig, { asegurarEsquemaConfig } from '../../Backend/carga-config.js';
 import sqlIdentidad from '../../Backend/carga.js';
+import { resolverUsuarioId, permitirFrecuencia, ipDePeticion } from '../../Backend/sesion.js';
 
 function getCookieUsuarioId(request) {
-  const cookies = request.headers.get('cookie') || '';
-  const m = cookies.match(/(?:^|;\s*)usuario_id=([^;]+)/);
-  return m ? decodeURIComponent(m[1]) : null;
+  return resolverUsuarioId(request);
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -13,6 +12,15 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 export async function POST({ request }) {
   try {
     await asegurarEsquemaConfig();
+
+    // Anti abuso: máx 40 likes por IP cada 5 minutos.
+    if (!permitirFrecuencia(`like:${ipDePeticion(request)}`, 40)) {
+      return new Response(
+        JSON.stringify({ error: 'Demasiadas acciones. Esperá un momento.' }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     const emisor = getCookieUsuarioId(request);
     if (!emisor || !UUID_RE.test(emisor)) {
       return new Response(

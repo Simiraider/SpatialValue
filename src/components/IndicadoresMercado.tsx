@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, TrendingUp, ArrowDownUp, Loader2, DollarSign, Info } from 'lucide-react';
-import { BARRIOS_CABA, VALORES_M2_POR_BARRIO, TASA_ARS_USD } from '../lib/mercado';
+import { BARRIOS_CABA, VALORES_M2_POR_BARRIO } from '../lib/mercado';
+import { cargarDolar, dolarActual } from '../lib/dolar';
 import { type Moneda } from '../lib/usuario-config';
 import { getUser } from '../lib/session';
 import { cn } from '../lib/utils';
@@ -20,9 +21,13 @@ export const IndicadoresMercado = () => {
   const [query, setQuery] = useState('');
   const [criterio, setCriterio] = useState<Criterio>('venta');
   const [ordenAsc, setOrdenAsc] = useState(false);
+  const [dolar, setDolar] = useState(dolarActual());
+
+  useEffect(() => {
+    cargarDolar().then((e) => setDolar(e.valor));
+  }, []);
 
   const moneda: Moneda = getUser()?.moneda ?? 'USD';
-  const dolar = TASA_ARS_USD;
 
   const filas = useMemo(() => {
     const q = query.trim().toLowerCase();

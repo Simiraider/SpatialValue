@@ -1,9 +1,10 @@
-import React, { useEffect, useState, Component, type ReactNode } from 'react';
+import { useEffect, useState, Component, type ReactNode } from 'react';
 import { DispercionChart, ComparativaBarChart, ComposicionPieChart } from './ReportCharts';
 import { ReportActions, ReportDownloadButton } from './ReportActions';
 import { Button } from './ui/Button';
 import { getUser, getUsuarioId } from '../lib/session';
 import { apiFetch } from '../lib/api';
+import { cargarDolar, dolarActual } from '../lib/dolar';
 import { calcularValores, esAlquiler } from '../lib/tasacion';
 import { MapaReporte } from './MapaReporte';
 import { normalizeData } from '../lib/normalizar-tasacion';
@@ -26,6 +27,7 @@ export const ReportPage = () => {
   const cargar = async () => {
     setData(null);
     setError(null);
+    await cargarDolar();
     try {
       const params = new URLSearchParams(window.location.search);
       const urlId = params.get('id');
@@ -135,7 +137,7 @@ export const ReportPage = () => {
 
   let v;
   try {
-    v = calcularValores(data);
+    v = calcularValores(data, dolarActual());
   } catch (e) {
     console.error('[ReportPage] calcularValores error:', e);
     return (
@@ -214,6 +216,11 @@ export const ReportPage = () => {
               ? `${fmt(v.valorUsd)} USD · Expensas ~ $${fmt(v.expensas)}/mes`
               : `${fmt(v.valorArs)} ARS`}
           </p>
+          {!alquiler && (
+            <p className="ReportePage-valueRango">
+              Rango de mercado: entre {fmt(v.rangoMin)} y {fmt(v.rangoMax)} USD
+            </p>
+          )}
         </section>
 
         <section className="ReportePage-section">

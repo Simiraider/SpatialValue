@@ -1,11 +1,10 @@
 export const prerender = false;
 import sqlConfig, { asegurarEsquemaConfig } from '../../Backend/carga-config.js';
 import sqlIdentidad from '../../Backend/carga.js';
+import { resolverUsuarioId } from '../../Backend/sesion.js';
 
 function getCookieUsuarioId(request) {
-  const cookies = request.headers.get('cookie') || '';
-  const m = cookies.match(/(?:^|;\s*)usuario_id=([^;]+)/);
-  return m ? decodeURIComponent(m[1]) : null;
+  return resolverUsuarioId(request);
 }
 
 const CAMPOS_CONFIG = `"nombre", "email", "telefono", "avatar", "instagram", "twitter",
@@ -35,10 +34,10 @@ async function asegurarUsuarioEnConfig(usuarioId) {
   return true;
 }
 
-export async function GET({ request, url }) {
+export async function GET({ request }) {
   try {
     await asegurarEsquemaConfig();
-    const usuarioId = getCookieUsuarioId(request) || url.searchParams.get('usuario_id');
+    const usuarioId = getCookieUsuarioId(request);
 
     const esValido = usuarioId &&
       usuarioId !== 'undefined' &&

@@ -30,5 +30,6 @@ chrome_scraper_data/
 storage/
 
 .vercel/
+ia_server*.log
 /chrome_scraper_data
 /supabase/.temp

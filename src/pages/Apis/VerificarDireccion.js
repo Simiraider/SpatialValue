@@ -1,5 +1,5 @@
 export const prerender = false;
-import { verificarDireccion } from '../../lib/verificar-direccion';
+import { verificarDireccion, canonizarBarrio } from '../../lib/verificar-direccion';
 
 export async function POST({ request }) {
   try {
@@ -18,7 +18,10 @@ export async function POST({ request }) {
       ciudad || 'Ciudad de Buenos Aires'
     );
 
-    return new Response(JSON.stringify({ success: true, data: resultado }), {
+    return new Response(JSON.stringify({
+      success: true,
+      data: { ...resultado, barrioCanonizado: canonizarBarrio(resultado.barrioDetectado) },
+    }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });

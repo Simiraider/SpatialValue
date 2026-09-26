@@ -32,9 +32,11 @@ export interface ValoresCalculados {
   valorM2: number;
   expensas: number;
   expensasDeclaradas: number;
+  rangoMin: number;
+  rangoMax: number;
 }
 
-export function calcularValores(data: DatosTasacion): ValoresCalculados {
+export function calcularValores(data: DatosTasacion, tasaArs: number = TASA_ARS_USD): ValoresCalculados {
   const alquiler = esAlquiler(data);
   const precioIA = Number(data.precioEstimadoUsd);
   const supCub = Number(data.superficieCubierta) || 0;
@@ -46,7 +48,7 @@ export function calcularValores(data: DatosTasacion): ValoresCalculados {
 
   if (alquiler) {
     const valorUsd = precioIA > 0 ? Math.round(precioIA * 0.045 / 12) : Math.round(supCub * valorM2Alquiler(barrio));
-    const valorArs = Math.round(valorUsd * TASA_ARS_USD);
+    const valorArs = Math.round(valorUsd * tasaArs);
     return {
       precioIA: valorUsd,
       supCub,
@@ -58,13 +60,15 @@ export function calcularValores(data: DatosTasacion): ValoresCalculados {
       valorM2: valorM2Alquiler(barrio),
       expensas,
       expensasDeclaradas,
+      rangoMin: Math.round(valorUsd * 0.93 / 1000) * 1000,
+      rangoMax: Math.round(valorUsd * 1.07 / 1000) * 1000,
     };
   }
 
   const m2Venta = valorM2Venta(barrio);
   if (precioIA > 0) {
     const valorUsd = Math.round(precioIA);
-    const valorArs = Math.round(valorUsd * TASA_ARS_USD);
+    const valorArs = Math.round(valorUsd * tasaArs);
     const valorM2Calculado = supCub > 0 ? Math.round(valorUsd / supCub) : m2Venta;
     return {
       precioIA,
@@ -77,10 +81,12 @@ export function calcularValores(data: DatosTasacion): ValoresCalculados {
       valorM2: valorM2Calculado,
       expensas,
       expensasDeclaradas,
+      rangoMin: Math.round(valorUsd * 0.93 / 1000) * 1000,
+      rangoMax: Math.round(valorUsd * 1.07 / 1000) * 1000,
     };
   }
   const valorUsd = estimarPrecioVenta(supCub, supDesc, barrio);
-  const valorArs = Math.round(valorUsd * TASA_ARS_USD);
+  const valorArs = Math.round(valorUsd * tasaArs);
   return {
     precioIA,
     supCub,
@@ -92,6 +98,8 @@ export function calcularValores(data: DatosTasacion): ValoresCalculados {
     valorM2: m2Venta,
     expensas,
     expensasDeclaradas,
+    rangoMin: Math.round(valorUsd * 0.93 / 1000) * 1000,
+    rangoMax: Math.round(valorUsd * 1.07 / 1000) * 1000,
   };
 }
 
