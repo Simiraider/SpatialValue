@@ -9,7 +9,8 @@
     "dev": "concurrently \"python src/pages/Apis/api_ia.py\" \"astro dev\"",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "verificar": "node scripts/verificar-todo.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^6.0.6",
@@ -23,6 +24,7 @@
     "clsx": "^2.1.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.14.0",
+    "nodemailer": "^10.0.10",
     "playwright": "^1.62.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

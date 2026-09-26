@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Search, Loader2, RefreshCw, Trash2, Download, CheckCircle2, Undo2, SlidersHorizontal, PanelLeftClose, PanelLeftOpen, Settings, Home, Building2 } from 'lucide-react';
+import { Search, Loader2, RefreshCw, Trash2, Download, CheckCircle2, Undo2, SlidersHorizontal, PanelLeftClose, PanelLeftOpen, Settings, Home, Building2, ChevronDown, LogOut, UserRound, FolderOpen, ChartColumn, Users, Plus } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { type TasacionItem } from '../data/mock';
 import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
@@ -19,11 +20,11 @@ type Section = 'tasaciones' | 'borradores' | 'indicadores' | 'config' | 'comunid
 type Orden = 'predeterminado' | 'recientes' | 'mayor-precio' | 'menor-precio' | 'mas-antiguo';
 type CargaStatus = 'loading' | 'error' | 'ready';
 
-const sidebarItems: { id: Section; label: string }[] = [
-  { id: 'tasaciones', label: 'Mis tasaciones' },
-  { id: 'borradores', label: 'Mis borradores' },
-  { id: 'indicadores', label: 'Indicadores de mercado' },
-  { id: 'comunidad', label: 'Comunidad' },
+const sidebarItems: { id: Section; label: string; icono: LucideIcon }[] = [
+  { id: 'tasaciones', label: 'Mis tasaciones', icono: Home },
+  { id: 'borradores', label: 'Mis borradores', icono: FolderOpen },
+  { id: 'indicadores', label: 'Indicadores de mercado', icono: ChartColumn },
+  { id: 'comunidad', label: 'Comunidad', icono: Users },
 ];
 
 const opcionesOrden: { id: Orden; label: string }[] = [
@@ -35,7 +36,7 @@ const opcionesOrden: { id: Orden; label: string }[] = [
 ];
 
 const statusLabel: Record<TasacionItem['status'], string> = {
-  completada: 'Tasación lista a tasar',
+  completada: 'Lista para tasar',
   borrador: 'Borrador',
 };
 
@@ -105,6 +106,7 @@ export const DashboardApp = () => {
   const [query, setQuery] = useState('');
   const [orden, setOrden] = useState<Orden>('predeterminado');
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
+  const [perfilAbierto, setPerfilAbierto] = useState(false);
   const [tasacionesApi, setTasacionesApi] = useState<TasacionItem[]>([]);
   const [status, setStatus] = useState<CargaStatus>('loading');
   const [user, setUser] = useState<SesionUsuario | null>(null);
@@ -118,6 +120,7 @@ export const DashboardApp = () => {
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const confirmTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const filtrosRef = useRef<HTMLDivElement | null>(null);
+  const perfilRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const u = getUser();
@@ -240,6 +243,24 @@ export const DashboardApp = () => {
       document.removeEventListener('keydown', onEscape);
     };
   }, [filtrosAbiertos]);
+
+  useEffect(() => {
+    if (!perfilAbierto) return;
+    const onClickFuera = (e: MouseEvent) => {
+      if (perfilRef.current && !perfilRef.current.contains(e.target as Node)) {
+        setPerfilAbierto(false);
+      }
+    };
+    const onEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPerfilAbierto(false);
+    };
+    document.addEventListener('mousedown', onClickFuera);
+    document.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('mousedown', onClickFuera);
+      document.removeEventListener('keydown', onEscape);
+    };
+  }, [perfilAbierto]);
 
   const startConfirm = (id: string) => {
     setConfirmingId(id);
@@ -409,6 +430,15 @@ export const DashboardApp = () => {
         </div>
 
         <div className="dashboard__cabecera-acciones">
+          <button
+            type="button"
+            onClick={() => (window.location.href = '/tasacion')}
+            className="dashboard__boton-nueva"
+          >
+            <Plus className="dashboard__boton-nueva-icono" aria-hidden />
+            <span className="dashboard__boton-nueva-texto">Nueva Tasación</span>
+          </button>
+
           <div className="filtros" ref={filtrosRef}>
             <button
               type="button"
@@ -444,29 +474,58 @@ export const DashboardApp = () => {
           </div>
 
           {user && (
-            <button
-              type="button"
-              onClick={() => cerrarSesion('/')}
-              className="dashboard__boton-salir"
-            >
-              Salir
-            </button>
-          )}
+            <div className="dashboard__perfil" ref={perfilRef}>
+              <button
+                type="button"
+                className="dashboard__perfil-gatillo"
+                aria-haspopup="menu"
+                aria-expanded={perfilAbierto}
+                aria-label="Abrir menú de usuario"
+                onClick={() => setPerfilAbierto((v) => !v)}
+              >
+                {avatar ? (
+                  <img src={avatar} alt="Avatar" className="dashboard__perfil-avatar" />
+                ) : (
+                  <span className="dashboard__perfil-iniciales">{getInitials(user.nombre)}</span>
+                )}
+                <span className="dashboard__perfil-nombre">{user.nombre}</span>
+                <ChevronDown
+                  className={cn("dashboard__perfil-flecha", perfilAbierto && "dashboard__perfil-flecha--abierta")}
+                  aria-hidden
+                />
+              </button>
 
-          <div className="dashboard__perfil" title="Tu perfil">
-            {avatar ? (
-              <img src={avatar} alt="Avatar" className="dashboard__perfil-avatar" />
-            ) : (
-              <div className="dashboard__perfil-iniciales">
-                {user ? getInitials(user.nombre) : 'U'}
-              </div>
-            )}
-            {user && (
-              <span className="dashboard__perfil-nombre">
-                {user.nombre}
-              </span>
-            )}
-          </div>
+              {perfilAbierto && (
+                <div className="dashboard__menu-perfil" role="menu" aria-label="Menú de usuario">
+                  <div className="dashboard__menu-perfil-cabecera">
+                    <p className="dashboard__menu-perfil-nombre">{user.nombre}</p>
+                    {user.demo && <p className="dashboard__menu-perfil-demo">Modo demo</p>}
+                  </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="dashboard__menu-perfil-item"
+                    onClick={() => {
+                      setPerfilAbierto(false);
+                      setSection('config');
+                    }}
+                  >
+                    <UserRound className="dashboard__menu-perfil-item-icono" aria-hidden />
+                    Mi Perfil
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="dashboard__menu-perfil-item dashboard__menu-perfil-item--salir"
+                    onClick={() => cerrarSesion('/')}
+                  >
+                    <LogOut className="dashboard__menu-perfil-item-icono" aria-hidden />
+                    Cerrar sesión
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
@@ -477,19 +536,23 @@ export const DashboardApp = () => {
           </div>
 
           <nav className="dashboard__sidebar-nav" aria-label="Secciones">
-            {sidebarItems.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={cn(
-                  "dashboard__nav-item",
-                  section === item.id && "dashboard__nav-item--activo"
-                )}
-                onClick={() => setSection(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
+            {sidebarItems.map((item) => {
+              const Icono = item.icono;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={cn(
+                    "dashboard__nav-item",
+                    section === item.id && "dashboard__nav-item--activo"
+                  )}
+                  onClick={() => setSection(item.id)}
+                >
+                  <Icono className="dashboard__nav-item-icono" aria-hidden />
+                  <span className="dashboard__nav-item-texto">{item.label}</span>
+                </button>
+              );
+            })}
           </nav>
 
           <div className="dashboard__sidebar-pie">
@@ -546,16 +609,6 @@ export const DashboardApp = () => {
 
           {(section === 'tasaciones' || section === 'borradores') && (
             <div className="dashboard__panel">
-              <button
-                type="button"
-                onClick={() => (window.location.href = '/tasacion')}
-                className="dashboard__boton-nueva"
-                aria-label="Nueva tasación"
-                title="Nueva tasación"
-              >
-                +
-              </button>
-
               {status === 'loading' && (
                 <div className="dashboard__cargando">
                   <Loader2 className="dashboard__spinner" />
@@ -584,7 +637,7 @@ export const DashboardApp = () => {
                       ? 'No hay resultados para tu búsqueda.'
                       : section === 'borradores'
                         ? 'No tenés borradores. Podés guardar una tasación como borrador al crearla.'
-                        : 'Todavía no tenés tasaciones aquí. ¡Creá una nueva!'}
+                        : 'Todavía no tenés tasaciones aquí. ¡Creá una nueva con el botón "+ Nueva Tasación"!'}
                   </p>
                 </div>
               ) : (
@@ -593,38 +646,42 @@ export const DashboardApp = () => {
                     <div key={t.id} className="dashboard__item">
                       <a href={`/reporte?id=${t.id}`} className="dashboard__tarjeta-enlace">
                         <article className="dashboard__tarjeta">
-                          <div className="dashboard__tarjeta-fila">
-                            {t.tipo === 'Casa' ? (
-                              <Home className="dashboard__tarjeta-icono" aria-hidden />
-                            ) : (
-                              <Building2 className="dashboard__tarjeta-icono" aria-hidden />
-                            )}
-                            <h3 className="dashboard__tarjeta-direccion">{t.address}</h3>
-                            {t.status === 'completada' && (
+                          <div className="dashboard__tarjeta-principal">
+                            <div className="dashboard__tarjeta-identidad">
+                              {t.tipo === 'Casa' ? (
+                                <Home className="dashboard__tarjeta-icono" aria-hidden />
+                              ) : (
+                                <Building2 className="dashboard__tarjeta-icono" aria-hidden />
+                              )}
+                              <h3 className="dashboard__tarjeta-direccion">{t.address}</h3>
+                            </div>
+                            <div className="dashboard__tarjeta-acciones">
+                              {t.status === 'completada' && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDownloadPdf(t); }}
+                                  disabled={downloadingId === t.id}
+                                  className="dashboard__tarjeta-accion"
+                                  aria-label="Descargar informe PDF"
+                                  title="Descargar PDF"
+                                >
+                                  {downloadingId === t.id ? (
+                                    <Loader2 className="dashboard__tarjeta-accion-icono dashboard__tarjeta-accion-icono--cargando" />
+                                  ) : (
+                                    <Download className="dashboard__tarjeta-accion-icono" />
+                                  )}
+                                </button>
+                              )}
                               <button
                                 type="button"
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDownloadPdf(t); }}
-                                disabled={downloadingId === t.id}
-                                className="dashboard__tarjeta-accion"
-                                aria-label="Descargar informe PDF"
-                                title="Descargar PDF"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); startConfirm(t.id); }}
+                                className="dashboard__tarjeta-accion dashboard__tarjeta-accion--peligro"
+                                aria-label={`Eliminar tasación de ${t.address}`}
+                                title="Eliminar tasación"
                               >
-                                {downloadingId === t.id ? (
-                                  <Loader2 className="dashboard__tarjeta-accion-icono dashboard__tarjeta-accion-icono--cargando" />
-                                ) : (
-                                  <Download className="dashboard__tarjeta-accion-icono" />
-                                )}
+                                <Trash2 className="dashboard__tarjeta-accion-icono" aria-hidden />
                               </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); startConfirm(t.id); }}
-                              className="dashboard__tarjeta-accion dashboard__tarjeta-accion--peligro"
-                              aria-label={`Eliminar tasación de ${t.address}`}
-                              title="Eliminar tasación"
-                            >
-                              <Trash2 className="dashboard__tarjeta-accion-icono" aria-hidden />
-                            </button>
+                            </div>
                           </div>
                           <div className="dashboard__tarjeta-pie">
                             <span className="dashboard__tarjeta-fecha">

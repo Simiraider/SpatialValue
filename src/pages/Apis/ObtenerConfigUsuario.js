@@ -11,7 +11,8 @@ function getCookieUsuarioId(request) {
 const CAMPOS_CONFIG = `"nombre", "email", "telefono", "avatar", "instagram", "twitter",
        "linkedin", "facebook", "sitio_web", "instagram_publico", "twitter_publico",
        "linkedin_publico", "facebook_publico", "sitio_publico", "perfil_publico",
-       "mostrar_contacto", "visibilidad_estadisticas", "moneda"`;
+       "mostrar_contacto", "visibilidad_estadisticas", "moneda",
+       "email_verificado", "telefono_verificado"`;
 
 async function asegurarUsuarioEnConfig(usuarioId) {
   const existente = await sqlConfig`
@@ -95,6 +96,8 @@ export async function GET({ request, url }) {
         mostrar_contacto: u.mostrar_contacto ?? true,
         visibilidad_estadisticas: u.visibilidad_estadisticas ?? true,
         moneda: u.moneda === 'ARS' ? 'ARS' : 'USD',
+        email_verificado: u.email_verificado ?? false,
+        telefono_verificado: u.telefono_verificado ?? false,
       }
     }), {
       status: 200,

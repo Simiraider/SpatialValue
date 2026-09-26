@@ -40,6 +40,21 @@ async function crearEsquema() {
   await sql`ALTER TABLE "usuarios" ADD COLUMN IF NOT EXISTS "visibilidad_estadisticas" boolean NOT NULL DEFAULT true`;
   await sql`ALTER TABLE "usuarios" ADD COLUMN IF NOT EXISTS "moneda" varchar(3) NOT NULL DEFAULT 'USD'`;
   await sql`ALTER TABLE "usuarios" ADD COLUMN IF NOT EXISTS "cuenta_activa" boolean NOT NULL DEFAULT true`;
+  await sql`ALTER TABLE "usuarios" ADD COLUMN IF NOT EXISTS "email_verificado" boolean NOT NULL DEFAULT false`;
+  await sql`ALTER TABLE "usuarios" ADD COLUMN IF NOT EXISTS "telefono_verificado" boolean NOT NULL DEFAULT false`;
+  await sql`
+    CREATE TABLE IF NOT EXISTS "verificaciones_contacto" (
+      "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      "id_usuario" uuid NOT NULL,
+      "canal" varchar(10) NOT NULL,
+      "codigo_hash" text NOT NULL,
+      "destino" varchar(200) NOT NULL,
+      "intentos" integer NOT NULL DEFAULT 0,
+      "expira" timestamptz NOT NULL,
+      "creado" timestamptz NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS "verificaciones_usuario_idx" ON "verificaciones_contacto" ("id_usuario")`;
   await sql`
     CREATE TABLE IF NOT EXISTS "usuario_likes" (
       "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
