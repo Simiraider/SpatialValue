@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { montoEnLetras } from './numero-a-letras';
-import { calcularValores, esAlquiler, estadoConservacion, antiguedadEstimada } from './tasacion';
+import { calcularValores, esAlquiler, estadoDesdeDatos, antiguedadDesdeDatos } from './tasacion';
 import { normalizeData } from './normalizar-tasacion';
 import { dolarActual } from './dolar';
 
@@ -430,6 +430,11 @@ class PdfInforme {
     this.parrafo(
       `La superficie cubierta declarada es de ${fmt(v.supCub)} m² y la superficie total, considerando los espacios descubiertos, asciende a ${fmt(v.supTotal)} m².`
     );
+    if (v.supDesc > 0) {
+      this.parrafo(
+        `Los ${fmt(v.supDesc)} m² descubiertos (terraza, balcón o patio) se ponderan comercialmente al 40% del valor del metro cuadrado cubierto, criterio habitual de mercado para espacios descubiertos.`
+      );
+    }
     if (v.esAlquiler) {
       const tieneSeguridad = v.comodidades.some((a: string) => /seguridad/i.test(a));
       this.parrafo(
@@ -448,8 +453,8 @@ class PdfInforme {
       ['Superficie descubierta', v.supDesc > 0 ? `${fmt(v.supDesc)} m²` : '—'],
       ['Superficie total', `${fmt(v.supTotal)} m²`],
       ['Comodidades', v.comodidades.length ? v.comodidades.join(', ') : '—'],
-      ['Estado de conservación', `${this.data.estadoGeneral}/10 — ${estadoConservacion(Number(this.data.estadoGeneral))}`],
-      ['Antigüedad estimada', antiguedadEstimada(Number(this.data.estadoGeneral))],
+      ['Estado de conservación', `${Number(this.data.estadoGeneral) || 5}/10 — ${estadoDesdeDatos(this.data)}`],
+      ['Antigüedad', antiguedadDesdeDatos(this.data)],
     ];
     if (v.esAlquiler) {
       filas.push([

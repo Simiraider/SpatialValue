@@ -7,26 +7,20 @@ export async function GET({ request }) {
     // Identidad solo desde la cookie firmada: sin sesión no se devuelven datos.
     const usuarioActual = resolverUsuarioId(request);
 
-    const esUsuarioValido = usuarioActual && usuarioActual.trim() !== '';
-
-    let publicaciones;
-
-    if (esUsuarioValido) {
-      publicaciones = await sql`
-        SELECT p.*, u."nombre" as autor 
-        FROM "publicaciones" p
-        JOIN "usuarios" u ON p.id_usuario = u.id_usuario
-        WHERE p.id_usuario = ${usuarioActual}
-        ORDER BY p.fecha_creacion DESC
-      `;
-    } else {
-      publicaciones = await sql`
-        SELECT p.*, u."nombre" as autor 
-        FROM "publicaciones" p
-        JOIN "usuarios" u ON p.id_usuario = u.id_usuario
-        ORDER BY p.fecha_creacion DESC
-      `;
+    if (!usuarioActual || usuarioActual.trim() === '') {
+      return new Response(JSON.stringify({ error: "No has iniciado sesión" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" }
+      });
     }
+
+    const publicaciones = await sql`
+      SELECT p.*, u."nombre" as autor 
+      FROM "publicaciones" p
+      JOIN "usuarios" u ON p.id_usuario = u.id_usuario
+      WHERE p.id_usuario = ${usuarioActual}
+      ORDER BY p.fecha_creacion DESC
+    `;
 
     return new Response(JSON.stringify(publicaciones), {
       status: 200,

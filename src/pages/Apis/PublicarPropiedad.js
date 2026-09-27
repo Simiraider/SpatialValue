@@ -127,6 +127,7 @@ export async function POST({ request }) {
     const antiguedad = numeroEnRango(raw.antiguedad ?? raw.anios_de_antiguedad, 0, 200, 0) || null;
     const orientacion = textoLimpio(raw.orientacion, 30) || null;
     const disposicion = textoLimpio(raw.disposicion, 30) || null;
+    const luzNatural = textoLimpio(raw.luz_natural ?? raw.luzNatural, 30) || null;
     const es_borrador = Boolean(raw.es_borrador);
 
     let coordenadasFinales = null;
@@ -290,6 +291,7 @@ export async function POST({ request }) {
           antiguedad,
           orientacion,
           disposicion,
+          luzNatural,
           estadoGeneral,
           comodidades,
           fotos,
