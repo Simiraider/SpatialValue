@@ -1,13 +1,15 @@
 import { useEffect, useState, Component, type ReactNode } from 'react';
+import { Pencil } from 'lucide-react';
 import { DispercionChart, ComparativaBarChart, ComposicionPieChart } from './ReportCharts';
 import { ReportActions, ReportDownloadButton } from './ReportActions';
 import { Button } from './ui/Button';
 import { getUser, getUsuarioId } from '../lib/session';
 import { apiFetch } from '../lib/api';
 import { cargarDolar, dolarActual } from '../lib/dolar';
-import { calcularValores, esAlquiler } from '../lib/tasacion';
+import { calcularValores, esAlquiler, esBorrador } from '../lib/tasacion';
 import { MapaReporte } from './MapaReporte';
 import { normalizeData } from '../lib/normalizar-tasacion';
+import { navegarA } from '../lib/navigate';
 import '../styles/reporte.css';
 
 class RenderErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { hasError: boolean }> {
@@ -135,6 +137,45 @@ export const ReportPage = () => {
 
   if (!data) return <div className="ReportePage" style={{padding: '4rem 2rem', textAlign: 'center'}}><p style={{fontSize:'1.25rem',color:'#64748b'}}>Cargando reporte…</p></div>;
 
+  const alquiler = esAlquiler(data);
+  const esBorradorTasacion = esBorrador(data);
+
+  const modificar = () => {
+    try {
+      const supTotal = Number(data.superficieTotal ?? data.superficie_total) || 0;
+      const supCub = Number(data.superficieCubierta ?? data.superficie_cubierta) || 0;
+      sessionStorage.setItem('tasacion-edicion', JSON.stringify({
+        edicion: true,
+        id: data.id,
+        tipoTasacion: alquiler ? 'alquiler' : 'venta',
+        tipo_operacion: alquiler ? 'alquiler' : 'venta',
+        direccion: data.direccion ?? '',
+        barrio: data.barrio ?? '',
+        tipoUnidad: data.tipoUnidad ?? 'Departamento',
+        superficieTotal: supTotal || supCub,
+        superficieCubierta: supCub,
+        ambientes: data.ambientes ?? '',
+        antiguedad: data.antiguedad ?? '',
+        banos: data.banos ?? '',
+        dormitorios: data.dormitorios ?? '',
+        piso: data.piso ?? '',
+        orientacion: data.orientacion ?? '',
+        disposicion: data.disposicion ?? '',
+        luzNatural: data.luzNatural ?? '',
+        comodidades: Array.isArray(data.comodidades) ? data.comodidades : [],
+        estadoGeneral: Number(data.estadoGeneral) || 7,
+        expensas: data.expensas ?? '',
+        fotos: Array.isArray(data.fotos) ? data.fotos : [],
+        precioEstimadoUsd: data.precioEstimadoUsd ?? null,
+        coordenadas: data.coordenadas ?? (data.latitud != null && data.longitud != null ? { lat: data.latitud, lng: data.longitud } : null),
+      }));
+      sessionStorage.removeItem('tasacion-draft');
+    } catch (e) {
+      console.error('[ReportPage] no se pudo preparar la edición:', e);
+    }
+    navegarA('/tasacion');
+  };
+
   let v;
   try {
     v = calcularValores(data, dolarActual());
@@ -148,8 +189,6 @@ export const ReportPage = () => {
       </div>
     );
   }
-  const alquiler = esAlquiler(data);
-
   const scatterComps = comparables.map((c: any) => {
     const precioIA = Number(c.precio_estimado_ia) || 0;
     const supC = Number(c.superficie_cubierta) || 0;
@@ -223,6 +262,15 @@ export const ReportPage = () => {
           )}
         </section>
 
+        {esBorradorTasacion && (
+          <div className="ReportePage-editarWrap">
+            <Button type="button" variant="outline" className="ReportePage-editarBtn" onClick={modificar}>
+              <Pencil className="ReportePage-editarIcono" aria-hidden />
+              Modificar propiedad
+            </Button>
+          </div>
+        )}
+
         <section className="ReportePage-section">
           <h2 className="ReportePage-sectionTitle">Datos de la propiedad</h2>
           <div className="ReportePage-facts">
@@ -230,6 +278,7 @@ export const ReportPage = () => {
             <div><span>Tipo</span><strong>{data.tipoUnidad || '—'}</strong></div>
             <div><span>Superficie total</span><strong>{fmt(v.supTotal)} m²</strong></div>
             <div><span>Superficie cubierta</span><strong>{fmt(v.supCub)} m²</strong></div>
+            <div><span>Superficie descubierta</span><strong>{v.supDesc > 0 ? `${fmt(v.supDesc)} m²` : '—'}</strong></div>
             <div><span>Antigüedad</span><strong>{data.antiguedad ? `${data.antiguedad} años` : '—'}</strong></div>
             <div><span>Ambientes</span><strong>{data.ambientes ?? '—'}</strong></div>
             <div><span>Dormitorios</span><strong>{data.dormitorios ?? '—'}</strong></div>

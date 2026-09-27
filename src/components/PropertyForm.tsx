@@ -3,7 +3,7 @@ import { Building2, Check, Home, KeyRound, TrendingUp } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
-import { navegarA } from '../lib/navigate';
+import { navegarA, esIdSeguro } from '../lib/navigate';
 import { apiFetch } from '../lib/api';
 import { getUsuarioId } from '../lib/session';
 import { BARRIOS_CABA } from '../lib/mercado';
@@ -12,12 +12,46 @@ import { cn } from '../lib/utils';
 const TOTAL_STEPS = 4;
 const PASOS = ['Ubicación', 'Características', 'Extras', 'Fotos'];
 const AMENITIES = ['Seguridad 24h', 'Ascensor', 'Cochera', 'Gimnasio', 'Baulera', 'Cámaras', 'Balcón', 'Lounge', 'Terraza', 'Pileta', 'Patio', 'Parrilla', 'Laundry'];
+const OPCIONES_LUZ = ['Abundante', 'Buena', 'Media', 'Poca'];
+const EDICION_KEY = 'tasacion-edicion';
+const DRAFT_KEY = 'tasacion-draft';
 
 type FormData = {
   tipoTasacion: 'venta' | 'alquiler'; direccion: string; barrio: string;
   tipoUnidad: 'Casa' | 'Departamento'; superficieTotal: string; superficieCubierta: string;
   ambientes: string; antiguedad: string; banos: string; dormitorios: string; piso: string;
-  orientacion: string; disposicion: string; comodidades: string[]; estadoGeneral: number; expensas: string;
+  orientacion: string; disposicion: string; luzNatural: string; comodidades: string[]; estadoGeneral: number; expensas: string;
+};
+
+type FotoGuardada = { name: string; size: number; type: string };
+
+type TasacionDraft = {
+  id?: string | number;
+  tipoTasacion?: 'venta' | 'alquiler';
+  tipo_operacion?: string;
+  direccion?: string;
+  barrio?: string | null;
+  tipoUnidad?: string;
+  superficieTotal?: string | number;
+  superficieCubierta?: string | number;
+  superficieDescubierta?: number;
+  ambientes?: string | number;
+  antiguedad?: string | number | null;
+  banos?: string | number;
+  dormitorios?: string | number;
+  piso?: string | number;
+  orientacion?: string | null;
+  disposicion?: string | null;
+  luzNatural?: string | null;
+  comodidades?: string[];
+  estadoGeneral?: number;
+  expensas?: string | number;
+  fotos?: FotoGuardada[];
+  precioEstimadoUsd?: number | null;
+  coordenadas?: { lat: number; lng: number } | null;
+  demo?: boolean;
+  es_borrador?: boolean;
+  edicion?: boolean;
 };
 
 type VerificacionDireccion = {
@@ -29,8 +63,53 @@ type VerificacionDireccion = {
 const initialData: FormData = {
   tipoTasacion: 'venta', direccion: '', barrio: '', tipoUnidad: 'Departamento',
   superficieTotal: '', superficieCubierta: '', ambientes: '3', antiguedad: '', banos: '1', dormitorios: '1',
-  piso: '0', orientacion: '', disposicion: '', comodidades: [], estadoGeneral: 7, expensas: '',
+  piso: '0', orientacion: '', disposicion: '', luzNatural: '', comodidades: [], estadoGeneral: 7, expensas: '',
 };
+
+const texto = (v: unknown): string => (v == null ? '' : String(v).trim());
+
+const clampEstado = (v: unknown): number => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return initialData.estadoGeneral;
+  return Math.min(Math.max(Math.round(n), 1), 10);
+};
+
+function leerEdicion(): TasacionDraft | null {
+  try {
+    const raw = sessionStorage.getItem(EDICION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as TasacionDraft;
+    if (!parsed || typeof parsed !== 'object' || parsed.edicion !== true) return null;
+    const id = parsed.id == null ? '' : String(parsed.id);
+    if (!id || !esIdSeguro(id)) return null;
+    return { ...parsed, id };
+  } catch {
+    return null;
+  }
+}
+
+function precargarDesdeEdicion(draft: TasacionDraft): FormData {
+  const supCub = texto(draft.superficieCubierta);
+  return {
+    tipoTasacion: draft.tipoTasacion ?? (draft.tipo_operacion === 'alquiler' ? 'alquiler' : 'venta'),
+    direccion: texto(draft.direccion),
+    barrio: texto(draft.barrio),
+    tipoUnidad: draft.tipoUnidad === 'Casa' ? 'Casa' : 'Departamento',
+    superficieTotal: texto(draft.superficieTotal) || supCub,
+    superficieCubierta: supCub,
+    ambientes: texto(draft.ambientes) || initialData.ambientes,
+    antiguedad: draft.antiguedad == null ? '' : texto(draft.antiguedad),
+    banos: texto(draft.banos) || initialData.banos,
+    dormitorios: texto(draft.dormitorios) || initialData.dormitorios,
+    piso: texto(draft.piso) || initialData.piso,
+    orientacion: texto(draft.orientacion),
+    disposicion: texto(draft.disposicion),
+    luzNatural: texto(draft.luzNatural),
+    comodidades: Array.isArray(draft.comodidades) ? draft.comodidades.filter(a => AMENITIES.includes(a)) : [],
+    estadoGeneral: clampEstado(draft.estadoGeneral),
+    expensas: texto(draft.expensas),
+  };
+}
 
 function Selector({ label, value, onChange, children, error }: { label: string; value: string; onChange: (value: string) => void; children: React.ReactNode; error?: string }) {
   return <div className="tasacion__campo">
@@ -55,16 +134,22 @@ function TarjetaEleccion({ icono: Icono, titulo, activo, onClick }: { icono: Luc
 }
 
 export const PropertyForm = () => {
+  const edicion = useMemo(leerEdicion, []);
   const [step, setStep] = useState(1);
-  const [data, setData] = useState<FormData>(initialData);
+  const [data, setData] = useState<FormData>(() => (edicion ? precargarDesdeEdicion(edicion) : initialData));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [photos, setPhotos] = useState<File[]>([]);
   const [showSlider, setShowSlider] = useState(false);
   const [guardarComoBorrador, setGuardarComoBorrador] = useState(false);
   const [verifDir, setVerifDir] = useState<VerificacionDireccion>({ estado: 'idle' });
+  const esEdicion = Boolean(edicion);
 
-  useEffect(() => { sessionStorage.removeItem('tasacion-draft'); }, []);
+  useEffect(() => {
+    if (esEdicion) setGuardarComoBorrador(true);
+    else sessionStorage.removeItem(DRAFT_KEY);
+  }, []);
+
   const previews = useMemo(() => photos.map(file => ({ file, url: URL.createObjectURL(file) })), [photos]);
   useEffect(() => () => previews.forEach(({ url }) => URL.revokeObjectURL(url)), [previews]);
 
@@ -117,8 +202,14 @@ export const PropertyForm = () => {
       } else {
         setVerifDir({ estado: 'ok' });
       }
-    } catch {      setVerifDir({ estado: 'sin-servicio' });
+    } catch {
+      setVerifDir({ estado: 'sin-servicio' });
     }
+  };
+
+  const salir = (destino: string) => {
+    if (esEdicion) sessionStorage.removeItem(EDICION_KEY);
+    navegarA(destino);
   };
 
   const submit = async () => {
@@ -126,27 +217,73 @@ export const PropertyForm = () => {
     const superficieTotal = Number(data.superficieTotal) || 0;
     const superficieCubierta = Number(data.superficieCubierta) || 0;
     const superficieDescubierta = Math.max(superficieTotal - superficieCubierta, 0);
-    const draft = { ...data, ciudad: 'Ciudad de Buenos Aires', superficieDescubierta, fotos: photos.map(({ name, size, type }) => ({ name, size, type })) };
+    const fotosGuardadas: FotoGuardada[] = photos.length > 0
+      ? photos.map(({ name, size, type }) => ({ name, size, type }))
+      : (edicion?.fotos ?? []);
+    const draft = { ...data, ciudad: 'Ciudad de Buenos Aires', superficieDescubierta, fotos: fotosGuardadas };
+    const idPublicacion = esEdicion ? edicion!.id! : null;
     const body = {
       titulo: `${data.tipoUnidad} en ${data.direccion}`, descripcion: `Tasación automática. Comodidades: ${data.comodidades.join(', ') || 'sin declarar'}`,
       tipo_operacion: data.tipoTasacion, direccion: data.direccion, ciudad: 'Ciudad de Buenos Aires', barrio: data.barrio,
       tipo_propiedad: data.tipoUnidad, ambientes: Number(data.ambientes), dormitorios: Number(data.dormitorios), banos: Number(data.banos),
       superficie_cubierta: superficieCubierta, superficie_total: superficieTotal, piso: data.piso, antiguedad: Number(data.antiguedad) || null,
       orientacion: data.orientacion || null, disposicion: data.disposicion || null, estadoGeneral: data.estadoGeneral,
-      expensas: Number(data.expensas) || 0, comodidades: data.comodidades, fotos: draft.fotos, usuario_id: getUsuarioId() || 'demo-user',
-      es_borrador: guardarComoBorrador,
+      luz_natural: data.luzNatural || null,
+      expensas: Number(data.expensas) || 0, comodidades: data.comodidades, fotos: fotosGuardadas, usuario_id: getUsuarioId() || 'demo-user',
+      es_borrador: esEdicion ? true : guardarComoBorrador,
+      ...(idPublicacion ? { id_publicacion: idPublicacion } : {}),
     };
     try {
-      const { ok, data: result } = await apiFetch<any>('/Apis/PublicarPropiedad', { method: 'POST', body: JSON.stringify(body) }, 25000);
+      const { ok, data: result } = await apiFetch<any>(
+        esEdicion ? '/Apis/ActualizarTasacion' : '/Apis/PublicarPropiedad',
+        { method: 'POST', body: JSON.stringify(body) },
+        25000
+      );
       const payload = result?.data;
-      sessionStorage.setItem('tasacion-draft', JSON.stringify({ ...draft, id: payload?.id || `local-${Date.now()}`, demo: !(ok && payload?.saved), es_borrador: guardarComoBorrador, precioEstimadoUsd: payload?.precio_estimado_usd ?? null, coordenadas: payload?.coordenadas ?? null }));
+      if (esEdicion) {
+        if (!ok || !payload?.id) {
+          alert(result?.error || 'No se pudo actualizar la tasación. Intentá de nuevo.');
+          return;
+        }
+        sessionStorage.removeItem(EDICION_KEY);
+        try {
+          sessionStorage.setItem(DRAFT_KEY, JSON.stringify({
+            ...draft,
+            id: payload.id,
+            demo: false,
+            es_borrador: true,
+            precioEstimadoUsd: payload?.precio_estimado_usd ?? null,
+            coordenadas: edicion?.coordenadas ?? null,
+          }));
+        } catch {}
+      } else {
+        try {
+          sessionStorage.setItem(DRAFT_KEY, JSON.stringify({
+            ...draft,
+            id: payload?.id || `local-${Date.now()}`,
+            demo: !(ok && payload?.saved),
+            es_borrador: guardarComoBorrador,
+            precioEstimadoUsd: payload?.precio_estimado_usd ?? null,
+            coordenadas: payload?.coordenadas ?? null,
+          }));
+        } catch {}
+      }
     } catch (error) {
       console.error(error);
-      sessionStorage.setItem('tasacion-draft', JSON.stringify({ ...draft, id: `demo-${Date.now()}`, demo: true }));
-    } finally { setSubmitting(false); navegarA('/cargando'); }
+      if (esEdicion) {
+        alert('No se pudo actualizar la tasación. Revisá tu conexión e intentá de nuevo.');
+        return;
+      }
+      try {
+        sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ ...draft, id: `demo-${Date.now()}`, demo: true }));
+      } catch {}
+    } finally { setSubmitting(false); }
+    navegarA('/cargando');
   };
 
   const next = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!validate()) return; if (step < TOTAL_STEPS) setStep(current => current + 1); else await submit(); };
+
+  const kicker = esEdicion ? `Editando borrador · Paso ${step} de ${TOTAL_STEPS}` : `Paso ${step} de ${TOTAL_STEPS}`;
 
   return <div className="tasacion">
     <div className="tasacion__progreso" aria-label={`Paso ${step} de ${TOTAL_STEPS}`}>
@@ -162,7 +299,8 @@ export const PropertyForm = () => {
     </div>
     <form onSubmit={next} noValidate className="tasacion__tarjeta">
       {step === 1 && <section>
-        <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">Paso 1 de {TOTAL_STEPS}</p><h1 className="tasacion__encabezado-titulo">Ubicación</h1><span className="tasacion__encabezado-sub">Contanos dónde está la propiedad y verificamos la dirección al instante.</span></div>
+        <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">{kicker}</p><h1 className="tasacion__encabezado-titulo">Ubicación</h1><span className="tasacion__encabezado-sub">Contanos dónde está la propiedad y verificamos la dirección al instante.</span></div>
+        {esEdicion && <div className="tasacion__aviso-edicion">Estás modificando una tasación en borrador. Al finalizar se actualizan los datos y se recalcula el precio.</div>}
         <div className="tasacion__eleccion">
           <TarjetaEleccion icono={TrendingUp} titulo="Venta" activo={data.tipoTasacion === 'venta'} onClick={() => update('tipoTasacion', 'venta')} />
           <TarjetaEleccion icono={KeyRound} titulo="Alquiler" activo={data.tipoTasacion === 'alquiler'} onClick={() => update('tipoTasacion', 'alquiler')} />
@@ -187,7 +325,7 @@ export const PropertyForm = () => {
         </div>
       </section>}
       {step === 2 && <section>
-        <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">Paso 2 de {TOTAL_STEPS}</p><h1 className="tasacion__encabezado-titulo">Características</h1><span className="tasacion__encabezado-sub">Las variables clave que usa el modelo para tasar.</span></div>
+        <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">{kicker}</p><h1 className="tasacion__encabezado-titulo">Características</h1><span className="tasacion__encabezado-sub">Las variables clave que usa el modelo para tasar.</span></div>
         <div className="tasacion__eleccion">
           <TarjetaEleccion icono={Building2} titulo="Departamento" activo={data.tipoUnidad === 'Departamento'} onClick={() => update('tipoUnidad', 'Departamento')} />
           <TarjetaEleccion icono={Home} titulo="Casa" activo={data.tipoUnidad === 'Casa'} onClick={() => update('tipoUnidad', 'Casa')} />
@@ -209,12 +347,13 @@ export const PropertyForm = () => {
           )}
           <Selector label="Orientación" value={data.orientacion} onChange={value => update('orientacion', value)}><option value="">Seleccioná la orientación…</option>{['Norte', 'Sur', 'Este', 'Oeste', 'Noreste', 'Noroeste', 'Sureste', 'Suroeste'].map(option => <option key={option}>{option}</option>)}</Selector>
           <Selector label="Disposición" value={data.disposicion} onChange={value => update('disposicion', value)}><option value="">Seleccioná la disposición…</option>{['Frente', 'Contrafrente', 'Interno', 'Lateral'].map(option => <option key={option}>{option}</option>)}</Selector>
+          <Selector label="Luz natural" value={data.luzNatural} onChange={value => update('luzNatural', value)}><option value="">Seleccioná la luminosidad…</option>{OPCIONES_LUZ.map(option => <option key={option}>{option}</option>)}</Selector>
           {data.tipoTasacion === 'alquiler' && <Input label="Expensas mensuales (ARS)" type="number" min="0" placeholder="Ej. 150000" value={data.expensas} onChange={e => update('expensas', e.target.value)} />}
         </div>
         <fieldset className="tasacion__estado"><legend>Estado percibido</legend><div className="tasacion__estado-botones"><button type="button" className={cn('tasacion__estado-btn', 'tasacion__estado-btn--optimo', data.estadoGeneral >= 8 && 'tasacion__estado-btn--seleccionado')} onClick={() => { update('estadoGeneral', 9); setShowSlider(false); }}>Óptimo</button><button type="button" className={cn('tasacion__estado-btn', 'tasacion__estado-btn--regular', data.estadoGeneral >= 5 && data.estadoGeneral < 8 && 'tasacion__estado-btn--seleccionado')} onClick={() => { update('estadoGeneral', 6); setShowSlider(false); }}>Regular</button><button type="button" className={cn('tasacion__estado-btn', 'tasacion__estado-btn--critico', data.estadoGeneral <= 4 && 'tasacion__estado-btn--seleccionado')} onClick={() => { update('estadoGeneral', 3); setShowSlider(false); }}>Crítico</button></div><button type="button" className="tasacion__estado-toggle" onClick={() => setShowSlider(prev => !prev)}>{showSlider ? 'Ocultar detalle' : '¿Más precisión?'}</button>{showSlider && <div className="tasacion__slider"><div className="tasacion__slider-valor" style={{ color: data.estadoGeneral >= 8 ? '#16a34a' : data.estadoGeneral >= 5 ? '#d97706' : '#dc2626' }}>{data.estadoGeneral}</div><input type="range" min="1" max="10" value={data.estadoGeneral} onChange={e => update('estadoGeneral', Number(e.target.value))} className="tasacion__slider-input" /><div className="tasacion__slider-labels"><span>1 — A refaccionar</span><span>10 — A estrenar</span></div></div>}</fieldset>
       </section>}
       {step === 3 && <section>
-        <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">Paso 3 de {TOTAL_STEPS}</p><h1 className="tasacion__encabezado-titulo">Extras y amenities</h1><span className="tasacion__encabezado-sub">Seleccioná todo lo que tenga la propiedad.</span></div>
+        <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">{kicker}</p><h1 className="tasacion__encabezado-titulo">Extras y amenities</h1><span className="tasacion__encabezado-sub">Seleccioná todo lo que tenga la propiedad.</span></div>
         <div className="tasacion__amenities">{AMENITIES.map(amenity => {
           const seleccionado = data.comodidades.includes(amenity);
           return (
@@ -226,12 +365,12 @@ export const PropertyForm = () => {
         })}</div>
       </section>}
       {step === 4 && <section>
-        <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">Paso 4 de {TOTAL_STEPS}</p><h1 className="tasacion__encabezado-titulo">Fotos de la propiedad</h1><span className="tasacion__encabezado-sub">Podés sumar imágenes para complementar el análisis visual.</span></div>
+        <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">{kicker}</p><h1 className="tasacion__encabezado-titulo">Fotos de la propiedad</h1><span className="tasacion__encabezado-sub">Podés sumar imágenes para complementar el análisis visual.</span></div>
         <label className="tasacion__subida"><input type="file" accept="image/*" multiple onChange={e => setPhotos(Array.from(e.target.files || []).slice(0, 12))} /><strong>Subí imágenes</strong><span>JPG, PNG o WEBP · hasta 12 fotos</span></label>
         {previews.length > 0 && <div className="tasacion__fotos">{previews.map(({ file, url }) => <img key={`${file.name}-${file.lastModified}`} src={url} alt={file.name} />)}</div>}
-        <label className="tasacion__borrador"><input type="checkbox" checked={guardarComoBorrador} onChange={e => setGuardarComoBorrador(e.target.checked)} /><span>Guardar como borrador (podés completarla después desde el Dashboard)</span></label>
+        <label className="tasacion__borrador"><input type="checkbox" checked={guardarComoBorrador} disabled={esEdicion} onChange={e => setGuardarComoBorrador(e.target.checked)} /><span>{esEdicion ? 'Esta tasación se actualiza como borrador; podés completarla cuando quieras.' : 'Guardar como borrador (podés completarla después desde el Dashboard)'}</span></label>
       </section>}
-      <div className="tasacion__acciones">{step > 1 ? <Button type="button" variant="outline" disabled={submitting} onClick={() => setStep(current => current - 1)}>Atrás</Button> : <Button type="button" variant="outline" onClick={() => navegarA('/dashboard')}>Cancelar</Button>}<Button type="submit" variant="primary" isLoading={submitting} disabled={submitting}>{step === TOTAL_STEPS ? 'Finalizar y calcular' : 'Siguiente'}</Button></div>
+      <div className="tasacion__acciones">{step > 1 ? <Button type="button" variant="outline" disabled={submitting} onClick={() => setStep(current => current - 1)}>Atrás</Button> : <Button type="button" variant="outline" disabled={submitting} onClick={() => salir('/dashboard')}>Cancelar</Button>}<Button type="submit" variant="primary" isLoading={submitting} disabled={submitting}>{step === TOTAL_STEPS ? (esEdicion ? 'Guardar cambios y recalcular' : 'Finalizar y calcular') : 'Siguiente'}</Button></div>
     </form>
   </div>;
 };

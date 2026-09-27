@@ -45,6 +45,8 @@
 .tasacion__error { font-size: .875rem; color: #ef4444; margin: 0 0 0 .25rem; }
 .tasacion__hint { font-size: .8125rem; font-weight: 600; color: var(--color-brand-dark); margin: 0 0 0 .25rem; }
 
+.tasacion__aviso-edicion { margin: 0 0 1.5rem; padding: .9rem 1.2rem; border: 1px solid #bae6fd; border-left: .3rem solid var(--color-brand); border-radius: .9rem; background: #f0f9ff; color: #0c4a6e; font-size: .95rem; font-weight: 600; }
+
 .tasacion__verificacion { font-size: .875rem; margin: 0 0 0 .25rem; color: #64748b; }
 .tasacion__verificacion--ok { color: #16a34a; font-weight: 600; }
 .tasacion__verificacion--aviso { color: #d97706; font-weight: 600; }

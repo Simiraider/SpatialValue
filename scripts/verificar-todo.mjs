@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
-import { idFirmado } from '../src/Backend/sesion.js';
+import { fileURLToPath } from 'node:url';
 
 const MODO_DEV = process.argv.includes('--dev');
 const OK = '\x1b[32m✔\x1b[0m';
@@ -27,6 +27,11 @@ try {
 } catch (err) {
   console.log(`⚠ No se pudo leer .env.local: ${err?.message || err}`);
 }
+
+for (const [clave, valor] of Object.entries(env)) {
+  if (process.env[clave] === undefined) process.env[clave] = valor;
+}
+const { idFirmado } = await import('../src/Backend/sesion.js');
 
 const lineas = [];
 const registrar = (seccion, estado, texto) => lineas.push({ seccion, estado, texto });
@@ -150,7 +155,10 @@ async function obtenerSesion(base) {
   } catch {}
   if (login?.ok) {
     const cookie = login.headers.getSetCookie().find((c) => c.startsWith('usuario_id='));
-    if (cookie) return { id: cookie.split(';')[0].split('=')[1].split('.')[0], via: 'login' };
+    if (cookie) {
+      const valor = cookie.split(';')[0];
+      return { id: valor.split('=')[1].split('.')[0], cookie: valor, via: 'login' };
+    }
   }
 
   let registro = null;
@@ -164,14 +172,17 @@ async function obtenerSesion(base) {
   } catch {}
   if (registro?.status === 201) {
     const cookie = registro.headers.getSetCookie().find((c) => c.startsWith('usuario_id='));
-    if (cookie) return { id: cookie.split(';')[0].split('=')[1].split('.')[0], via: 'registro' };
+    if (cookie) {
+      const valor = cookie.split(';')[0];
+      return { id: valor.split('=')[1].split('.')[0], cookie: valor, via: 'registro' };
+    }
   }
 
   try {
     const { neon } = await import('@neondatabase/serverless');
     const sql = neon(env.CONFIG_DATABASE_URL || env.SpatialValueStorage_DATABASE_URL);
     const filas = await sql`SELECT "id_usuario" FROM "usuarios" WHERE "email" = ${USUARIO_QA.email} LIMIT 1`;
-    if (filas[0]) return { id: filas[0].id_usuario, via: 'db' };
+    if (filas[0]) return { id: filas[0].id_usuario, cookie: `usuario_id=${idFirmado(filas[0].id_usuario)}`, via: 'db' };
   } catch {}
   return null;
 }
@@ -202,7 +213,7 @@ async function capaApis(base) {
     registrar('APIs backend', 'mal', 'no se pudo crear sesión de prueba (login/registro/DB)');
     return;
   }
-  const cookie = `usuario_id=${idFirmado(sesion.id)}`;
+  const cookie = sesion.cookie;
   let okCount = 0;
   const total = 5;
 
@@ -349,8 +360,10 @@ async function capaIA() {
   } catch (err) {
     registrar('IA', 'mal', `error inesperado: ${err?.message || err}`);
   } finally {
-    matarProceso(efimera);
-    if (efimera) matarPuerto(new URL(IA_URL).port || '8000');
+    if (efimera) {
+      matarProceso(efimera);
+      matarPuerto(new URL(IA_URL).port || '8000');
+    }
   }
 }
 

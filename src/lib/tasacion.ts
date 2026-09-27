@@ -103,16 +103,44 @@ export function calcularValores(data: DatosTasacion, tasaArs: number = TASA_ARS_
   };
 }
 
-export function estadoConservacion(n: number): string {
-  if (n >= 9) return 'Muy bueno — A estrenar';
+export function esBorrador(data: DatosTasacion): boolean {
+  return data.es_borrador === true || data.estado_tasacion === 'borrador';
+}
+
+export function estadoConservacion(n: number, overrides: { antiguedad?: unknown } = {}): string {
+  const antiguedad = Number((overrides as any).antiguedad);
+  if (Number.isFinite(antiguedad) && antiguedad > 0) {
+    if (antiguedad <= 5) return n >= 7 ? 'Muy bueno' : n >= 4 ? 'Bueno' : 'A refaccionar';
+    if (antiguedad <= 15) return n >= 7 ? 'Bueno' : n >= 4 ? 'Regular' : 'A refaccionar';
+    return n >= 7 ? 'Bueno' : n >= 4 ? 'Regular' : 'A refaccionar';
+  }
+  if (n >= 9) return 'Muy bueno';
   if (n >= 7) return 'Bueno';
   if (n >= 4) return 'Regular';
   return 'A refaccionar';
 }
 
-export function antiguedadEstimada(n: number): string {
+export function estadoDesdeDatos(data: DatosTasacion): string {
+  const n = Number(data.estadoGeneral) || 5;
+  const esEstreno = Number(data.antiguedad) === 0 && String(data.antiguedad ?? '').trim() !== '';
+  if (esEstreno && n >= 8) return 'A estrenar';
+  return estadoConservacion(n, { antiguedad: data.antiguedad });
+}
+
+export function antiguedadEstimada(n: number, overrides: { antiguedad?: unknown } = {}): string {
+  const antiguedad = Number((overrides as any).antiguedad);
+  if (Number.isFinite(antiguedad) && antiguedad >= 0 && String((overrides as any).antiguedad ?? '').trim() !== '') {
+    const a = Math.round(antiguedad);
+    if (a === 0) return 'A estrenar';
+    if (a <= 5) return `${a} año${a === 1 ? '' : 's'}`;
+    return `${a} años`;
+  }
   if (n >= 9) return 'Menos de 5 años (est.)';
   if (n >= 7) return 'Entre 5 y 15 años (est.)';
   if (n >= 4) return 'Entre 15 y 30 años (est.)';
   return 'Más de 30 años (est.)';
+}
+
+export function antiguedadDesdeDatos(data: DatosTasacion): string {
+  return antiguedadEstimada(Number(data.estadoGeneral) || 5, { antiguedad: data.antiguedad });
 }
