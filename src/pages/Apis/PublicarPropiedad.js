@@ -5,6 +5,7 @@ import { verificarDireccion, canonizarBarrio } from '../../lib/verificar-direcci
 import { resolverUsuarioId, permitirFrecuencia, ipDePeticion } from '../../Backend/sesion.js';
 
 const IA_URL = import.meta.env.IA_URL || process.env.IA_URL || 'http://127.0.0.1:8000';
+const IA_API_KEY = import.meta.env.INTERNAL_API_KEY || process.env.INTERNAL_API_KEY || '';
 const IA_TIMEOUT_MS = 15000;
 
 const AMENITIES_VALIDOS = new Set([
@@ -34,7 +35,6 @@ const tiene = (comodidades, nombre) =>
   Array.isArray(comodidades) &&
   comodidades.some((a) => normalizar(a) === normalizar(nombre));
 
-const IA_API_KEY = import.meta.env.INTERNAL_API_KEY || process.env.INTERNAL_API_KEY || '';
 async function llamarAI(payload) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), IA_TIMEOUT_MS);

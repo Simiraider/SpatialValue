@@ -31,6 +31,20 @@ para demo y pruebas del flujo completo (el simulador genera el .glb).
 
 ## 2. Worker en un VPS con COLMAP real (Docker)
 
+**Opción gratis recomendada — Oracle Cloud Always Free:** VM ARM (desde jul-2026: 2 OCPU / 12 GB RAM, shape `VM.Standard.A1.Flex`), suficiente para COLMAP con 15–22 fotos. Creá la instancia Ubuntu 22.04/24.04 y corré el script de aprovisionamiento, que instala Docker, abre el puerto 4000 en iptables, clona el repo, buildea la imagen (incluye COLMAP) y levanta el contenedor:
+
+```bash
+# En la VM, como root (o con sudo):
+GIT_BRANCH=visor-3d CORS_ORIGIN=https://tu-app.vercel.app \
+  bash <(curl -fsSL https://raw.githubusercontent.com/Simiraider/SpatialValue/visor-3d/scripts/setup-gemelo-vm.sh)
+# o, si ya clonaste el repo:
+sudo bash scripts/setup-gemelo-vm.sh
+```
+
+> Además de iptables (lo hace el script), abrí el puerto 4000 en el **Security List de la VCN** desde la consola OCI: Ingress → origen 0.0.0.0/0 → TCP → puerto destino 4000.
+
+Instalación manual (equivalente al script):
+
 ```bash
 # En el VPS (Ubuntu/Debian):
 git clone <repo> && cd spatial-value
