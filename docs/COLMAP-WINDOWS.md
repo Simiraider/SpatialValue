@@ -86,6 +86,11 @@ npm start
 El worker queda escuchando en **http://localhost:4000** — WSL2 redirige
 `localhost` automáticamente, así que el navegador de Windows lo ve igual.
 
+> 💡 **Atajo:** el `npm run dev` de la raíz (en Windows) ya arranca los tres
+> servicios juntos — IA (:8000) + web (:4321) + worker con COLMAP dentro de
+> WSL (:4000). Requiere el repo clonado en `~/SpatialValue`; si tu usuario de
+> Linux es otro, ajustá la ruta en el script `dev` de `package.json`.
+
 ## Paso 5 — Usar el frontend
 
 El `.env.local` de la raíz ya apunta a `http://localhost:4000`, así que no
