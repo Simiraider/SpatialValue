@@ -90,6 +90,12 @@
 .tasacion__borrador:hover { border-color: var(--color-brand); background: #eefaff; }
 .tasacion__borrador input { width: 1.1rem; height: 1.1rem; accent-color: var(--color-brand); cursor: pointer; }
 
+.tasacion__gemelo { margin-top: 1.25rem; }
+.tasacion__aviso-gemelo { margin-top: 1rem; padding: 1rem 1.25rem; border: 1px solid #fcd34d; border-radius: 1rem; background: #fffbeb; color: #92400e; font-size: .875rem; }
+.tasacion__aviso-gemelo p { margin: 0; }
+.tasacion__acciones-gemelo { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
+.tasacion__gemelo-listo { display: grid; gap: .75rem; margin-top: 1rem; }
+
 .tasacion__acciones { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid #cbd5e1; }
 .tasacion__acciones button { min-width: 140px; border-radius: 1rem; }
 

@@ -26,6 +26,7 @@ export type EtapaTrabajo =
 
 export interface EstadoTrabajo {
   id: string;
+  titulo?: string | null;
   estado: 'pendiente' | 'recibiendo' | 'procesando' | 'listo' | 'error';
   etapa: EtapaTrabajo;
   progreso: number;

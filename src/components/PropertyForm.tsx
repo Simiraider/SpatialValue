@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Building2, Check, Home, KeyRound, TrendingUp } from 'lucide-react';
+import { Building2, Box, Camera, Check, Home, KeyRound, TrendingUp } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
@@ -8,6 +8,10 @@ import { apiFetch } from '../lib/api';
 import { getUsuarioId } from '../lib/session';
 import { BARRIOS_CABA } from '../lib/mercado';
 import { cn } from '../lib/utils';
+import { obtenerConfigGemelo, probarConexionWorker, type ConfigGemelo, type EstadoTrabajo } from '../lib/gemelo';
+import { SubidaFotos } from './GemeloDigital/SubidaFotos';
+import { BarraProgreso } from './GemeloDigital/BarraProgreso';
+import { Visor3D } from './GemeloDigital/Visor3D';
 
 const TOTAL_STEPS = 4;
 const PASOS = ['Ubicación', 'Características', 'Extras', 'Fotos'];
@@ -47,6 +51,7 @@ type TasacionDraft = {
   estadoGeneral?: number;
   expensas?: string | number;
   fotos?: FotoGuardada[];
+  modelo3d?: { jobId: string; motor?: string | null; bytes?: number | null } | null;
   precioEstimadoUsd?: number | null;
   coordenadas?: { lat: number; lng: number } | null;
   demo?: boolean;
@@ -143,6 +148,12 @@ export const PropertyForm = () => {
   const [showSlider, setShowSlider] = useState(false);
   const [guardarComoBorrador, setGuardarComoBorrador] = useState(false);
   const [verifDir, setVerifDir] = useState<VerificacionDireccion>({ estado: 'idle' });
+  const [quiereModelo3d, setQuiereModelo3d] = useState(false);
+  const [gemeloFase, setGemeloFase] = useState<'sin-usar' | 'conectando' | 'subir' | 'progreso' | 'listo' | 'sin-worker'>('sin-usar');
+  const [gemeloConfig, setGemeloConfig] = useState<ConfigGemelo | null>(null);
+  const [gemeloJobId, setGemeloJobId] = useState<string | null>(null);
+  const [gemeloJob, setGemeloJob] = useState<EstadoTrabajo | null>(null);
+  const [verModelo, setVerModelo] = useState(false);
   const esEdicion = Boolean(edicion);
 
   useEffect(() => {
@@ -155,6 +166,24 @@ export const PropertyForm = () => {
 
   const update = <K extends keyof FormData>(field: K, value: FormData[K]) => setData(prev => ({ ...prev, [field]: value }));
   const toggleAmenity = (amenity: string) => update('comodidades', data.comodidades.includes(amenity) ? data.comodidades.filter(item => item !== amenity) : [...data.comodidades, amenity]);
+
+  const activarModelo3d = async () => {
+    setQuiereModelo3d(true);
+    setGemeloFase('conectando');
+    const config = await obtenerConfigGemelo();
+    if (!config) { setGemeloConfig(null); setGemeloFase('sin-worker'); return; }
+    setGemeloConfig(config);
+    const conexion = await probarConexionWorker(config);
+    setGemeloFase(conexion.ok ? 'subir' : 'sin-worker');
+  };
+
+  const desactivarModelo3d = () => {
+    setQuiereModelo3d(false);
+    setGemeloFase('sin-usar');
+    setGemeloJobId(null);
+    setGemeloJob(null);
+    setVerModelo(false);
+  };
 
   const supTotalNum = Number(data.superficieTotal) || 0;
   const supCubiertaNum = Number(data.superficieCubierta) || 0;
@@ -220,7 +249,7 @@ export const PropertyForm = () => {
     const fotosGuardadas: FotoGuardada[] = photos.length > 0
       ? photos.map(({ name, size, type }) => ({ name, size, type }))
       : (edicion?.fotos ?? []);
-    const draft = { ...data, ciudad: 'Ciudad de Buenos Aires', superficieDescubierta, fotos: fotosGuardadas };
+    const draft = { ...data, ciudad: 'Ciudad de Buenos Aires', superficieDescubierta, fotos: fotosGuardadas, modelo3d: gemeloJob ? { jobId: gemeloJob.id, motor: gemeloJob.motor, bytes: gemeloJob.modeloBytes } : null };
     const idPublicacion = esEdicion ? edicion!.id! : null;
     const body = {
       titulo: `${data.tipoUnidad} en ${data.direccion}`, descripcion: `Tasación automática. Comodidades: ${data.comodidades.join(', ') || 'sin declarar'}`,
@@ -232,6 +261,7 @@ export const PropertyForm = () => {
       expensas: Number(data.expensas) || 0, comodidades: data.comodidades, fotos: fotosGuardadas, usuario_id: getUsuarioId() || 'demo-user',
       es_borrador: esEdicion ? true : guardarComoBorrador,
       ...(idPublicacion ? { id_publicacion: idPublicacion } : {}),
+      ...(gemeloJob ? { modelo3d_job_id: gemeloJob.id } : {}),
     };
     try {
       const { ok, data: result } = await apiFetch<any>(
@@ -365,9 +395,46 @@ export const PropertyForm = () => {
         })}</div>
       </section>}
       {step === 4 && <section>
-        <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">{kicker}</p><h1 className="tasacion__encabezado-titulo">Fotos de la propiedad</h1><span className="tasacion__encabezado-sub">Podés sumar imágenes para complementar el análisis visual.</span></div>
-        <label className="tasacion__subida"><input type="file" accept="image/*" multiple onChange={e => setPhotos(Array.from(e.target.files || []).slice(0, 12))} /><strong>Subí imágenes</strong><span>JPG, PNG o WEBP · hasta 12 fotos</span></label>
-        {previews.length > 0 && <div className="tasacion__fotos">{previews.map(({ file, url }) => <img key={`${file.name}-${file.lastModified}`} src={url} alt={file.name} />)}</div>}
+        <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">{kicker}</p><h1 className="tasacion__encabezado-titulo">Fotos de la propiedad</h1><span className="tasacion__encabezado-sub">¿Querés que la tasación incluya un modelo 3D? Elegí cómo seguir.</span></div>
+        <div className="tasacion__eleccion" role="group" aria-label="¿Querés generar un modelo 3D de la propiedad?">
+          <TarjetaEleccion icono={Box} titulo="Sí, generar modelo 3D" activo={quiereModelo3d} onClick={activarModelo3d} />
+          <TarjetaEleccion icono={Camera} titulo="No, solo fotos normales" activo={!quiereModelo3d} onClick={desactivarModelo3d} />
+        </div>
+        {quiereModelo3d ? <div className="tasacion__gemelo">
+          <p className="tasacion__hint">Las fotos se usan para reconstruir el modelo 3D (mínimo 5, con solapamiento, o un video) y no se guardan.</p>
+          {gemeloFase === 'conectando' && <p className="tasacion__hint">Conectando con el servicio 3D…</p>}
+          {gemeloFase === 'sin-worker' && <div className="tasacion__aviso-gemelo">
+            <p><strong>El servicio 3D no está disponible ahora.</strong> {gemeloConfig ? `No responde en ${gemeloConfig.workerUrl}.` : 'No está configurado (falta PUBLIC_GEMELO_WORKER_URL).'}</p>
+            <div className="tasacion__acciones-gemelo">
+              <Button type="button" variant="outline" onClick={desactivarModelo3d}>Usar fotos normales</Button>
+              <Button type="button" variant="secondary" onClick={activarModelo3d}>Reintentar conexión</Button>
+            </div>
+          </div>}
+          {gemeloFase === 'subir' && gemeloConfig && <SubidaFotos
+            config={gemeloConfig}
+            tituloInicial={`${data.tipoUnidad} en ${data.direccion}`}
+            propiedad={esEdicion ? String(edicion!.id!) : null}
+            onTrabajoCreado={(id) => { setGemeloJobId(id); setGemeloFase('progreso'); }}
+          />}
+          {gemeloFase === 'progreso' && gemeloConfig && gemeloJobId && <BarraProgreso
+            config={gemeloConfig}
+            jobId={gemeloJobId}
+            onListo={(job) => { setGemeloJob(job); setGemeloFase('listo'); }}
+            onCancelar={() => { setGemeloJobId(null); setGemeloFase('subir'); }}
+          />}
+          {gemeloFase === 'listo' && gemeloConfig && gemeloJob && <div className="tasacion__gemelo-listo">
+            <p className="tasacion__verificacion tasacion__verificacion--ok">✓ Modelo 3D generado — se vincula a esta tasación al finalizar.</p>
+            <p className="tasacion__hint">{gemeloJob.motor === 'simular' ? 'Modelo de demostración.' : `Modelo real con ${gemeloJob.totalFotos} fotos.`}{gemeloJob.modeloBytes ? ` ${Math.round(gemeloJob.modeloBytes / 1024)} KB.` : ''} El modelo vive 1 hora en el servicio 3D.</p>
+            <div className="tasacion__acciones-gemelo">
+              <Button type="button" variant="outline" onClick={() => setVerModelo(v => !v)}>{verModelo ? 'Ocultar modelo 3D' : 'Ver el modelo 3D'}</Button>
+              <Button type="button" variant="ghost" onClick={() => { setGemeloJob(null); setGemeloJobId(null); setGemeloFase('subir'); }}>Generar de nuevo</Button>
+            </div>
+            {verModelo && <Visor3D config={gemeloConfig} job={gemeloJob} onNuevo={() => { setGemeloJob(null); setGemeloJobId(null); setGemeloFase('subir'); }} />}
+          </div>}
+        </div> : <>
+          <label className="tasacion__subida"><input type="file" accept="image/*" multiple onChange={e => setPhotos(Array.from(e.target.files || []).slice(0, 12))} /><strong>Subí imágenes</strong><span>JPG, PNG o WEBP · hasta 12 fotos</span></label>
+          {previews.length > 0 && <div className="tasacion__fotos">{previews.map(({ file, url }) => <img key={`${file.name}-${file.lastModified}`} src={url} alt={file.name} />)}</div>}
+        </>}
         <label className="tasacion__borrador"><input type="checkbox" checked={guardarComoBorrador} disabled={esEdicion} onChange={e => setGuardarComoBorrador(e.target.checked)} /><span>{esEdicion ? 'Esta tasación se actualiza como borrador; podés completarla cuando quieras.' : 'Guardar como borrador (podés completarla después desde el Dashboard)'}</span></label>
       </section>}
       <div className="tasacion__acciones">{step > 1 ? <Button type="button" variant="outline" disabled={submitting} onClick={() => setStep(current => current - 1)}>Atrás</Button> : <Button type="button" variant="outline" disabled={submitting} onClick={() => salir('/dashboard')}>Cancelar</Button>}<Button type="submit" variant="primary" isLoading={submitting} disabled={submitting}>{step === TOTAL_STEPS ? (esEdicion ? 'Guardar cambios y recalcular' : 'Finalizar y calcular') : 'Siguiente'}</Button></div>
