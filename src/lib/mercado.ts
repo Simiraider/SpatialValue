@@ -2,7 +2,11 @@ export const TASA_ARS_USD = 1500;
 
 export const VALOR_M2_VENTA_DEFAULT = 2400;
 
-const RENTABILIDAD_ANUAL_ALQUILER = 0.045;
+// Exportada para que tasacion.ts use la misma constante (antes estaba duplicada)
+export const RENTABILIDAD_ANUAL_ALQUILER = 0.045;
+
+// Proporción del valor del m² cubierto que se asigna a superficie descubierta
+const FACTOR_DESCUBIERTA = 0.4;
 
 const VENTA_M2_POR_BARRIO: Record<string, number> = {
   'puerto madero': 5500,
@@ -16,6 +20,7 @@ const VENTA_M2_POR_BARRIO: Record<string, number> = {
   chacarita: 2200,
   'san telmo': 2200,
   almagro: 2100,
+  balvanera: 1800, // ESTIMADO: faltaba y caía al valor por defecto. Verificar con datos reales.
   boedo: 1900,
   saavedra: 1900,
   'villa devoto': 1800,
@@ -35,7 +40,7 @@ const VENTA_M2_POR_BARRIO: Record<string, number> = {
   velez: 1600,
   montecastro: 1650,
   'monte castro': 1650,
-  'floresta': 1550,
+  floresta: 1550,
   'villa real': 1650,
   'villa luro': 1550,
   'villa santa rita': 1700,
@@ -74,12 +79,18 @@ function normalizarBarrio(barrio?: string | null): string {
     .trim()
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' '); // "Villa  Crespo" (doble espacio) también matchea
 }
 
 export function valorM2Venta(barrio?: string | null): number {
   const clave = normalizarBarrio(barrio);
-  return (clave && VENTA_M2_POR_BARRIO[clave]) || VALOR_M2_VENTA_DEFAULT;
+  // hasOwnProperty: evita que claves como "constructor" o "toString"
+  // devuelvan propiedades heredadas del objeto en vez de un número.
+  if (clave && Object.prototype.hasOwnProperty.call(VENTA_M2_POR_BARRIO, clave)) {
+    return VENTA_M2_POR_BARRIO[clave];
+  }
+  return VALOR_M2_VENTA_DEFAULT;
 }
 
 export function valorM2Alquiler(barrio?: string | null): number {
@@ -88,13 +99,19 @@ export function valorM2Alquiler(barrio?: string | null): number {
 
 export const VALORES_M2_POR_BARRIO: Record<string, { venta: number; alquiler: number }> =
   Object.fromEntries(
-    Object.entries(VENTA_M2_POR_BARRIO).map(([clave, venta]) => [
+    Object.keys(VENTA_M2_POR_BARRIO).map((clave) => [
       clave,
-      { venta, alquiler: Math.max(1, Math.round((venta * RENTABILIDAD_ANUAL_ALQUILER) / 12)) },
+      { venta: VENTA_M2_POR_BARRIO[clave], alquiler: valorM2Alquiler(clave) },
     ])
   );
 
 export function estimarPrecioVenta(supCub: number, supDesc: number, barrio?: string | null): number {
   const m2Venta = valorM2Venta(barrio);
-  return Math.round(supCub * m2Venta + Math.max(supDesc, 0) * m2Venta * 0.4);
+  return Math.round(
+    Math.max(supCub, 0) * m2Venta + Math.max(supDesc, 0) * m2Venta * FACTOR_DESCUBIERTA
+  );
+}
+
+export function estimarAlquiler(supCub: number, supDesc: number, barrio?: string | null): number {
+  return Math.round((estimarPrecioVenta(supCub, supDesc, barrio) * RENTABILIDAD_ANUAL_ALQUILER) / 12);
 }

@@ -1,6 +1,15 @@
-import { TASA_ARS_USD, estimarPrecioVenta, valorM2Alquiler, valorM2Venta } from './mercado';
+import {
+  TASA_ARS_USD,
+  RENTABILIDAD_ANUAL_ALQUILER,
+  estimarAlquiler,
+  estimarPrecioVenta,
+  valorM2Alquiler,
+  valorM2Venta,
+} from './mercado';
 
 export type DatosTasacion = Record<string, any>;
+
+const MARGEN_RANGO = 0.07;
 
 export function esAlquiler(data: DatosTasacion): boolean {
   return data.tipoTasacion === 'alquiler' || data.tipo_operacion === 'alquiler';
@@ -36,9 +45,22 @@ export interface ValoresCalculados {
   rangoMax: number;
 }
 
+/**
+ * Rango ±7% redondeado. Antes se redondeaba siempre a miles, lo que en
+ * alquileres (ej. USD 450/mes) daba rangos absurdos como 0 – 1000.
+ */
+function calcularRango(valorUsd: number, alquiler: boolean): { rangoMin: number; rangoMax: number } {
+  const paso = alquiler ? 10 : 1000;
+  const redondear = (n: number) => Math.round(n / paso) * paso;
+  return {
+    rangoMin: redondear(valorUsd * (1 - MARGEN_RANGO)),
+    rangoMax: redondear(valorUsd * (1 + MARGEN_RANGO)),
+  };
+}
+
 export function calcularValores(data: DatosTasacion, tasaArs: number = TASA_ARS_USD): ValoresCalculados {
   const alquiler = esAlquiler(data);
-  const precioIA = Number(data.precioEstimadoUsd);
+  const precioIA = Number(data.precioEstimadoUsd) || 0; // evita NaN
   const supCub = Number(data.superficieCubierta) || 0;
   const supDesc = Number(data.superficieDescubierta) || 0;
   const supTotal = supCub + supDesc;
@@ -46,60 +68,46 @@ export function calcularValores(data: DatosTasacion, tasaArs: number = TASA_ARS_
   const expensasDeclaradas = Number(data.expensas) || 0;
   const expensas = expensasDeclaradas > 0 ? expensasDeclaradas : estimarExpensas(data.comodidades);
 
+  const base = { supCub, supDesc, supTotal, expensas, expensasDeclaradas };
+
   if (alquiler) {
-    const valorUsd = precioIA > 0 ? Math.round(precioIA * 0.045 / 12) : Math.round(supCub * valorM2Alquiler(barrio));
-    const valorArs = Math.round(valorUsd * tasaArs);
+    const valorUsd =
+      precioIA > 0
+        ? Math.round((precioIA * RENTABILIDAD_ANUAL_ALQUILER) / 12)
+        : estimarAlquiler(supCub, supDesc, barrio);
     return {
+      ...base,
       precioIA: valorUsd,
-      supCub,
-      supDesc,
-      supTotal,
       esIA: precioIA > 0,
       valorUsd,
-      valorArs,
+      valorArs: Math.round(valorUsd * tasaArs),
       valorM2: valorM2Alquiler(barrio),
-      expensas,
-      expensasDeclaradas,
-      rangoMin: Math.round(valorUsd * 0.93 / 1000) * 1000,
-      rangoMax: Math.round(valorUsd * 1.07 / 1000) * 1000,
+      ...calcularRango(valorUsd, true),
     };
   }
 
-  const m2Venta = valorM2Venta(barrio);
   if (precioIA > 0) {
     const valorUsd = Math.round(precioIA);
-    const valorArs = Math.round(valorUsd * tasaArs);
-    const valorM2Calculado = supCub > 0 ? Math.round(valorUsd / supCub) : m2Venta;
     return {
+      ...base,
       precioIA,
-      supCub,
-      supDesc,
-      supTotal,
       esIA: true,
       valorUsd,
-      valorArs,
-      valorM2: valorM2Calculado,
-      expensas,
-      expensasDeclaradas,
-      rangoMin: Math.round(valorUsd * 0.93 / 1000) * 1000,
-      rangoMax: Math.round(valorUsd * 1.07 / 1000) * 1000,
+      valorArs: Math.round(valorUsd * tasaArs),
+      valorM2: supCub > 0 ? Math.round(valorUsd / supCub) : valorM2Venta(barrio),
+      ...calcularRango(valorUsd, false),
     };
   }
+
   const valorUsd = estimarPrecioVenta(supCub, supDesc, barrio);
-  const valorArs = Math.round(valorUsd * tasaArs);
   return {
+    ...base,
     precioIA,
-    supCub,
-    supDesc,
-    supTotal,
     esIA: false,
     valorUsd,
-    valorArs,
-    valorM2: m2Venta,
-    expensas,
-    expensasDeclaradas,
-    rangoMin: Math.round(valorUsd * 0.93 / 1000) * 1000,
-    rangoMax: Math.round(valorUsd * 1.07 / 1000) * 1000,
+    valorArs: Math.round(valorUsd * tasaArs),
+    valorM2: valorM2Venta(barrio),
+    ...calcularRango(valorUsd, false),
   };
 }
 
@@ -108,10 +116,10 @@ export function esBorrador(data: DatosTasacion): boolean {
 }
 
 export function estadoConservacion(n: number, overrides: { antiguedad?: unknown } = {}): string {
-  const antiguedad = Number((overrides as any).antiguedad);
+  const antiguedad = Number(overrides.antiguedad);
   if (Number.isFinite(antiguedad) && antiguedad > 0) {
     if (antiguedad <= 5) return n >= 7 ? 'Muy bueno' : n >= 4 ? 'Bueno' : 'A refaccionar';
-    if (antiguedad <= 15) return n >= 7 ? 'Bueno' : n >= 4 ? 'Regular' : 'A refaccionar';
+    // Más de 5 años (el tramo 5–15 y el de >15 daban el mismo resultado)
     return n >= 7 ? 'Bueno' : n >= 4 ? 'Regular' : 'A refaccionar';
   }
   if (n >= 9) return 'Muy bueno';
@@ -128,12 +136,11 @@ export function estadoDesdeDatos(data: DatosTasacion): string {
 }
 
 export function antiguedadEstimada(n: number, overrides: { antiguedad?: unknown } = {}): string {
-  const antiguedad = Number((overrides as any).antiguedad);
-  if (Number.isFinite(antiguedad) && antiguedad >= 0 && String((overrides as any).antiguedad ?? '').trim() !== '') {
+  const antiguedad = Number(overrides.antiguedad);
+  if (Number.isFinite(antiguedad) && antiguedad >= 0 && String(overrides.antiguedad ?? '').trim() !== '') {
     const a = Math.round(antiguedad);
     if (a === 0) return 'A estrenar';
-    if (a <= 5) return `${a} año${a === 1 ? '' : 's'}`;
-    return `${a} años`;
+    return `${a} año${a === 1 ? '' : 's'}`;
   }
   if (n >= 9) return 'Menos de 5 años (est.)';
   if (n >= 7) return 'Entre 5 y 15 años (est.)';
