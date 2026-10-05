@@ -1,7 +1,7 @@
 .button-primary {
   display: inline-block;
   padding: 0.7rem 1.25rem;
-  background: var(--color-green);
+  background: var(--color-brand);
   color: #ffffff;
   text-decoration: none;
   font-size: 0.9rem;
@@ -13,7 +13,7 @@
 }
 
 .button-primary:hover {
-  background: var(--color-green-dark);
+  background: var(--color-brand-dark);
 }
 
 .button-primary-large {

@@ -3,8 +3,8 @@ export type TasacionItem = {
   address: string;
   value: string;
   status: 'completada' | 'borrador';
+  valorUsd?: number | null;
+  esAlquiler?: boolean;
+  tipo?: 'Casa' | 'Departamento';
+  ultimaVez?: string | null;
 };
-
-export const borradores: TasacionItem[] = [
-  { id: '5', address: 'Manuel A. Aguirre', value: '50M', status: 'borrador' },
-];

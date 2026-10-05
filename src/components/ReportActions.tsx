@@ -24,6 +24,16 @@ type ReportDownloadButtonProps = {
   cliente?: string;
 };
 
+function estimarTamanoPdf(data: DatosInforme): string {
+  const factores = [45, 25, 30, 20, 35, 15, 20, 15, 25];
+  let kb = factores.reduce((a, b) => a + b, 0);
+  if (Array.isArray(data.fotos) && data.fotos.length > 0) {
+    kb += data.fotos.length * 50;
+  }
+  if (kb < 100) kb = 100;
+  return kb >= 1000 ? `~${(kb / 1000).toFixed(1)} MB` : `~${Math.round(kb)} KB`;
+}
+
 export const ReportDownloadButton = ({ data, cliente }: ReportDownloadButtonProps) => {
   const [generando, setGenerando] = useState(false);
 
@@ -41,15 +51,20 @@ export const ReportDownloadButton = ({ data, cliente }: ReportDownloadButtonProp
   };
 
   return (
-    <Button
-      variant="outline"
-      onClick={handleDownload}
-      disabled={!data || generando}
-      isLoading={generando}
-      id="btn-descargar-pdf"
-    >
-      <Download className="ReportePage-downloadIcon" aria-hidden />
-      {generando ? 'Generando PDF...' : 'Descargar PDF'}
-    </Button>
+    <div className="ReportePage-downloadGroup">
+      <Button
+        variant="outline"
+        onClick={handleDownload}
+        disabled={!data || generando}
+        isLoading={generando}
+        id="btn-descargar-pdf"
+      >
+        <Download className="ReportePage-downloadIcon" aria-hidden />
+        {generando ? 'Generando PDF...' : 'Descargar PDF'}
+      </Button>
+      {data && !generando && (
+        <span className="ReportePage-downloadSize">{estimarTamanoPdf(data)}</span>
+      )}
+    </div>
   );
 };

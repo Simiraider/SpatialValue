@@ -1,5 +1,6 @@
-fastapi>=0.115
+fastapi>=0.141.1
 uvicorn>=0.32
+starlette>=1.0.1
 psycopg2-binary>=2.9
 pandas>=2.2.3
 scikit-learn>=1.6

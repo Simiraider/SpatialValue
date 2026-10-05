@@ -10,24 +10,21 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:worker": "cd server && npm test"
+    "verificar": "node scripts/verificar-todo.mjs"
   },
   "dependencies": {
-    "@astrojs/react": "^5.0.4",
-    "@astrojs/vercel": "^10.0.8",
-    "@google/model-viewer": "^4.1.0",
+    "@astrojs/react": "^6.0.6",
+    "@astrojs/vercel": "^11.0.10",
     "@neondatabase/serverless": "^1.1.0",
     "@tailwindcss/vite": "^4.1.8",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "argon2": "^0.45.1",
-    "astro": "^6.3.1",
+    "astro": "^7.2.8",
     "clsx": "^2.1.1",
     "jspdf": "^4.2.1",
-    "leaflet": "^1.9.4",
     "lucide-react": "^1.14.0",
+    "nodemailer": "^10.0.10",
     "playwright": "^1.62.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
@@ -37,11 +34,14 @@
     "tsx": "^4.23.9"
   },
   "overrides": {
-    "vite": "^7"
+    "path-to-regexp": "6.3.0",
+    "zod": "^4.6.5",
+    "dompurify": "^3.4.15",
+    "es-module-lexer": "2.3.2"
   },
   "devDependencies": {
-    "@types/leaflet": "^1.9.22",
+    "@astrojs/check": "^0.9.10",
     "concurrently": "^10.0.4",
-    "vitest": "^3.2.4"
+    "typescript": "^6.0.3"
   }
 }

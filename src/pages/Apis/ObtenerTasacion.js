@@ -1,22 +1,12 @@
 export const prerender = false;
 import sql from '../../Backend/carga.js';
+import { resolverUsuarioId } from '../../Backend/sesion.js';
 
 export async function GET({ url, request }) {
   try {
     const id = url.searchParams.get('id');
-    const usuarioIdQuery = url.searchParams.get('usuario_id');
 
-    const cookieHeader = request.headers.get("cookie") || "";
-    const cookies = Object.fromEntries(
-      cookieHeader.split("; ").filter(Boolean).map((c) => {
-        const [key, ...v] = c.split("=");
-        return [key, v.join("=")];
-      })
-    );
-
-    const usuarioActual = [cookies.usuario_id, usuarioIdQuery].find(
-      (v) => v && v !== "undefined" && v !== "null"
-    );
+    const usuarioActual = resolverUsuarioId(request);
 
     if (!id || id === "undefined" || id === "null") {
       return new Response(
@@ -32,11 +22,23 @@ export async function GET({ url, request }) {
       );
     }
 
+    await sql`
+      CREATE TABLE IF NOT EXISTS tasacion_detalles (
+        id_publicacion TEXT PRIMARY KEY,
+        datos JSONB NOT NULL DEFAULT '{}'::jsonb
+      )
+    `;
+
+    try {
+      await sql`ALTER TABLE tasacion_detalles ALTER COLUMN id_publicacion TYPE TEXT USING id_publicacion::text`;
+    } catch (e) {}
+
     const publicaciones = await sql`
-      SELECT p.*, u."nombre" as autor
+      SELECT p.*, u."nombre" as autor, d.datos AS detalles
       FROM "publicaciones" p
       JOIN "usuarios" u ON p.id_usuario = u.id_usuario
-      WHERE p.id_publicacion = ${id} AND p.id_usuario = ${usuarioActual}
+      LEFT JOIN tasacion_detalles d ON d.id_publicacion = p.id_publicacion::text
+      WHERE p.id_publicacion = ${id}::uuid AND p.id_usuario = ${usuarioActual}
     `;
 
     if (publicaciones.length === 0) {

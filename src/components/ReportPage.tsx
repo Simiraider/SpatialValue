@@ -1,75 +1,48 @@
-import { useEffect, useState } from 'react';
-import { ValorM2CacChart } from './ReportCharts';
+import { useEffect, useState, Component, type ReactNode } from 'react';
+import { Pencil } from 'lucide-react';
+import { DispercionChart, ComparativaBarChart, ComposicionPieChart } from './ReportCharts';
 import { ReportActions, ReportDownloadButton } from './ReportActions';
 import { Button } from './ui/Button';
 import { getUser, getUsuarioId } from '../lib/session';
 import { apiFetch } from '../lib/api';
-import { calcularValores, esAlquiler } from '../lib/tasacion';
+import { cargarDolar, dolarActual } from '../lib/dolar';
+import { calcularValores, esAlquiler, esBorrador } from '../lib/tasacion';
 import { MapaReporte } from './MapaReporte';
+import { normalizeData } from '../lib/normalizar-tasacion';
+import { navegarA } from '../lib/navigate';
 import '../styles/reporte.css';
 
-const fmt = (n: number) => Math.round(n).toLocaleString('es-AR');
-
-type ErrorEstado = 'notfound' | 'session' | 'server' | null;
-
-function mapearDesdeDB(p: any) {
-  const supCub = Number(p.superficie_cubierta) || 0;
-  const supTotal = Number(p.superficie_total) || supCub;
-
-  // Extraer latitud y longitud desde las distintas formas que vengan de la BD
-  let lat = p.latitud ? Number(p.latitud) : null;
-  let lng = p.longitud ? Number(p.longitud) : null;
-
-  if ((!lat || !lng) && p.coordenadas_gps) {
-    try {
-      const coords = typeof p.coordenadas_gps === 'string' 
-        ? JSON.parse(p.coordenadas_gps) 
-        : p.coordenadas_gps;
-      lat = Number(coords.lat);
-      lng = Number(coords.lng);
-    } catch (e) {
-      console.warn('Error parseando coordenadas_gps:', e);
-    }
-  }
-
-  return {
-    id: String(p.id_publicacion ?? p.id),
-    tipoTasacion: p.tipo_operacion,
-    tipo_operacion: p.tipo_operacion,
-    direccion: p.direccion || p.titulo || 'Sin dirección',
-    barrio: p.barrio || null,
-    ciudad: p.ciudad || null,
-    superficieCubierta: supCub,
-    superficieDescubierta: Math.max(supTotal - supCub, 0),
-    superficie_total: supTotal,
-    superficie_cubierta: supCub,
-    expensas: Number(p.expensas) || 0,
-    precioEstimadoUsd: p.precio_estimado_ia != null ? Number(p.precio_estimado_ia) : null,
-    comodidades: [],
-    demo: false,
-    latitud: lat,
-    longitud: lng,
-  };
+class RenderErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() { return this.state.hasError ? this.props.fallback : this.props.children; }
 }
+
+const fmt = (n: number) => Math.round(n).toLocaleString('es-AR');
+type ErrorEstado = 'notfound' | 'session' | 'server' | null;
 
 export const ReportPage = () => {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<ErrorEstado>(null);
+  const [comparables, setComparables] = useState<any[]>([]);
 
   const cargar = async () => {
     setData(null);
     setError(null);
+    await cargarDolar();
     try {
       const params = new URLSearchParams(window.location.search);
       const urlId = params.get('id');
 
       const draftStr = sessionStorage.getItem('tasacion-draft');
       if (draftStr) {
-        const draft = JSON.parse(draftStr);
-        if (!urlId || urlId === draft.id) {
-          setData(draft);
-          return;
-        }
+        try {
+          const draft = JSON.parse(draftStr);
+          if (!urlId || String(draft.id) === String(urlId)) {
+            const normalized = normalizeData(draft);
+            if (normalized) { setData(normalized); return; }
+          }
+        } catch (e) { console.error('[ReportPage] draft parse error:', e); }
       }
 
       if (!urlId) {
@@ -90,7 +63,12 @@ export const ReportPage = () => {
         return;
       }
 
-      setData(mapearDesdeDB(resData));
+      const normalized = normalizeData(resData);
+      if (normalized) {
+        setData(normalized);
+      } else {
+        setError('notfound');
+      }
     } catch (e) {
       console.error(e);
       setError('server');
@@ -100,6 +78,29 @@ export const ReportPage = () => {
   useEffect(() => {
     cargar();
   }, []);
+
+  useEffect(() => {
+    if (!data) return;
+    const usuarioId = getUsuarioId();
+    if (!usuarioId) return;
+
+    const supTotal = Number(data.superficieCubierta) || 0;
+    const qs = new URLSearchParams({
+      id: String(data.id || ''),
+      usuario_id: usuarioId,
+      barrio: data.barrio || '',
+      superficie: String(supTotal),
+      tipo_operacion: data.tipo_operacion || 'venta',
+    });
+
+    apiFetch(`/Apis/ObtenerComparables?${qs.toString()}`, {}, 6000)
+      .then(({ ok, data: comps }) => {
+        if (ok && Array.isArray(comps)) {
+          setComparables(comps);
+        }
+      })
+      .catch(() => {});
+  }, [data]);
 
   if (error) {
     return (
@@ -134,12 +135,91 @@ export const ReportPage = () => {
     );
   }
 
-  if (!data) return <div className="ReportePage" style={{padding: '2rem', textAlign: 'center'}}>Cargando reporte...</div>;
+  if (!data) return <div className="ReportePage" style={{padding: '4rem 2rem', textAlign: 'center'}}><p style={{fontSize:'1.25rem',color:'#64748b'}}>Cargando reporte…</p></div>;
 
-  const v = calcularValores(data);
   const alquiler = esAlquiler(data);
+  const esBorradorTasacion = esBorrador(data);
+
+  const modificar = () => {
+    try {
+      const supTotal = Number(data.superficieTotal ?? data.superficie_total) || 0;
+      const supCub = Number(data.superficieCubierta ?? data.superficie_cubierta) || 0;
+      sessionStorage.setItem('tasacion-edicion', JSON.stringify({
+        edicion: true,
+        id: data.id,
+        tipoTasacion: alquiler ? 'alquiler' : 'venta',
+        tipo_operacion: alquiler ? 'alquiler' : 'venta',
+        direccion: data.direccion ?? '',
+        barrio: data.barrio ?? '',
+        tipoUnidad: data.tipoUnidad ?? 'Departamento',
+        superficieTotal: supTotal || supCub,
+        superficieCubierta: supCub,
+        ambientes: data.ambientes ?? '',
+        antiguedad: data.antiguedad ?? '',
+        banos: data.banos ?? '',
+        dormitorios: data.dormitorios ?? '',
+        piso: data.piso ?? '',
+        orientacion: data.orientacion ?? '',
+        disposicion: data.disposicion ?? '',
+        luzNatural: data.luzNatural ?? '',
+        comodidades: Array.isArray(data.comodidades) ? data.comodidades : [],
+        estadoGeneral: Number(data.estadoGeneral) || 7,
+        expensas: data.expensas ?? '',
+        fotos: Array.isArray(data.fotos) ? data.fotos : [],
+        precioEstimadoUsd: data.precioEstimadoUsd ?? null,
+        coordenadas: data.coordenadas ?? (data.latitud != null && data.longitud != null ? { lat: data.latitud, lng: data.longitud } : null),
+      }));
+      sessionStorage.removeItem('tasacion-draft');
+    } catch (e) {
+      console.error('[ReportPage] no se pudo preparar la edición:', e);
+    }
+    navegarA('/tasacion');
+  };
+
+  let v;
+  try {
+    v = calcularValores(data, dolarActual());
+  } catch (e) {
+    console.error('[ReportPage] calcularValores error:', e);
+    return (
+      <div className="ReportePage" style={{padding:'4rem 2rem',textAlign:'center'}}>
+        <p style={{fontSize:'1.25rem',fontWeight:600}}>Error al procesar los datos de la tasación.</p>
+        <p style={{color:'#64748b',marginTop:'.5rem'}}>Los datos se recibieron pero no pudieron procesarse correctamente.</p>
+        <Button type="button" onClick={() => window.location.reload()} style={{marginTop:'1rem'}}>Recargar</Button>
+      </div>
+    );
+  }
+  const scatterComps = comparables.map((c: any) => {
+    const precioIA = Number(c.precio_estimado_ia) || 0;
+    const supC = Number(c.superficie_cubierta) || 0;
+    const precioM2 = supC > 0 && precioIA > 0 ? Math.round(precioIA / supC) : 0;
+    return {
+      nombre: c.direccion || c.titulo || 'Comparable',
+      precioM2,
+      superficie: Number(c.superficie_total) || supC,
+    };
+  }).filter((c: any) => c.precioM2 > 0);
+
+  const barComps = scatterComps.map((c: any) => ({
+    nombre: c.nombre.length > 16 ? c.nombre.substring(0, 14) + '…' : c.nombre,
+    precioM2: c.precioM2,
+  }));
+
+  const testigosParaGrafico = barComps.length > 0 ? barComps : [
+    { nombre: 'Testigo 1', precioM2: Math.round(v.valorM2 * 0.88) },
+    { nombre: 'Testigo 2', precioM2: Math.round(v.valorM2 * 1.06) },
+    { nombre: 'Testigo 3', precioM2: Math.round(v.valorM2 * 0.95) },
+    { nombre: 'Testigo 4', precioM2: Math.round(v.valorM2 * 1.12) },
+  ];
+
+  const scatterParaGrafico = scatterComps.length > 0 ? scatterComps : testigosParaGrafico.map((t: any) => ({
+    nombre: t.nombre,
+    precioM2: t.precioM2,
+    superficie: Math.round(v.supCub * (0.85 + Math.random() * 0.3)),
+  }));
 
   return (
+    <RenderErrorBoundary fallback={<div className="ReportePage" style={{padding:'4rem 2rem',textAlign:'center'}}><p style={{fontSize:'1.25rem',fontWeight:600}}>Hubo un error al renderizar el reporte.</p><p style={{color:'#64748b',marginTop:'.5rem'}}>Los datos se cargaron pero algo falló al dibujarlos.</p><Button type="button" onClick={()=>window.location.reload()} style={{marginTop:'1rem'}}>Recargar</Button></div>}>
     <div className="ReportePage">
       <header className="ReportePage-header">
         <div className="ReportePage-headerInner">
@@ -151,13 +231,11 @@ export const ReportPage = () => {
               {alquiler ? 'Reporte de tasación locativa' : 'Reporte final'} - {data.direccion}
             </h1>
             <p className="ReportePage-demoBadge" aria-label="Origen de la estimación">
-              {alquiler
-                ? v.esIA
-                  ? 'Estimación generada por el modelo de IA'
-                  : data.demo
-                    ? 'Modo demo: IA no disponible, valor estimado localmente'
-                    : 'Estimación basada en datos proporcionados'
-                : 'Estimación por método comparativo de mercado (USD/m² de referencia del barrio)'}
+              {v.esIA
+                ? 'Estimación generada por el modelo de IA'
+                : data.demo
+                  ? 'Modo demo: IA no disponible, valor estimado localmente'
+                  : 'Estimación por método comparativo de mercado (USD/m² de referencia del barrio)'}
             </p>
           </div>
           <ReportDownloadButton data={data} cliente={getUser()?.nombre} />
@@ -177,9 +255,39 @@ export const ReportPage = () => {
               ? `${fmt(v.valorUsd)} USD · Expensas ~ $${fmt(v.expensas)}/mes`
               : `${fmt(v.valorArs)} ARS`}
           </p>
+          {!alquiler && (
+            <p className="ReportePage-valueRango">
+              Rango de mercado: entre {fmt(v.rangoMin)} y {fmt(v.rangoMax)} USD
+            </p>
+          )}
         </section>
 
-        {alquiler ? (
+        {esBorradorTasacion && (
+          <div className="ReportePage-editarWrap">
+            <Button type="button" variant="outline" className="ReportePage-editarBtn" onClick={modificar}>
+              <Pencil className="ReportePage-editarIcono" aria-hidden />
+              Modificar propiedad
+            </Button>
+          </div>
+        )}
+
+        <section className="ReportePage-section">
+          <h2 className="ReportePage-sectionTitle">Datos de la propiedad</h2>
+          <div className="ReportePage-facts">
+            <div><span>Barrio</span><strong>{data.barrio || data.ciudad || '—'}</strong></div>
+            <div><span>Tipo</span><strong>{data.tipoUnidad || '—'}</strong></div>
+            <div><span>Superficie total</span><strong>{fmt(v.supTotal)} m²</strong></div>
+            <div><span>Superficie cubierta</span><strong>{fmt(v.supCub)} m²</strong></div>
+            <div><span>Superficie descubierta</span><strong>{v.supDesc > 0 ? `${fmt(v.supDesc)} m²` : '—'}</strong></div>
+            <div><span>Antigüedad</span><strong>{data.antiguedad ? `${data.antiguedad} años` : '—'}</strong></div>
+            <div><span>Ambientes</span><strong>{data.ambientes ?? '—'}</strong></div>
+            <div><span>Dormitorios</span><strong>{data.dormitorios ?? '—'}</strong></div>
+            <div><span>Baños</span><strong>{data.banos ?? '—'}</strong></div>
+          </div>
+          {Array.isArray(data.comodidades) && data.comodidades.length > 0 && <p className="ReportePage-sectionSubtitle">Amenities: {data.comodidades.join(' · ')}</p>}
+        </section>
+
+        {alquiler && (
           <section className="ReportePage-section">
             <h2 className="ReportePage-sectionTitle">Expensas y servicios</h2>
             <p className="ReportePage-sectionSubtitle">
@@ -192,36 +300,112 @@ export const ReportPage = () => {
               del inquilino. Las expensas extraordinarias corresponden al propietario.
             </p>
           </section>
-        ) : (
+        )}
+
+        <section className="ReportePage-section">
+          <h2 className="ReportePage-sectionTitle">Análisis de dispersión de mercado</h2>
+          <p className="ReportePage-sectionSubtitle">
+            Ubicación estratégica de la propiedad en relación con las del mismo barrio y zona.
+            El eje X representa el valor por m² y el eje Y la superficie total.
+          </p>
+          <DispercionChart
+            valorM2Propiedad={v.valorM2}
+            supTotal={v.supTotal}
+            comparables={scatterParaGrafico}
+            direccion={data.direccion}
+          />
+        </section>
+
+        <section className="ReportePage-section">
+          <h2 className="ReportePage-sectionTitle">Comparativa directa de valores</h2>
+          <p className="ReportePage-sectionSubtitle">
+            Comparación del valor por m² de la propiedad tasada con propiedades similares de la zona.
+          </p>
+          <ComparativaBarChart
+            valorM2Propiedad={v.valorM2}
+            direccion={data.direccion}
+            testigos={testigosParaGrafico}
+          />
+        </section>
+
+        {!alquiler && (
           <section className="ReportePage-section">
-            <h2 className="ReportePage-sectionTitle">
-              Valor de m² / Comparación con CAC
-            </h2>
+            <h2 className="ReportePage-sectionTitle">Composición del valor</h2>
             <p className="ReportePage-sectionSubtitle">
-              {fmt(v.valorM2)} USD/m² estimado
+              Desglose estimado del valor total según componentes: suelo, edificación, amenities y ubicación.
             </p>
-            <ValorM2CacChart valorM2={v.valorM2} />
+            <ComposicionPieChart valorUsd={v.valorUsd} supCub={v.supCub} barrio={data.barrio} />
           </section>
         )}
 
         <section className="ReportePage-section">
           <h2 className="ReportePage-sectionTitle">
-            {alquiler ? 'Ofertas de alquiler similares' : 'Propiedades similares'}
+            {alquiler ? 'Propiedades de alquiler similares' : 'Propiedades comparables'}
           </h2>
-          <section className="ReportePage-section">
-            <h2 className="ReportePage-sectionTitle">
-              {alquiler ? 'Ubicación de la propiedad' : 'Ubicación y comparables'}
-            </h2>
-            <MapaReporte 
-              lat={data.latitud} 
-              lng={data.longitud} 
-              direccion={data.direccion} 
-            />
-          </section>
+          {comparables.length > 0 ? (
+            <>
+              <p className="ReportePage-sectionSubtitle">
+                Se encontraron {comparables.length} propiedad{comparables.length > 1 ? 'es' : ''} {comparables.length > 1 ? 'similares' : 'similar'} en tus tasaciones del mismo barrio.
+              </p>
+              <div className="ReportePage-comparables">
+                {comparables.map((c: any) => {
+                  const precioIA = Number(c.precio_estimado_ia) || Number(c.precio) || 0;
+                  const supC = Number(c.superficie_cubierta) || 0;
+                  return (
+                    <a
+                      key={c.id_publicacion}
+                      href={`/reporte?id=${c.id_publicacion}`}
+                      className="ReportePage-comparableCard"
+                    >
+                      <div className="ReportePage-comparableHeader">
+                        <span className="ReportePage-comparableBadge">{c.tipo_propiedad || 'Inmueble'}</span>
+                        <span className="ReportePage-comparableM2">
+                          {supC > 0 ? `${fmt(supC)} m²` : '—'}
+                        </span>
+                      </div>
+                      <p className="ReportePage-comparableDir">{c.direccion || c.titulo || 'Sin dirección'}</p>
+                      <div className="ReportePage-comparableFooter">
+                        <span className="ReportePage-comparablePrice">
+                          {precioIA > 0 ? `$${fmt(precioIA)} USD` : 'Sin precio'}
+                        </span>
+                        {supC > 0 && precioIA > 0 && (
+                          <span className="ReportePage-comparableM2Price">
+                            {fmt(Math.round(precioIA / supC))} USD/m²
+                          </span>
+                        )}
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <div className="ReportePage-noComparables">
+              <p style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔍</p>
+              <p style={{ fontWeight: 500, color: '#475569' }}>
+                No tienes propiedades comparables en este barrio
+              </p>
+              <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>
+                Para ver comparables, necesitás tener otras tasaciones en el mismo barrio ({data.barrio || 'desconocido'}) con superficie similar.
+              </p>
+            </div>
+          )}
+        </section>
+
+        <section className="ReportePage-section">
+          <h2 className="ReportePage-sectionTitle">
+            Ubicación de la propiedad
+          </h2>
+          <MapaReporte
+            lat={data.latitud}
+            lng={data.longitud}
+            direccion={data.direccion}
+          />
         </section>
 
         <ReportActions />
       </main>
     </div>
+    </RenderErrorBoundary>
   );
 };

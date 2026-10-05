@@ -2,21 +2,18 @@
 const features = [
   {
     iconSrc: "/icons/inspeccion.svg",
-    title: "Preguntas enfocadas",
     description:
-      "Recolectamos datos clave de la propiedad para reducir sesgos y ordenar la tasacion.",
+      "Nuestro cuestionario está diseñado para recolectar las variables clave de tu inmueble, como superficie, ubicación y amenities, acorde a las exigencias del mercado actual.",
   },
   {
     iconSrc: "/icons/macro.svg",
-    title: "Analisis de imagenes",
     description:
-      "Procesamos fotos para entender estado, terminaciones y condiciones visibles.",
+      "Las imágenes son procesadas por nuestra Inteligencia Artificial para analizar automáticamente el estado de conservación de la propiedad, evaluando pisos, techos y paredes.",
   },
   {
     iconSrc: "/icons/gemelo.svg",
-    title: "Resultado trazable",
     description:
-      "Combinamos mercado, ubicacion y caracteristicas para entregar una estimacion clara.",
+      "Cruzamos tu información con valores históricos y propiedades en tu zona para calcular una tasación precisa, transparente y en tiempo real.",
   },
 ];
 
@@ -53,10 +50,7 @@ const team = [
           <div class="feature-icon">
             <img src={feature.iconSrc} alt="" width="28" height="28" />
           </div>
-          <div class="feature-text">
-            <h3>{feature.title}</h3>
-            <p>{feature.description}</p>
-          </div>
+          <p>{feature.description}</p>
         </article>
       ))}
     </div>

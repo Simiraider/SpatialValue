@@ -1,6 +1,8 @@
 import { jsPDF } from 'jspdf';
 import { montoEnLetras } from './numero-a-letras';
-import { calcularValores, esAlquiler, estadoConservacion, antiguedadEstimada } from './tasacion';
+import { calcularValores, esAlquiler, estadoDesdeDatos, antiguedadDesdeDatos } from './tasacion';
+import { normalizeData } from './normalizar-tasacion';
+import { dolarActual } from './dolar';
 
 const AZUL_OSCURO: [number, number, number] = [30, 58, 95];
 const AZUL_PRIMARIO: [number, number, number] = [37, 99, 235];
@@ -361,7 +363,7 @@ class PdfInforme {
   }
 
   private valores() {
-    const base = calcularValores(this.data);
+    const base = calcularValores(this.data, dolarActual());
     return {
       ...base,
       tipo: this.data.tipoUnidad ?? 'Inmueble',
@@ -404,6 +406,7 @@ class PdfInforme {
         ['Concepto', 'Resultado'],
         [
           ['Valor de tasación', `${fmt(v.valorUsd)} USD`],
+          ['Rango de mercado sugerido', `entre ${fmt(v.rangoMin)} y ${fmt(v.rangoMax)} USD`],
           ['Valor de tasación (referencia)', `${fmt(v.valorArs)} ARS`],
           ['Superficie cubierta', `${fmt(v.supCub)} m²`],
           ['Superficie total', `${fmt(v.supTotal)} m²`],
@@ -427,6 +430,11 @@ class PdfInforme {
     this.parrafo(
       `La superficie cubierta declarada es de ${fmt(v.supCub)} m² y la superficie total, considerando los espacios descubiertos, asciende a ${fmt(v.supTotal)} m².`
     );
+    if (v.supDesc > 0) {
+      this.parrafo(
+        `Los ${fmt(v.supDesc)} m² descubiertos (terraza, balcón o patio) se ponderan comercialmente al 40% del valor del metro cuadrado cubierto, criterio habitual de mercado para espacios descubiertos.`
+      );
+    }
     if (v.esAlquiler) {
       const tieneSeguridad = v.comodidades.some((a: string) => /seguridad/i.test(a));
       this.parrafo(
@@ -445,8 +453,8 @@ class PdfInforme {
       ['Superficie descubierta', v.supDesc > 0 ? `${fmt(v.supDesc)} m²` : '—'],
       ['Superficie total', `${fmt(v.supTotal)} m²`],
       ['Comodidades', v.comodidades.length ? v.comodidades.join(', ') : '—'],
-      ['Estado de conservación', `${this.data.estadoGeneral}/10 — ${estadoConservacion(Number(this.data.estadoGeneral))}`],
-      ['Antigüedad estimada', antiguedadEstimada(Number(this.data.estadoGeneral))],
+      ['Estado de conservación', `${Number(this.data.estadoGeneral) || 5}/10 — ${estadoDesdeDatos(this.data)}`],
+      ['Antigüedad', antiguedadDesdeDatos(this.data)],
     ];
     if (v.esAlquiler) {
       filas.push([
@@ -615,7 +623,7 @@ class PdfInforme {
     d.text(
       v.esAlquiler
         ? `${fmt(v.valorUsd)} USD · ${fmt(v.supTotal)} m² totales`
-        : `Equivalente aproximado: ${fmt(v.valorArs)} ARS · ${fmt(v.valorM2)} USD/m²`,
+        : `Rango sugerido: entre ${fmt(v.rangoMin)} y ${fmt(v.rangoMax)} USD · ${fmt(v.valorM2)} USD/m²`,
       MARGEN + 8,
       this.y + 25
     );
@@ -810,7 +818,8 @@ export async function generarInformePdf(
   clienteNombre?: string,
   opciones: OpcionesInforme = {}
 ): Promise<void> {
+  const datos = normalizeData(data) ?? data;
   const logo = await convertirLogoAPng();
-  const informe = new PdfInforme(data, clienteNombre ?? '—', logo, opciones.guardar ?? null);
+  const informe = new PdfInforme(datos, clienteNombre ?? '—', logo, opciones.guardar ?? null);
   await informe.generar();
 }

@@ -32,9 +32,11 @@ export interface ValoresCalculados {
   valorM2: number;
   expensas: number;
   expensasDeclaradas: number;
+  rangoMin: number;
+  rangoMax: number;
 }
 
-export function calcularValores(data: DatosTasacion): ValoresCalculados {
+export function calcularValores(data: DatosTasacion, tasaArs: number = TASA_ARS_USD): ValoresCalculados {
   const alquiler = esAlquiler(data);
   const precioIA = Number(data.precioEstimadoUsd);
   const supCub = Number(data.superficieCubierta) || 0;
@@ -45,10 +47,10 @@ export function calcularValores(data: DatosTasacion): ValoresCalculados {
   const expensas = expensasDeclaradas > 0 ? expensasDeclaradas : estimarExpensas(data.comodidades);
 
   if (alquiler) {
-    const valorUsd = precioIA > 0 ? precioIA : Math.round(supCub * valorM2Alquiler(barrio));
-    const valorArs = Math.round(valorUsd * TASA_ARS_USD);
+    const valorUsd = precioIA > 0 ? Math.round(precioIA * 0.045 / 12) : Math.round(supCub * valorM2Alquiler(barrio));
+    const valorArs = Math.round(valorUsd * tasaArs);
     return {
-      precioIA,
+      precioIA: valorUsd,
       supCub,
       supDesc,
       supTotal,
@@ -58,12 +60,33 @@ export function calcularValores(data: DatosTasacion): ValoresCalculados {
       valorM2: valorM2Alquiler(barrio),
       expensas,
       expensasDeclaradas,
+      rangoMin: Math.round(valorUsd * 0.93 / 1000) * 1000,
+      rangoMax: Math.round(valorUsd * 1.07 / 1000) * 1000,
     };
   }
 
   const m2Venta = valorM2Venta(barrio);
+  if (precioIA > 0) {
+    const valorUsd = Math.round(precioIA);
+    const valorArs = Math.round(valorUsd * tasaArs);
+    const valorM2Calculado = supCub > 0 ? Math.round(valorUsd / supCub) : m2Venta;
+    return {
+      precioIA,
+      supCub,
+      supDesc,
+      supTotal,
+      esIA: true,
+      valorUsd,
+      valorArs,
+      valorM2: valorM2Calculado,
+      expensas,
+      expensasDeclaradas,
+      rangoMin: Math.round(valorUsd * 0.93 / 1000) * 1000,
+      rangoMax: Math.round(valorUsd * 1.07 / 1000) * 1000,
+    };
+  }
   const valorUsd = estimarPrecioVenta(supCub, supDesc, barrio);
-  const valorArs = Math.round(valorUsd * TASA_ARS_USD);
+  const valorArs = Math.round(valorUsd * tasaArs);
   return {
     precioIA,
     supCub,
@@ -75,19 +98,49 @@ export function calcularValores(data: DatosTasacion): ValoresCalculados {
     valorM2: m2Venta,
     expensas,
     expensasDeclaradas,
+    rangoMin: Math.round(valorUsd * 0.93 / 1000) * 1000,
+    rangoMax: Math.round(valorUsd * 1.07 / 1000) * 1000,
   };
 }
 
-export function estadoConservacion(n: number): string {
-  if (n >= 9) return 'Muy bueno — A estrenar';
+export function esBorrador(data: DatosTasacion): boolean {
+  return data.es_borrador === true || data.estado_tasacion === 'borrador';
+}
+
+export function estadoConservacion(n: number, overrides: { antiguedad?: unknown } = {}): string {
+  const antiguedad = Number((overrides as any).antiguedad);
+  if (Number.isFinite(antiguedad) && antiguedad > 0) {
+    if (antiguedad <= 5) return n >= 7 ? 'Muy bueno' : n >= 4 ? 'Bueno' : 'A refaccionar';
+    if (antiguedad <= 15) return n >= 7 ? 'Bueno' : n >= 4 ? 'Regular' : 'A refaccionar';
+    return n >= 7 ? 'Bueno' : n >= 4 ? 'Regular' : 'A refaccionar';
+  }
+  if (n >= 9) return 'Muy bueno';
   if (n >= 7) return 'Bueno';
   if (n >= 4) return 'Regular';
   return 'A refaccionar';
 }
 
-export function antiguedadEstimada(n: number): string {
+export function estadoDesdeDatos(data: DatosTasacion): string {
+  const n = Number(data.estadoGeneral) || 5;
+  const esEstreno = Number(data.antiguedad) === 0 && String(data.antiguedad ?? '').trim() !== '';
+  if (esEstreno && n >= 8) return 'A estrenar';
+  return estadoConservacion(n, { antiguedad: data.antiguedad });
+}
+
+export function antiguedadEstimada(n: number, overrides: { antiguedad?: unknown } = {}): string {
+  const antiguedad = Number((overrides as any).antiguedad);
+  if (Number.isFinite(antiguedad) && antiguedad >= 0 && String((overrides as any).antiguedad ?? '').trim() !== '') {
+    const a = Math.round(antiguedad);
+    if (a === 0) return 'A estrenar';
+    if (a <= 5) return `${a} año${a === 1 ? '' : 's'}`;
+    return `${a} años`;
+  }
   if (n >= 9) return 'Menos de 5 años (est.)';
   if (n >= 7) return 'Entre 5 y 15 años (est.)';
   if (n >= 4) return 'Entre 15 y 30 años (est.)';
   return 'Más de 30 años (est.)';
+}
+
+export function antiguedadDesdeDatos(data: DatosTasacion): string {
+  return antiguedadEstimada(Number(data.estadoGeneral) || 5, { antiguedad: data.antiguedad });
 }
