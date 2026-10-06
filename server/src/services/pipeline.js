@@ -194,7 +194,7 @@ export function crearPipeline({ config, estado }) {
           mensaje: 'Convirtiendo la malla a .glb…',
         });
         try {
-          const conv = convertirMalla(resultado.mallaPly, glbPath);
+          const conv = await convertirMalla(resultado.mallaPly, glbPath);
           logger.info(`[pipeline] malla convertida: ${conv.vertices} vértices, ${conv.triangulos} triángulos`);
         } catch (e) {
           // La malla de COLMAP no se pudo convertir (p.ej. era solo una nube de

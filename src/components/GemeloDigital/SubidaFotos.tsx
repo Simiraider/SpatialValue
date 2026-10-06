@@ -35,6 +35,12 @@ export const SubidaFotos = ({ config, tituloInicial = '', propiedad, onTrabajoCr
   const inputRef = useRef<HTMLInputElement>(null);
   const esVideoSubido = archivos.some(esVideo);
 
+  // Si cambia el título sugerido (p.ej. se elige el ambiente a escanear) y el
+  // usuario no escribió uno propio, se actualiza.
+  useEffect(() => {
+    if (tituloInicial) setTitulo(tituloInicial);
+  }, [tituloInicial]);
+
   // Limpia los object URLs al desmontar.
   useEffect(() => {
     return () => {
@@ -52,7 +58,8 @@ export const SubidaFotos = ({ config, tituloInicial = '', propiedad, onTrabajoCr
       return false;
     });
     const conTamaño = validos.filter((f) => {
-      if (f.size > config.maxVideoMb * 1024 * 1024) {
+      // videos hasta 2 GB; el worker tambien es multilí, pero el navegador manda el archivo igual
+      if (f.size > 2 * 1024 * 1024 * 1024) {
         pesados.push(f.name);
         return false;
       }
@@ -183,7 +190,8 @@ export const SubidaFotos = ({ config, tituloInicial = '', propiedad, onTrabajoCr
           Arrastrá fotos o un video acá
         </p>
         <p className="mt-1 text-xs text-slate-500">
-          o hacé clic para elegir archivos · JPG, PNG, HEIC, MP4, MOV · máx {config.maxFotos} archivos
+          o hacé clic para elegir archivos · JPG, PNG, HEIC, MP4, MOV ·          archivo pesado: 500 MB (limite de servidor futuro)
+
         </p>
         <p className="mt-2 text-xs text-slate-400">
           Consejo: recorré cada ambiente y que cada zona aparezca en al menos 3 fotos.

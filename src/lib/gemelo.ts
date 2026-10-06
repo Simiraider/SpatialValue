@@ -39,7 +39,7 @@ export interface EstadoTrabajo {
   modeloUrl: string | null;
   modeloBytes: number | null;
   error: string | null;
-  motor: 'colmap' | 'simular' | null;
+  motor: 'colmap' | 'simular' | 'externo' | null;
   creadoEn: number;
   expiraEn: number | null;
 }
@@ -276,6 +276,50 @@ export async function cancelarTrabajo(config: ConfigGemelo, id: string): Promise
   } catch {
     /* el worker puede no estar disponible; se ignora */
   }
+}
+
+// ── Subida de un modelo 3D externo (Scaniverse, Polycam, etc.) ───────────────
+
+export interface DatosModeloExterno {
+  titulo: string;
+  idUsuario?: string | null;
+  idPublicacion?: string | null;
+  archivo: File;
+}
+
+/**
+ * Sube un .glb ya escaneado desde otra app. El worker lo valida (magic glTF 2.0)
+ * y lo devuelve como un trabajo 'listo' con motor 'externo'.
+ */
+export function subirModeloExterno(config: ConfigGemelo, datos: DatosModeloExterno): Promise<EstadoTrabajo> {
+  return new Promise((resolve, reject) => {
+    const fd = new FormData();
+    fd.append('titulo', datos.titulo || 'Modelo 3D externo');
+    if (datos.idUsuario) fd.append('id_usuario', datos.idUsuario);
+    if (datos.idPublicacion) fd.append('id_publicacion', String(datos.idPublicacion));
+    fd.append('modelo', datos.archivo, datos.archivo.name || 'modelo.glb');
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${config.workerUrl}/api/modelos`);
+    xhr.timeout = 10 * 60 * 1000;
+    xhr.onerror = () =>
+      reject(new Error(`No se pudo conectar con el servicio 3D (${config.workerUrl}/api/modelos).`));
+    xhr.ontimeout = () => reject(new Error('La subida del modelo superó el tiempo máximo.'));
+    xhr.onload = () => {
+      let data: (EstadoTrabajo & { error?: string }) | null = null;
+      try {
+        data = JSON.parse(xhr.responseText);
+      } catch {
+        data = null;
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && data?.id) {
+        resolve(data);
+      } else {
+        reject(new Error(data?.error || `Error ${xhr.status} al subir el modelo.`));
+      }
+    };
+    xhr.send(fd);
+  });
 }
 
 // ── Historial local de trabajos (solo el navegador, no se guarda nada en BD) ─

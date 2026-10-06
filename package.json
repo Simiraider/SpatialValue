@@ -6,7 +6,9 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "concurrently -n IA,WEB,GEMELO -c yellow,cyan,magenta \"python src/pages/Apis/api_ia.py\" \"astro dev\" \"wsl.exe -d Ubuntu --cd /home/simon/SpatialValue/server --exec npm run dev\"",
+    "dev": "concurrently -n IA,WEB,GEMELO -c yellow,cyan,magenta \"python src/pages/Apis/api_ia.py\" \"astro dev\" \"node scripts/gemelo-dev.mjs\"",
+    "dev:sin-gemelo": "concurrently -n IA,WEB -c yellow,cyan \"python src/pages/Apis/api_ia.py\" \"astro dev\"",
+    "gemelo:parar": "node scripts/gemelo-parar.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
@@ -43,6 +45,7 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
     "concurrently": "^10.0.4",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^2.1.9"
   }
 }

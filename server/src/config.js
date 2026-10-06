@@ -11,7 +11,7 @@ const numero = (valor, defecto) => {
 const crearConfig = (env = process.env) => {
   const minFotos = Math.round(numero(env.GEMELO_MIN_FOTOS, 5));
   const maxFotos = Math.round(numero(env.GEMELO_MAX_FOTOS, 100));
-  const maxVideoMb = numero(env.GEMELO_MAX_VIDEO_MB, 300);
+  const maxVideoMb = Math.max(300, Math.round(numero(env.GEMELO_MAX_VIDEO_MB, 500))); // a 500 MB de límite de video (multer + Express JSON en app.js también listo)
   const ttlHoras = numero(env.GEMELO_TTL_HORAS, 1);
   const maxJobsPorIp = Math.round(numero(env.GEMELO_MAX_JOBS_POR_IP, 5));
   const velocidadSimulacionMs = Math.round(numero(env.GEMELO_SIM_VELOCIDAD_MS, 1200));

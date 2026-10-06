@@ -2,6 +2,7 @@
  * API REST del worker de gemelos digitales.
  *
  *  POST   /api/jobs             crear trabajo + subir fotos/video (multipart)
+ *  POST   /api/modelos          subir un .glb ya escaneado (Scaniverse/Polycam/etc.)
  *  GET    /api/jobs/:id         estado y progreso del trabajo
  *  GET    /api/jobs/:id/modelo  descargar el .glb (cuando está listo)
  *  DELETE /api/jobs/:id         cancelar y borrar el trabajo
@@ -17,6 +18,7 @@ import { calidadPorFotos } from '../services/confianza.js';
 import { tiempoEstimadoSeg } from '../services/tiempo.js';
 import { colmapDisponible } from '../services/colmap.js';
 import { ffmpegDisponible } from '../services/ffmpeg.js';
+import { guardarModelo } from '../services/storage.js';
 import { logger } from '../utils/logger.js';
 
 const IMAGENES = /\.(jpe?g|png|webp|heic|heif|avif)$/i;
@@ -192,6 +194,73 @@ export function crearRouter({ config, estado, pipeline }) {
   });
 
   // ── Cancelar / borrar ──────────────────────────────────────────────────────
+  // ── Subir un modelo 3D externo (Scaniverse, Polycam, Luma, etc.) ────────
+  // Crea un trabajo ya 'listo' con motor 'externo': sin COLMAP ni pipeline,
+  // el .glb queda servido como cualquier otro modelo del worker.
+  router.post('/modelos', limitador, upload.single('modelo'), async (req, res) => {
+    try {
+      const archivo = req.file;
+      if (!archivo) {
+        return res.status(400).json({ error: 'No se recibió ningún archivo .glb.' });
+      }
+      // Validar que sea un GLB real: magic "glTF" + versión 2 en los primeros bytes.
+      const fd = await fs.promises.open(archivo.path, 'r');
+      try {
+        const { buffer, bytesRead } = await fd.read(Buffer.alloc(12), 0, 12, 0);
+        const magicOk = bytesRead === 12 && buffer.toString('ascii', 0, 4) === 'glTF' && buffer.readUInt32LE(4) === 2;
+        if (!magicOk) {
+          await fs.promises.unlink(archivo.path).catch(() => {});
+          return res.status(400).json({ error: 'El archivo no es un modelo GLB válido (glTF 2.0).' });
+        }
+      } finally {
+        await fd.close();
+      }
+
+      const job = estado.crear({
+        titulo: String(req.body?.titulo || '').slice(0, 200) || 'Modelo 3D externo',
+        idUsuario: String(req.body?.id_usuario || '').slice(0, 100) || null,
+        idPublicacion: req.body?.id_publicacion ? String(req.body.id_publicacion).slice(0, 40) : null,
+        totalFotos: 0,
+        nFotos: 0,
+        esVideo: false,
+        calidadEstimada: 'externo',
+        tiempoEstimadoSeg: 0,
+        opciones: {},
+        modeloStorage: null,
+      });
+
+      const outputDir = path.join(estado.dirDe(job.id), 'output');
+      fs.mkdirSync(outputDir, { recursive: true });
+      const glbPath = path.join(outputDir, 'modelo.glb');
+      await fs.promises.copyFile(archivo.path, glbPath);
+      await fs.promises.unlink(archivo.path).catch(() => {});
+      try {
+        fs.rmdirSync(req.uploadDir);
+      } catch {
+        /* no vacío */
+      }
+
+      const storage = await guardarModelo(config, job.id, glbPath);
+      const bytes = fs.statSync(glbPath).size;
+      estado.actualizar(job.id, {
+        estado: 'listo',
+        etapa: 'listo',
+        progreso: 100,
+        mensaje: 'Modelo 3D vinculado. Disponible por ' + config.ttlHoras + ' h.',
+        modeloBytes: bytes,
+        modeloStorage: storage.tipo,
+        expiraEn: Date.now() + config.ttlMs,
+        motor: 'externo',
+        ...(storage.tipo === 'local' ? { modeloUrl: `/api/jobs/${job.id}/modelo` } : { modeloUrl: storage.url }),
+      });
+      logger.info(`[api] modelo externo ${job.id} aceptado (${bytes} bytes)`);
+      return res.status(201).json(estado.publico(job.id));
+    } catch (e) {
+      logger.error('[api] error al subir modelo externo:', e.message);
+      return res.status(500).json({ error: 'No se pudo guardar el modelo', detalle: e.message });
+    }
+  });
+
   router.delete('/jobs/:id', (req, res) => {
     // Mata procesos hijos en vuelo (ffmpeg/COLMAP) antes de borrar el workspace.
     pipeline.detener(req.params.id);

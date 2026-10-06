@@ -154,7 +154,7 @@ function normalizar(v) {
  * @param {string} objPath
  * @param {string} glbPath
  */
-export function objAGlb(objPath, glbPath) {
+export async function objAGlb(objPath, glbPath) {
   const posiciones = [];
   const colores = [];
   const indices = [];
@@ -185,7 +185,14 @@ export function objAGlb(objPath, glbPath) {
   }
 
   if (posiciones.length === 0) throw new Error('OBJ sin vértices');
-  if (caras.length === 0) throw new Error('OBJ sin caras (el modelo es solo una nube de puntos)');
+  if (caras.length === 0) {
+    logger.info('[mesh] OBJ sin caras: triangulando nube de puntos con Delaunay...');
+    const carasDelaunay = await import('./triangular.js').then(m => m.triangularNube(posiciones));
+    if (carasDelaunay.length === 0) {
+      throw new Error('OBJ sin caras y falló la triangulación Delaunay (muy pocos puntos válidos)');
+    }
+    caras.push(...carasDelaunay);
+  }
 
   const nVertices = posiciones.length / 3;
   for (const [a, b, c] of caras) {
@@ -233,10 +240,10 @@ export function objAGlb(objPath, glbPath) {
 }
 
 /** Convierte la malla de salida de COLMAP (PLY) a un .glb. */
-export function convertirMalla(mallaPly, glbPath) {
+export async function convertirMalla(mallaPly, glbPath) {
   const tmpObj = glbPath.replace(/\.glb$/i, '.obj');
   plyAObj(mallaPly, tmpObj);
-  const resultado = objAGlb(tmpObj, glbPath);
+  const resultado = await objAGlb(tmpObj, glbPath);
   try {
     fs.unlinkSync(tmpObj); // el OBJ es intermedio
   } catch {

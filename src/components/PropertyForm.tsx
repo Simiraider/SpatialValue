@@ -8,13 +8,14 @@ import { apiFetch } from '../lib/api';
 import { getUsuarioId } from '../lib/session';
 import { BARRIOS_CABA } from '../lib/mercado';
 import { cn } from '../lib/utils';
-import { obtenerConfigGemelo, probarConexionWorker, type ConfigGemelo, type EstadoTrabajo } from '../lib/gemelo';
+import { obtenerConfigGemelo, probarConexionWorker, subirModeloExterno, type ConfigGemelo, type EstadoTrabajo } from '../lib/gemelo';
 import { SubidaFotos } from './GemeloDigital/SubidaFotos';
 import { BarraProgreso } from './GemeloDigital/BarraProgreso';
 import { Visor3D } from './GemeloDigital/Visor3D';
 
 const TOTAL_STEPS = 4;
 const PASOS = ['Ubicación', 'Características', 'Extras', 'Fotos'];
+const AMBIENTES_3D = ['Living/comedor', 'Cocina', 'Dormitorio', 'Baño', 'Oficina', 'Exterior/patio', 'Otro'];
 const AMENITIES = ['Seguridad 24h', 'Ascensor', 'Cochera', 'Gimnasio', 'Baulera', 'Cámaras', 'Balcón', 'Lounge', 'Terraza', 'Pileta', 'Patio', 'Parrilla', 'Laundry'];
 const OPCIONES_LUZ = ['Abundante', 'Buena', 'Media', 'Poca'];
 const EDICION_KEY = 'tasacion-edicion';
@@ -154,6 +155,11 @@ export const PropertyForm = () => {
   const [gemeloJobId, setGemeloJobId] = useState<string | null>(null);
   const [gemeloJob, setGemeloJob] = useState<EstadoTrabajo | null>(null);
   const [verModelo, setVerModelo] = useState(false);
+  const [modoSubida, setModoSubida] = useState<'fotos' | 'externo'>('fotos');
+  const [ambienteGemelo, setAmbienteGemelo] = useState('');
+  const [archivoGlb, setArchivoGlb] = useState<File | null>(null);
+  const [subiendoGlb, setSubiendoGlb] = useState(false);
+  const [errorGlb, setErrorGlb] = useState<string | null>(null);
   const esEdicion = Boolean(edicion);
 
   useEffect(() => {
@@ -170,6 +176,10 @@ export const PropertyForm = () => {
   const activarModelo3d = async () => {
     setQuiereModelo3d(true);
     setGemeloFase('conectando');
+    setModoSubida('fotos');
+    setAmbienteGemelo('');
+    setArchivoGlb(null);
+    setErrorGlb(null);
     const config = await obtenerConfigGemelo();
     if (!config) { setGemeloConfig(null); setGemeloFase('sin-worker'); return; }
     setGemeloConfig(config);
@@ -183,6 +193,36 @@ export const PropertyForm = () => {
     setGemeloJobId(null);
     setGemeloJob(null);
     setVerModelo(false);
+    setModoSubida('fotos');
+    setAmbienteGemelo('');
+    setArchivoGlb(null);
+    setErrorGlb(null);
+  };
+
+  const tituloGemelo = () => {
+    const base = `${data.tipoUnidad} en ${data.direccion}`.trim();
+    return ambienteGemelo ? `${base} — ${ambienteGemelo}` : base || 'Gemelo digital';
+  };
+
+  const vincularGlb = async () => {
+    if (!archivoGlb || !gemeloConfig || subiendoGlb) return;
+    setSubiendoGlb(true);
+    setErrorGlb(null);
+    try {
+      const job = await subirModeloExterno(gemeloConfig, {
+        titulo: tituloGemelo(),
+        idUsuario: getUsuarioId() || null,
+        idPublicacion: esEdicion ? String(edicion!.id!) : null,
+        archivo: archivoGlb,
+      });
+      setGemeloJob(job);
+      setGemeloFase('listo');
+      setArchivoGlb(null);
+    } catch (e) {
+      setErrorGlb(e instanceof Error ? e.message : 'No se pudo subir el modelo.');
+    } finally {
+      setSubiendoGlb(false);
+    }
   };
 
   const supTotalNum = Number(data.superficieTotal) || 0;
@@ -401,7 +441,50 @@ export const PropertyForm = () => {
           <TarjetaEleccion icono={Camera} titulo="No, solo fotos normales" activo={!quiereModelo3d} onClick={desactivarModelo3d} />
         </div>
         {quiereModelo3d ? <div className="tasacion__gemelo">
-          <p className="tasacion__hint">Las fotos se usan para reconstruir el modelo 3D (mínimo 5, con solapamiento, o un video) y no se guardan.</p>
+          {gemeloFase === 'subir' && gemeloConfig && <div className="tasacion__gemelo-modos">
+            <div className="tasacion__eleccion" role="group" aria-label="¿Cómo querés crear el modelo 3D?">
+              <TarjetaEleccion icono={Camera} titulo="Con fotos o video" activo={modoSubida === 'fotos'} onClick={() => setModoSubida('fotos')} />
+              <TarjetaEleccion icono={Box} titulo="Ya tengo un modelo 3D" activo={modoSubida === 'externo'} onClick={() => setModoSubida('externo')} />
+            </div>
+            {modoSubida === 'fotos' ? <>
+              <div className="tasacion__gemelo-ambientes" role="group" aria-label="¿Qué ambiente querés escanear?">
+                <span className="tasacion__gemelo-ambientes-label">¿Qué escaneás? (un ambiente por modelo)</span>
+                {AMBIENTES_3D.map(a => (
+                  <button key={a} type="button" className={cn('tasacion__chip', ambienteGemelo === a && 'tasacion__chip--activa')} aria-pressed={ambienteGemelo === a} onClick={() => setAmbienteGemelo(ambienteGemelo === a ? '' : a)}>{a}</button>
+                ))}
+              </div>
+              <details className="tasacion__guia">
+                <summary>Cómo sacar las fotos (guía rápida)</summary>
+                <ol>
+                  <li>Escanear <strong>un ambiente por vez</strong>: el modelo es por habitación, no de toda la casa.</li>
+                  <li>Parate en una esquina y girá lento barriendo toda la habitación, como si grabaras un video.</li>
+                  <li>Avanzá unos pasos y repetí: cada pared y mueble debe verse en al menos 3 fotos.</li>
+                  <li>Incluí piso y techo en varias fotos: ayudan a anclar la geometría.</li>
+                  <li>Usá luz abundante y evitá apuntar directo a ventanas.</li>
+                </ol>
+                <p className="tasacion__guia-nota">15–25 fotos por ambiente dan un buen resultado. Si la propiedad es grande, generá un modelo por ambiente.</p>
+              </details>
+              <p className="tasacion__hint">Las fotos se usan para reconstruir el modelo 3D (mínimo 5, con solapamiento, o un video) y no se guardan.</p>
+              <SubidaFotos
+                config={gemeloConfig}
+                tituloInicial={tituloGemelo()}
+                propiedad={esEdicion ? String(edicion!.id!) : null}
+                onTrabajoCreado={(id) => { setGemeloJobId(id); setGemeloFase('progreso'); }}
+              />
+            </> : <div className="tasacion__gemelo-externo">
+              <p className="tasacion__hint">¿Escaneaste con Scaniverse, Polycam u otra app? Exportá el modelo en formato GLB, subilo acá y queda vinculado a la tasación sin procesar nada.</p>
+              <label className="tasacion__subida">
+                <input type="file" accept=".glb,model/gltf-binary" onChange={e => { setArchivoGlb(e.target.files?.[0] || null); setErrorGlb(null); e.target.value = ''; }} />
+                <strong>Elegir archivo .glb</strong>
+                <span>Modelo exportado en glTF binario · hasta {gemeloConfig.maxVideoMb} MB</span>
+              </label>
+              {archivoGlb && <p className="tasacion__hint">{archivoGlb.name} · {Math.round(archivoGlb.size / 1024)} KB</p>}
+              {errorGlb && <p className="tasacion__error">{errorGlb}</p>}
+              <div className="tasacion__acciones-gemelo">
+                <Button type="button" variant="secondary" disabled={!archivoGlb || subiendoGlb} isLoading={subiendoGlb} onClick={vincularGlb}>Vincular modelo a la tasación</Button>
+              </div>
+            </div>}
+          </div>}
           {gemeloFase === 'conectando' && <p className="tasacion__hint">Conectando con el servicio 3D…</p>}
           {gemeloFase === 'sin-worker' && <div className="tasacion__aviso-gemelo">
             <p><strong>El servicio 3D no está disponible ahora.</strong> {gemeloConfig ? `No responde en ${gemeloConfig.workerUrl}.` : 'No está configurado (falta PUBLIC_GEMELO_WORKER_URL).'}</p>
@@ -424,7 +507,7 @@ export const PropertyForm = () => {
           />}
           {gemeloFase === 'listo' && gemeloConfig && gemeloJob && <div className="tasacion__gemelo-listo">
             <p className="tasacion__verificacion tasacion__verificacion--ok">✓ Modelo 3D generado — se vincula a esta tasación al finalizar.</p>
-            <p className="tasacion__hint">{gemeloJob.motor === 'simular' ? 'Modelo de demostración.' : `Modelo real con ${gemeloJob.totalFotos} fotos.`}{gemeloJob.modeloBytes ? ` ${Math.round(gemeloJob.modeloBytes / 1024)} KB.` : ''} El modelo vive 1 hora en el servicio 3D.</p>
+            <p className="tasacion__hint">{gemeloJob.motor === 'simular' ? 'Modelo de demostración.' : gemeloJob.motor === 'externo' ? 'Modelo importado de un escaneo externo.' : `Modelo real con ${gemeloJob.totalFotos} fotos.`}{gemeloJob.modeloBytes ? ` ${Math.round(gemeloJob.modeloBytes / 1024)} KB.` : ''} El modelo vive 1 hora en el servicio 3D.</p>
             <div className="tasacion__acciones-gemelo">
               <Button type="button" variant="outline" onClick={() => setVerModelo(v => !v)}>{verModelo ? 'Ocultar modelo 3D' : 'Ver el modelo 3D'}</Button>
               <Button type="button" variant="ghost" onClick={() => { setGemeloJob(null); setGemeloJobId(null); setGemeloFase('subir'); }}>Generar de nuevo</Button>

@@ -59,7 +59,7 @@ function escribirPLY(ruta, formato) {
   fs.writeFileSync(ruta, Buffer.concat([header, bytes]));
 }
 
-function comprobarRoundTrip(nombre) {
+async function comprobarRoundTrip(nombre) {
   const ply = path.join(tmp, `${nombre}.ply`);
   const obj = path.join(tmp, `${nombre}.obj`);
   const glb = path.join(tmp, `${nombre}.glb`);
@@ -71,7 +71,7 @@ function comprobarRoundTrip(nombre) {
   expect(objTexto.split('\n').filter((l) => l.startsWith('f ')).length).toBe(2);
   expect(objTexto).toContain('1.0000 0.0000 0.0000'); // color rojo del primer vértice
 
-  const res = objAGlb(obj, glb);
+  const res = await objAGlb(obj, glb);
   expect(res.vertices).toBe(4);
   expect(res.triangulos).toBe(2);
 
@@ -86,15 +86,15 @@ function comprobarRoundTrip(nombre) {
 }
 
 describe('plyAObj + objAGlb (formato COLMAP)', () => {
-  it('convierte un PLY binario little-endian correctamente', () => {
-    comprobarRoundTrip('binario');
+  it('convierte un PLY binario little-endian correctamente', async () => {
+    await comprobarRoundTrip('binario');
   });
 
-  it('convierte un PLY ascii correctamente', () => {
-    comprobarRoundTrip('ascii');
+  it('convierte un PLY ascii correctamente', async () => {
+    await comprobarRoundTrip('ascii');
   });
 
-  it('maneja CRLF en la cabecera (Windows)', () => {
+  it('maneja CRLF en la cabecera (Windows)', async () => {
     const ply = path.join(tmp, 'crlf.ply');
     const header = CABECERA({ formato: 'binary_little_endian' }).replaceAll('\n', '\r\n');
     const bytes = Buffer.alloc(VERTICES.length * 15 + CARAS.length * 13);
@@ -119,11 +119,11 @@ describe('plyAObj + objAGlb (formato COLMAP)', () => {
     const obj = path.join(tmp, 'crlf.obj');
     const glb = path.join(tmp, 'crlf.glb');
     plyAObj(ply, obj);
-    const res = objAGlb(obj, glb);
+    const res = await objAGlb(obj, glb);
     expect(res.vertices).toBe(4);
   });
 
-  it('un PLY solo con puntos (nube sin caras) falla con mensaje claro', () => {
+  it('un PLY solo con puntos (nube sin caras) falla con mensaje claro', async () => {
     const ply = path.join(tmp, 'puntos.ply');
     const header =
       'ply\nformat binary_little_endian 1.0\nelement vertex 4\n' +
@@ -136,6 +136,6 @@ describe('plyAObj + objAGlb (formato COLMAP)', () => {
     const obj = path.join(tmp, 'puntos.obj');
     const glb = path.join(tmp, 'puntos.glb');
     plyAObj(ply, obj); // no debe tirar: el OBJ queda solo con vértices
-    expect(() => objAGlb(obj, glb)).toThrow(/sin caras/);
+    await expect(objAGlb(obj, glb)).rejects.toThrow(/sin caras/);
   });
 });

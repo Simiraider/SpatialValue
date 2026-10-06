@@ -29,8 +29,9 @@ export function crearApp(opciones = {}) {
     next();
   });
 
-  // Body JSON solo para metadata (los archivos van por multipart).
-  app.use(express.json({ limit: '256kb' }));
+  // Body JSON solo para metadata; files van por multipart (capacidad de 5 MB para
+  // headers + campos extras; el size real de fotos/video está con multer en routes/jobs.js).
+  app.use(express.json({ limit: '5mb' }));
 
   // Root informativo.
   app.get('/', (req, res) => {

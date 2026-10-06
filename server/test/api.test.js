@@ -12,6 +12,21 @@ const PNG = Buffer.from(
   'base64'
 );
 
+// GLB mínimo válido: cabecera glTF 2.0 + chunk JSON con el asset.
+const GLB = (() => {
+  const json = Buffer.from(JSON.stringify({ asset: { version: '2.0', generator: 'test' } }));
+  const pad = (4 - (json.length % 4)) % 4;
+  const jsonPadded = Buffer.concat([json, Buffer.alloc(pad, 0x20)]);
+  const header = Buffer.alloc(12);
+  header.write('glTF', 0, 'ascii');
+  header.writeUInt32LE(2, 4);
+  header.writeUInt32LE(12 + 8 + jsonPadded.length, 8);
+  const chunk = Buffer.alloc(8);
+  chunk.writeUInt32LE(jsonPadded.length, 0);
+  chunk.writeUInt32LE(0x4e4f534a, 4); // 'JSON'
+  return Buffer.concat([header, chunk, jsonPadded]);
+})();
+
 let app;
 let dir;
 
@@ -161,6 +176,34 @@ describe('API del worker', () => {
     const modelo = await request(app2).get(`/api/jobs/${res2.body.id}/modelo`);
     expect(modelo.status).toBe(409);
     fs.rmSync(dir2, { recursive: true, force: true });
+  });
+
+  it('POST /api/modelos con .glb válido → trabajo listo con motor externo', async () => {
+    const glb = GLB;
+    const res = await request(app)
+      .post('/api/modelos')
+      .field('titulo', 'Escaneo Scaniverse')
+      .attach('modelo', glb, 'escaneo.glb');
+    expect(res.status).toBe(201);
+    expect(res.body.estado).toBe('listo');
+    expect(res.body.motor).toBe('externo');
+    expect(res.body.modeloUrl).toContain('/api/jobs/');
+    expect(res.body.modeloBytes).toBe(glb.length);
+
+    // El modelo se descarga como cualquier otro.
+    const descarga = await request(app).get(res.body.modeloUrl);
+    expect(descarga.status).toBe(200);
+    expect(descarga.headers['content-type']).toContain('model/gltf-binary');
+    expect(Number(descarga.headers['content-length'])).toBe(glb.length);
+  });
+
+  it('POST /api/modelos rechaza un archivo que no es GLB → 400', async () => {
+    const res = await request(app)
+      .post('/api/modelos')
+      .field('titulo', 'No es un glb')
+      .attach('modelo', Buffer.from('esto definitivamente no es un glb'), 'falso.glb');
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('GLB');
   });
 
   it('GET /api/jobs (admin) requiere token cuando está configurado', async () => {

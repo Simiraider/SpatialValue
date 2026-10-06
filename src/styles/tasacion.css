@@ -95,6 +95,17 @@
 .tasacion__aviso-gemelo p { margin: 0; }
 .tasacion__acciones-gemelo { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
 .tasacion__gemelo-listo { display: grid; gap: .75rem; margin-top: 1rem; }
+.tasacion__gemelo-modos { display: grid; gap: 1rem; }
+.tasacion__gemelo-ambientes { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.tasacion__gemelo-ambientes-label { width: 100%; font-size: .8125rem; font-weight: 600; color: #334155; }
+.tasacion__chip { border: 1px solid #cbd5e1; background: #fff; color: #334155; border-radius: 999px; padding: .4rem .9rem; font-size: .8125rem; cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
+.tasacion__chip:hover { border-color: #06b6d4; color: #0e7490; }
+.tasacion__chip--activa { background: #0891b2; border-color: #0891b2; color: #fff; }
+.tasacion__guia { border: 1px solid #e2e8f0; border-radius: 1rem; padding: .75rem 1rem; font-size: .875rem; color: #475569; background: #f8fafc; }
+.tasacion__guia summary { cursor: pointer; font-weight: 600; color: #0e7490; }
+.tasacion__guia ol { margin: .6rem 0 .4rem; padding-left: 1.25rem; display: grid; gap: .3rem; }
+.tasacion__guia-nota { margin: .4rem 0 0; font-size: .8125rem; color: #64748b; }
+.tasacion__gemelo-externo { display: grid; gap: .75rem; }
 
 .tasacion__acciones { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid #cbd5e1; }
 .tasacion__acciones button { min-width: 140px; border-radius: 1rem; }
