@@ -1,7 +1,3 @@
-/**
- * Configuración central del worker.
- * Todas las opciones vienen de variables de entorno con defaults seguros.
- */
 
 const numero = (valor, defecto) => {
   const n = Number(valor);
@@ -11,7 +7,7 @@ const numero = (valor, defecto) => {
 const crearConfig = (env = process.env) => {
   const minFotos = Math.round(numero(env.GEMELO_MIN_FOTOS, 5));
   const maxFotos = Math.round(numero(env.GEMELO_MAX_FOTOS, 100));
-  const maxVideoMb = Math.max(300, Math.round(numero(env.GEMELO_MAX_VIDEO_MB, 500))); // a 500 MB de límite de video (multer + Express JSON en app.js también listo)
+  const maxVideoMb = Math.max(300, Math.round(numero(env.GEMELO_MAX_VIDEO_MB, 500))); 
   const ttlHoras = numero(env.GEMELO_TTL_HORAS, 1);
   const maxJobsPorIp = Math.round(numero(env.GEMELO_MAX_JOBS_POR_IP, 5));
   const velocidadSimulacionMs = Math.round(numero(env.GEMELO_SIM_VELOCIDAD_MS, 1200));
@@ -31,7 +27,7 @@ const crearConfig = (env = process.env) => {
     workerToken: env.WORKER_TOKEN || '',
     rateLimit: {
       max: maxJobsPorIp,
-      windowMs: 10 * 60 * 1000, // 10 minutos
+      windowMs: 10 * 60 * 1000, 
     },
     s3: {
       bucket: env.S3_BUCKET || '',
@@ -41,8 +37,18 @@ const crearConfig = (env = process.env) => {
       secretAccessKey: env.S3_SECRET_ACCESS_KEY || '',
     },
     velocidadSimulacionMs,
-    // Debug: si está en 1, las fotos/frames NO se borran al terminar.
     keepFotos: env.GEMELO_KEEP_FOTOS === '1' || env.GEMELO_KEEP_FOTOS === 'true',
+    kaggle: {
+      bin: env.KAGGLE_BIN || 'kaggle',
+      username: env.KAGGLE_USERNAME || '',
+      key: env.KAGGLE_KEY || '',
+      apiToken: env.KAGGLE_API_TOKEN || '',
+    },    dense: {
+      habilitado: env.GEMELO_DENSE === 'kaggle',
+      kernelId: env.GEMELO_KAGGLE_KERNEL_ID || '',
+      datasetSlug: env.GEMELO_KAGGLE_DATASET || '',
+      timeoutMs: numero(env.GEMELO_DENSE_TIMEOUT_MS, 90 * 60 * 1000),
+    },
   };
 
   if (!['auto', 'colmap', 'simular'].includes(config.modo)) {

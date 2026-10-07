@@ -39,7 +39,6 @@ export function clearUser(): void {
 }
 
 export function getUsuarioId(): string | null {
-  // La cookie viaja firmada como `id.mac`; nos quedamos solo con el id.
   const cookie = getCookie('usuario_id');
   if (cookie) return cookie.split('.')[0] || null;
   return getUser()?.id || null;

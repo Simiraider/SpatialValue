@@ -41,8 +41,6 @@ export const Visor3D = ({ config, job, onNuevo }: Props) => {
 
     (async () => {
       try {
-        // Se importa el build precompilado del paquete (autocontenido) porque
-        // la entrada por defecto (lib/model-viewer.js) puede romperse con Vite 7.
         await import('@google/model-viewer/dist/model-viewer-module.min.js');
         if (desmontado || !contenedorRef.current) return;
         visor = document.createElement('model-viewer');
@@ -52,10 +50,13 @@ export const Visor3D = ({ config, job, onNuevo }: Props) => {
         visor.setAttribute('auto-rotate', '');
         visor.setAttribute('shadow-intensity', '1');
         visor.setAttribute('environment-image', 'neutral');
+        visor.setAttribute('tone-mapping', 'neutral');
+        visor.setAttribute('exposure', '1.1');
         visor.setAttribute('ar', '');
         visor.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
         visor.style.width = '100%';
         visor.style.height = '100%';
+        visor.style.backgroundColor = 'transparent';
         visor.addEventListener('load', () => !desmontado && setCargando(false));
         visor.addEventListener('error', () =>
           !desmontado && setError('No se pudo cargar el modelo 3D. Probá descargarlo directamente.')
@@ -99,7 +100,11 @@ export const Visor3D = ({ config, job, onNuevo }: Props) => {
         <h2 className="text-xl font-bold text-slate-800">Tu gemelo digital</h2>
         <p className="mt-1 text-sm text-slate-500">
           {job.titulo || 'Modelo de la propiedad'} ·{' '}
-          {job.motor === 'simular' ? 'modelo de demostración' : `modelo ${job.totalFotos} fotos`}
+          {job.motor === 'simular'
+            ? 'modelo de demostración'
+            : job.esVideo
+              ? `modelo de video (${job.nFotos || 0} cuadros)`
+              : `modelo ${job.totalFotos} fotos`}
           {job.modeloBytes ? ` · ${formatearBytes(job.modeloBytes)}` : ''}
         </p>
       </div>

@@ -1,50 +1,33 @@
-/**
- * Escritor de archivos glTF Binary (.glb) sin dependencias.
- * Genera un GLB minimalista y válido con malla triangular:
- * POSITION + NORMAL + COLOR_0 (opcional) + índices.
- *
- * Es la base del simulador y del convertidor OBJ→GLB del worker.
- */
 
-// ComponentType glTF
 const FLOAT = 5126;
 const UNSIGNED_SHORT = 5123;
 const UNSIGNED_INT = 5125;
 
-// Tipos de chunk GLB
-const CHUNK_JSON = 0x4e4f534a; // "JSON"
-const CHUNK_BIN = 0x004e4942;  // "BIN\0"
+const CHUNK_JSON = 0x4e4f534a; 
+const CHUNK_BIN = 0x004e4942;  
 
 const alinear4 = (n) => Math.ceil(n / 4) * 4;
 
-/**
- * @param {object} mesh
- * @param {number[]} mesh.positions  [x,y,z,...] triplas
- * @param {number[]} mesh.normals    [nx,ny,nz,...]
- * @param {number[]} [mesh.colors]   [r,g,b,...] 0..1 (opcional)
- * @param {number[]} mesh.indices    triplas de índices de vértices
- * @param {string} [nombre]
- * @returns {Buffer} contenido del .glb
- */
 export function escribirGLB(mesh, nombre = 'modelo') {
-  const { positions, normals, colors, indices } = mesh;
+  const { positions, normals, colors, indices, mode = 4 } = mesh;
+  const esPuntos = mode === 0;
+
   if (!positions.length || positions.length % 3 !== 0) {
     throw new Error('Positions inválidas: deben ser triplas de floats');
   }
-  if (!normals.length || normals.length !== positions.length) {
-    throw new Error('Normals inválidas: deben tener la misma cantidad que positions');
+  if (!esPuntos && (!indices || indices.length === 0)) {
+    throw new Error('Faltan indices: una malla (mode 4) necesita triángulos');
   }
-  if (indices.length % 3 !== 0) {
+  if (!esPuntos && indices.length % 3 !== 0) {
     throw new Error('Indices inválidos: deben ser triplas');
+  }
+  if (normals && normals.length && normals.length !== positions.length) {
+    throw new Error('Normals inválidas: deben tener la misma cantidad que positions');
   }
 
   const nVertices = positions.length / 3;
   const usarUint32 = nVertices > 65535;
 
-  // ── BufferViews ────────────────────────────────────────────────────────────
-  // OJO: los offsets deben acumularse con byteLength (NO con length, que para
-  // un TypedArray es la cantidad de elementos). Este bug dejaba corruptos los
-  // bufferViews de NORMAL/COLOR/índices (offset en elementos en vez de bytes).
   const parts = [];
   const push = (data) => {
     const offset = parts.reduce((acc, p) => acc + p.byteLength, 0);
@@ -53,7 +36,10 @@ export function escribirGLB(mesh, nombre = 'modelo') {
   };
 
   const posOffset = push(Float32Array.from(positions));
-  const normOffset = push(Float32Array.from(normals));
+
+  const tieneNormales = !!(normals && normals.length);
+  const normOffset = tieneNormales ? push(Float32Array.from(normals)) : null;
+
   let colOffset = null;
   if (colors && colors.length) {
     if (colors.length !== positions.length) {
@@ -61,24 +47,26 @@ export function escribirGLB(mesh, nombre = 'modelo') {
     }
     colOffset = push(Float32Array.from(colors));
   }
-  const idxData = usarUint32 ? Uint32Array.from(indices) : Uint16Array.from(indices);
-  const idxOffset = push(idxData);
 
-  // Los offsets deben quedar alineados a 4 bytes; los Float32/Uint32 ya lo están.
+  let idxOffset = null;
+  let idxData = null;
+  if (!esPuntos) {
+    idxData = usarUint32 ? Uint32Array.from(indices) : Uint16Array.from(indices);
+    idxOffset = push(idxData);
+  }
+
   const binByteLength = parts.reduce((acc, p) => acc + p.byteLength, 0);
 
-  const view = (offset, length, target) => ({
-    buffer: 0,
-    byteOffset: offset,
-    byteLength: length,
-    target,
-  });
   const ARRAY_BUFFER = 34962;
   const ELEMENT_ARRAY_BUFFER = 34963;
 
-  // Bounds del POSITION (requeridos por la spec glTF). Se calculan con un solo
-  // barrido: los spread de Math.min(...) revientan la pila con mallas grandes
-  // (las de COLMAP superan fácilmente 100k vértices).
+  const bufferViews = [];
+  const accessors = [];
+  const addView = (offset, length, target) => {
+    bufferViews.push({ buffer: 0, byteOffset: offset, byteLength: length, target });
+    return bufferViews.length - 1;
+  };
+
   const minimo = [Infinity, Infinity, Infinity];
   const maximo = [-Infinity, -Infinity, -Infinity];
   for (let i = 0; i < positions.length; i += 3) {
@@ -89,63 +77,49 @@ export function escribirGLB(mesh, nombre = 'modelo') {
     }
   }
 
-  const bufferViews = [
-    view(posOffset, positions.length * 4, ARRAY_BUFFER),
-    view(normOffset, normals.length * 4, ARRAY_BUFFER),
-  ];
-  const accessors = [
-    {
-      bufferView: 0,
-      componentType: FLOAT,
-      count: nVertices,
-      type: 'VEC3',
-      min: minimo,
-      max: maximo,
-    },
-    {
-      bufferView: 1,
-      componentType: FLOAT,
-      count: nVertices,
-      type: 'VEC3',
-    },
-  ];
-
-  let colorAccessor = null;
-  if (colOffset !== null) {
-    bufferViews.push(view(colOffset, colors.length * 4, ARRAY_BUFFER));
-    accessors.push({
-      bufferView: 2,
-      componentType: FLOAT,
-      count: nVertices,
-      type: 'VEC3',
-    });
-    colorAccessor = 2;
-  }
-
-  bufferViews.push(view(idxOffset, idxData.byteLength, ELEMENT_ARRAY_BUFFER));
+  const posBV = addView(posOffset, positions.length * 4, ARRAY_BUFFER);
   accessors.push({
-    bufferView: bufferViews.length - 1,
-    componentType: usarUint32 ? UNSIGNED_INT : UNSIGNED_SHORT,
-    count: indices.length,
-    type: 'SCALAR',
+    bufferView: posBV,
+    componentType: FLOAT,
+    count: nVertices,
+    type: 'VEC3',
+    min: minimo,
+    max: maximo,
   });
 
-  const attributes = { POSITION: 0, NORMAL: 1 };
-  if (colorAccessor !== null) attributes.COLOR_0 = colorAccessor;
+  const attributes = { POSITION: 0 };
+
+  if (normOffset !== null) {
+    const bv = addView(normOffset, normals.length * 4, ARRAY_BUFFER);
+    accessors.push({ bufferView: bv, componentType: FLOAT, count: nVertices, type: 'VEC3' });
+    attributes.NORMAL = accessors.length - 1;
+  }
+
+  if (colOffset !== null) {
+    const bv = addView(colOffset, colors.length * 4, ARRAY_BUFFER);
+    accessors.push({ bufferView: bv, componentType: FLOAT, count: nVertices, type: 'VEC3' });
+    attributes.COLOR_0 = accessors.length - 1;
+  }
+
+  const primitive = { attributes, material: 0, mode };
+
+  if (idxOffset !== null) {
+    const bv = addView(idxOffset, idxData.byteLength, ELEMENT_ARRAY_BUFFER);
+    accessors.push({
+      bufferView: bv,
+      componentType: usarUint32 ? UNSIGNED_INT : UNSIGNED_SHORT,
+      count: indices.length,
+      type: 'SCALAR',
+    });
+    primitive.indices = accessors.length - 1;
+  }
 
   const gltf = {
     asset: { version: '2.0', generator: 'spatial-value-gemelo-worker' },
     scene: 0,
     scenes: [{ nodes: [0] }],
     nodes: [{ mesh: 0, name: nombre }],
-    meshes: [
-      {
-        name: nombre,
-        primitives: [
-          { attributes, indices: accessors.length - 1, material: 0, mode: 4 },
-        ],
-      },
-    ],
+    meshes: [{ name: nombre, primitives: [primitive] }],
     materials: [
       {
         name: 'malla',
@@ -165,7 +139,7 @@ export function escribirGLB(mesh, nombre = 'modelo') {
   const jsonBuffer = Buffer.from(JSON.stringify(gltf), 'utf8');
   const jsonChunk = Buffer.alloc(alinear4(jsonBuffer.length));
   jsonBuffer.copy(jsonChunk);
-  jsonChunk.fill(0x20, jsonBuffer.length); // padding con espacios
+  jsonChunk.fill(0x20, jsonBuffer.length); 
 
   const binChunk = Buffer.alloc(alinear4(binByteLength));
   let cursor = 0;
@@ -176,9 +150,9 @@ export function escribirGLB(mesh, nombre = 'modelo') {
 
   const total = 12 + 8 + jsonChunk.length + 8 + binChunk.length;
   const glb = Buffer.alloc(total);
-  glb.writeUInt32LE(0x46546c67, 0); // "glTF"
-  glb.writeUInt32LE(2, 4);          // versión
-  glb.writeUInt32LE(total, 8);      // largo total
+  glb.writeUInt32LE(0x46546c67, 0); 
+  glb.writeUInt32LE(2, 4);          
+  glb.writeUInt32LE(total, 8);      
   glb.writeUInt32LE(jsonChunk.length, 12);
   glb.writeUInt32LE(CHUNK_JSON, 16);
   jsonChunk.copy(glb, 20);
@@ -188,7 +162,6 @@ export function escribirGLB(mesh, nombre = 'modelo') {
   return glb;
 }
 
-/** Parsea el header y el JSON de un .glb (para tests/validación). */
 export function leerGLB(buffer) {
   if (buffer.length < 20) throw new Error('GLB demasiado corto');
   const magic = buffer.readUInt32LE(0);

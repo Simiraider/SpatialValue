@@ -493,12 +493,6 @@ export const PropertyForm = () => {
               <Button type="button" variant="secondary" onClick={activarModelo3d}>Reintentar conexión</Button>
             </div>
           </div>}
-          {gemeloFase === 'subir' && gemeloConfig && <SubidaFotos
-            config={gemeloConfig}
-            tituloInicial={`${data.tipoUnidad} en ${data.direccion}`}
-            propiedad={esEdicion ? String(edicion!.id!) : null}
-            onTrabajoCreado={(id) => { setGemeloJobId(id); setGemeloFase('progreso'); }}
-          />}
           {gemeloFase === 'progreso' && gemeloConfig && gemeloJobId && <BarraProgreso
             config={gemeloConfig}
             jobId={gemeloJobId}

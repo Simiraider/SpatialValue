@@ -5,7 +5,6 @@ import path from 'node:path';
 import { generarModeloDemo } from '../src/services/simulador.js';
 import { leerGLB } from '../src/utils/glb.js';
 
-// Lee los bounds reales del POSITION de un GLB en disco.
 function boundsGLB(archivo) {
   const buf = fs.readFileSync(archivo);
   const { json, jsonLength } = leerGLB(buf);
@@ -58,15 +57,12 @@ describe('generarModeloDemo', () => {
   it('está orientado Y-up: piso en y=0 y volumen hacia arriba (regresión del plano parado)', () => {
     const res = generarModeloDemo({ seed: 'yup', fotos: 22, outputDir: tmp + '/e' });
     const { min, max } = boundsGLB(res.archivo);
-    // Y es el eje vertical (glTF): el piso toca y=0 y las paredes suben.
     expect(min[1]).toBeGreaterThanOrEqual(-0.01);
     expect(max[1]).toBeGreaterThan(1);
-    // Centrado en el plano del piso.
     expect(min[0]).toBeLessThan(0);
     expect(max[0]).toBeGreaterThan(0);
     expect(min[2]).toBeLessThan(0);
     expect(max[2]).toBeGreaterThan(0);
-    // El piso es mucho más ancho que alto (maqueta, no una pared).
     expect(max[0] - min[0]).toBeGreaterThan(3 * (max[1] - min[1]));
   });
 });

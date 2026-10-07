@@ -4,7 +4,6 @@ import { resolverUsuarioId } from '../../Backend/sesion.js';
 
 export async function GET({ request }) {
   try {
-    // Identidad solo desde la cookie firmada: sin sesión no se devuelven datos.
     const usuarioActual = resolverUsuarioId(request);
 
     if (!usuarioActual || usuarioActual.trim() === '') {

@@ -1,14 +1,3 @@
-/**
- * API REST del worker de gemelos digitales.
- *
- *  POST   /api/jobs             crear trabajo + subir fotos/video (multipart)
- *  POST   /api/modelos          subir un .glb ya escaneado (Scaniverse/Polycam/etc.)
- *  GET    /api/jobs/:id         estado y progreso del trabajo
- *  GET    /api/jobs/:id/modelo  descargar el .glb (cuando está listo)
- *  DELETE /api/jobs/:id         cancelar y borrar el trabajo
- *  GET    /api/jobs             listar recientes (requiere token, admin)
- *  GET    /api/healthz          salud del servicio
- */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,6 +7,7 @@ import { calidadPorFotos } from '../services/confianza.js';
 import { tiempoEstimadoSeg } from '../services/tiempo.js';
 import { colmapDisponible } from '../services/colmap.js';
 import { ffmpegDisponible } from '../services/ffmpeg.js';
+import { kaggleDisponible } from '../services/nube/kaggle.js';
 import { guardarModelo } from '../services/storage.js';
 import { logger } from '../utils/logger.js';
 
@@ -40,14 +30,12 @@ function parsearOpciones(raw) {
 export function crearRouter({ config, estado, pipeline }) {
   const router = Router();
 
-  // Token opcional para endpoints de administración.
   const exigeToken = (req, res, next) => {
     if (!config.workerToken) return next();
     if (req.get('X-Worker-Token') === config.workerToken) return next();
     return res.status(401).json({ error: 'Token inválido' });
   };
 
-  // Límite de creación de trabajos por IP (anti abuso, simple).
   const limites = new Map();
   const limitador = (req, res, next) => {
     if (config.rateLimit.max <= 0) return next();
@@ -87,7 +75,6 @@ export function crearRouter({ config, estado, pipeline }) {
     },
   });
 
-  // ── Crear trabajo ──────────────────────────────────────────────────────────
   router.post('/jobs', limitador, upload.array('fotos', config.maxFotos), (req, res) => {
     try {
       const archivos = req.files || [];
@@ -128,7 +115,6 @@ export function crearRouter({ config, estado, pipeline }) {
         modeloStorage: null,
       });
 
-      // Mover los archivos del directorio temporal al workspace del trabajo.
       const inputDir = path.join(estado.dirDe(job.id), 'input');
       fs.mkdirSync(inputDir, { recursive: true });
       for (const f of archivos) {
@@ -138,7 +124,6 @@ export function crearRouter({ config, estado, pipeline }) {
       try {
         fs.rmdirSync(req.uploadDir);
       } catch {
-        /* no vacío */
       }
 
       pipeline.encolar(job);
@@ -159,7 +144,6 @@ export function crearRouter({ config, estado, pipeline }) {
     }
   });
 
-  // ── Estado del trabajo ─────────────────────────────────────────────────────
   router.get('/jobs/:id', (req, res) => {
     const job = estado.publico(req.params.id);
     if (!job) {
@@ -168,7 +152,6 @@ export function crearRouter({ config, estado, pipeline }) {
     res.json(job);
   });
 
-  // ── Descarga del modelo ────────────────────────────────────────────────────
   router.get('/jobs/:id/modelo', async (req, res) => {
     const job = estado.obtener(req.params.id);
     if (!job) return res.status(404).json({ error: 'Trabajo no encontrado.' });
@@ -176,7 +159,6 @@ export function crearRouter({ config, estado, pipeline }) {
       return res.status(409).json({ error: 'El modelo aún no está listo.', estado: job.estado });
     }
     if (job.modeloStorage === 's3') {
-      // URL firmada ya guardada en el trabajo.
       return res.redirect(job.modeloUrl);
     }
     const glbPath = path.join(estado.dirDe(job.id), 'output', 'modelo.glb');
@@ -193,17 +175,12 @@ export function crearRouter({ config, estado, pipeline }) {
     fs.createReadStream(glbPath).pipe(res);
   });
 
-  // ── Cancelar / borrar ──────────────────────────────────────────────────────
-  // ── Subir un modelo 3D externo (Scaniverse, Polycam, Luma, etc.) ────────
-  // Crea un trabajo ya 'listo' con motor 'externo': sin COLMAP ni pipeline,
-  // el .glb queda servido como cualquier otro modelo del worker.
   router.post('/modelos', limitador, upload.single('modelo'), async (req, res) => {
     try {
       const archivo = req.file;
       if (!archivo) {
         return res.status(400).json({ error: 'No se recibió ningún archivo .glb.' });
       }
-      // Validar que sea un GLB real: magic "glTF" + versión 2 en los primeros bytes.
       const fd = await fs.promises.open(archivo.path, 'r');
       try {
         const { buffer, bytesRead } = await fd.read(Buffer.alloc(12), 0, 12, 0);
@@ -237,7 +214,6 @@ export function crearRouter({ config, estado, pipeline }) {
       try {
         fs.rmdirSync(req.uploadDir);
       } catch {
-        /* no vacío */
       }
 
       const storage = await guardarModelo(config, job.id, glbPath);
@@ -262,19 +238,16 @@ export function crearRouter({ config, estado, pipeline }) {
   });
 
   router.delete('/jobs/:id', (req, res) => {
-    // Mata procesos hijos en vuelo (ffmpeg/COLMAP) antes de borrar el workspace.
     pipeline.detener(req.params.id);
     const eliminado = estado.eliminar(req.params.id);
     if (!eliminado) return res.status(404).json({ error: 'Trabajo no encontrado.' });
     res.status(204).end();
   });
 
-  // ── Listar recientes (admin) ───────────────────────────────────────────────
   router.get('/jobs', exigeToken, (req, res) => {
     res.json({ trabajos: estado.listarRecientes(Number(req.query.limite) || 20) });
   });
 
-  // ── Salud ──────────────────────────────────────────────────────────────────
   router.get('/healthz', (req, res) => {
     res.json({
       ok: true,
@@ -282,6 +255,8 @@ export function crearRouter({ config, estado, pipeline }) {
       modo: config.modo,
       colmapInstalado: colmapDisponible(config.colmapBin),
       ffmpegInstalado: ffmpegDisponible(config.ffmpegBin),
+      denseHabilitado: !!config.dense?.habilitado,
+      kaggleListo: kaggleDisponible(config),
       minFotos: config.minFotos,
       maxFotos: config.maxFotos,
       ttlHoras: config.ttlHoras,

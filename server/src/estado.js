@@ -1,11 +1,3 @@
-/**
- * Registro de trabajos del worker.
- *
- * Sin base de datos (por diseño): el estado de cada trabajo vive en memoria
- * y se persiste a un archivo JSON por trabajo para sobrevivir reinicios
- * parciales. Las fotos y los modelos se guardan SOLO en el filesystem local
- * del worker y se eliminan al expirar el TTL.
- */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -29,7 +21,6 @@ export function crearEstado(config) {
     }
   };
 
-  /** Carga trabajos previos; los no terminados pasan a 'error' (servicio reiniciado). */
   const cargar = () => {
     fs.mkdirSync(dirJobs, { recursive: true });
     fs.mkdirSync(dirTmp, { recursive: true });
@@ -88,7 +79,6 @@ export function crearEstado(config) {
 
   const obtener = (id) => (trabajos.has(id) ? { ...trabajos.get(id) } : null);
 
-  /** Vista pública (sin rutas de filesystem). */
   const publico = (id) => {
     const job = obtener(id);
     if (!job) return null;
@@ -117,7 +107,6 @@ export function crearEstado(config) {
       try {
         fs.unlinkSync(rutaDe(id));
       } catch {
-        /* sin archivo */
       }
       trabajos.delete(id);
       return true;
@@ -139,7 +128,6 @@ export function crearEstado(config) {
         borrados++;
       }
     }
-    // Limpia subidas huérfanas (requests que fallaron a mitad de camino).
     let tmpViejos = 0;
     try {
       for (const d of fs.readdirSync(dirTmp)) {
@@ -151,7 +139,6 @@ export function crearEstado(config) {
         }
       }
     } catch {
-      /* sin tmp */
     }
     if (borrados || tmpViejos) {
       logger.info(`[limpieza] ${borrados} trabajos y ${tmpViejos} subidas huérfanas eliminados`);

@@ -1,23 +1,3 @@
-/**
- * Ejecución de COLMAP (structure-from-motion) por etapas.
- *
- * Pipeline:
- *   1. feature_extractor   – detecta SIFT features en cada imagen
- *   2. exhaustive_matcher   – busca correspondencias entre todos los pares
- *   3. mapper               – reconstrucción sparse (SfM incremental)
- *   4. model_converter      – exporta nube de puntos a PLY
- *
- * A diferencia del monolítico `automatic_reconstructor`, este pipeline:
- *   - Usa min_model_size=2 (no 10) → acepta reconstrucciones parciales
- *   - Omite la fase densa (requiere GPU CUDA no disponible en este entorno)
- *   - Da progreso granular por etapa
- *   - Permite debuggear cada paso por separado
- *
- * El resultado es un PLY con la nube de puntos 3D coloreada.
- * mesh.js lo convierte a .glb (triangulando la nube si no hay caras).
- *
- * Devuelve { promesa, detener }: `detener()` mata el proceso hijo en vuelo.
- */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -31,16 +11,11 @@ const CALIDAD_SIFT = {
   auto:        { maxImageSize: 1600, maxFeatures: 8192 },
 };
 
-/** ¿La salida parece de COLMAP? (`colmap help` imprime "COLMAP x.y.z ..."). */
 export function salidaPareceColmap(salida) {
   return /COLMAP/i.test(String(salida || ''));
 }
 
 export function colmapDisponible(colmapBin) {
-  // COLMAP >= 3.11 no reconoce `--version` (usa `colmap help`, que imprime
-  // "COLMAP x.y.z" en stdout y termina con 0). `--version` queda como respaldo
-  // para versiones viejas. Detección por contenido real (no solo exit code)
-  // para no confundir binarios que responden 0 a cualquier subcomando.
   try {
     const help = spawnSync(colmapBin, ['help'], { encoding: 'utf8', timeout: 10000 });
     if (salidaPareceColmap(help.stdout) || salidaPareceColmap(help.stderr)) return true;
@@ -51,19 +26,7 @@ export function colmapDisponible(colmapBin) {
   }
 }
 
-// ── Ejecución de subcomandos ──────────────────────────────────────────────────
 
-/**
- * Ejecuta un subcomando de COLMAP como proceso hijo.
- * @param {string} colmapBin
- * @param {string} subcomando  p.ej. 'feature_extractor'
- * @param {string[]} args      argumentos del subcomando
- * @param {object} opts
- * @param {{proc: ChildProcess|null}} opts.ref  referencia mutable al proceso (para kill)
- * @param {(m:string)=>void} [opts.onLog]
- * @param {number} [opts.timeoutMs]
- * @returns {Promise<{log: string[]}>}
- */
 function correrEtapa(colmapBin, subcomando, args, { ref, onLog, timeoutMs = 30 * 60 * 1000 }) {
   return new Promise((resolve, reject) => {
     const fullArgs = [subcomando, ...args];
@@ -116,13 +79,7 @@ function correrEtapa(colmapBin, subcomando, args, { ref, onLog, timeoutMs = 30 *
   });
 }
 
-// ── Selección del mejor modelo sparse ─────────────────────────────────────────
 
-/**
- * Elige el modelo sparse con más puntos 3D reconstruidos.
- * COLMAP puede generar múltiples sub-modelos si el grafo de matching está
- * fragmentado; elegimos el más grande (más puntos = mejor reconstrucción).
- */
 export function elegirMejorModelo(sparsePath) {
   if (!fs.existsSync(sparsePath)) return null;
 
@@ -131,7 +88,6 @@ export function elegirMejorModelo(sparsePath) {
 
   if (!modelos.length) return null;
 
-  // El modelo con el archivo points3D.bin más grande tiene más puntos 3D.
   let mejor = null;
   let mejorTam = -1;
   for (const m of modelos) {
@@ -143,29 +99,29 @@ export function elegirMejorModelo(sparsePath) {
         mejor = path.join(sparsePath, m);
       }
     } catch {
-      // Sin points3D.bin → modelo vacío, ignorar
     }
   }
 
   return mejor;
 }
 
-// ── Pipeline principal ────────────────────────────────────────────────────────
 
-/**
- * @param {string} colmapBin
- * @param {object} opciones
- * @param {string} opciones.imagePath
- * @param {string} opciones.workspacePath
- * @param {string} [opciones.calidad]
- * @param {(p:number, m:string)=>void} [opciones.onProgreso]
- * @param {(m:string)=>void} [opciones.onLog]
- * @param {number} [opciones.timeoutMs]
- * @returns {{ promesa: Promise<{ mallaPly: string|null, log: string[], imagenesRegistradas?: number }>, detener: () => void }}
- */
+export function elegirMatching(esVideo, dbPath) {
+  if (esVideo) {
+    return {
+      subcomando: 'sequential_matcher',
+      args: ['--database_path', dbPath, '--SequentialMatching.overlap', '10'],
+    };
+  }
+  return {
+    subcomando: 'exhaustive_matcher',
+    args: ['--database_path', dbPath, '--SiftMatching.guided_matching', '1'],
+  };
+}
+
 export function ejecutarColmap(
   colmapBin,
-  { imagePath, workspacePath, calidad = 'equilibrada', onLog, onProgreso, timeoutMs = 3 * 3600 * 1000 }
+  { imagePath, workspacePath, calidad = 'equilibrada', esVideo = false, onLog, onProgreso, timeoutMs = 3 * 3600 * 1000 }
 ) {
   const ref = { proc: null };
   let cancelado = false;
@@ -173,7 +129,7 @@ export function ejecutarColmap(
   const detener = () => {
     cancelado = true;
     if (ref.proc && ref.proc.exitCode === null) {
-      try { ref.proc.kill('SIGKILL'); } catch { /* ya terminó */ }
+      try { ref.proc.kill('SIGKILL'); } catch {  }
     }
   };
 
@@ -201,7 +157,6 @@ export function ejecutarColmap(
       }
     };
 
-    // ── Etapa 1: Feature extraction ───────────────────────────────────────
     chequearCancelado();
     if (onProgreso) onProgreso(30, 'Extrayendo características de las fotos (SIFT)…');
     const r1 = await correrEtapa(colmapBin, 'feature_extractor', [
@@ -210,22 +165,22 @@ export function ejecutarColmap(
       '--ImageReader.single_camera', '1',
       '--SiftExtraction.max_image_size', String(sift.maxImageSize),
       '--SiftExtraction.max_num_features', String(sift.maxFeatures),
-    ], { ref, onLog, timeoutMs: 180 * 60 * 1000 }); // 3h; video denso puede tardar
+    ], { ref, onLog, timeoutMs: 180 * 60 * 1000 }); 
     allLogs.push(...r1.log);
 
-    // ── Etapa 2: Exhaustive matching ──────────────────────────────────────
     chequearCancelado();
     chequearTimeout('matching');
-    if (onProgreso) onProgreso(42, 'Buscando coincidencias entre fotos…');
-    const r2 = await correrEtapa(colmapBin, 'exhaustive_matcher', [
-      '--database_path', dbPath,
-      '--SiftMatching.guided_matching', '1',
-    ], { ref, onLog, timeoutMs: 360 * 60 * 1000 }); // 6h; el matcher exhaustive puede ser muy lento en WSL sin GPU
+    const { subcomando: subcomandoMatch, args: argsMatch } = elegirMatching(esVideo, dbPath);
+    if (onProgreso) {
+      onProgreso(42, esVideo ? 'Emparejando cuadros consecutivos del video…' : 'Buscando coincidencias entre fotos…');
+    }
+    const r2 = await correrEtapa(colmapBin, subcomandoMatch, argsMatch, {
+      ref,
+      onLog,
+      timeoutMs: 360 * 60 * 1000,
+    });
     allLogs.push(...r2.log);
 
-    // ── Etapa 3: Mapper (SfM incremental) ─────────────────────────────────
-    // min_model_size=2 es EL cambio crítico: automatic_reconstructor usaba 10,
-    // descartando reconstrucciones válidas pero parciales de fotos de celular.
     chequearCancelado();
     chequearTimeout('mapper');
     if (onProgreso) onProgreso(55, 'Reconstruyendo geometría 3D…');
@@ -236,14 +191,12 @@ export function ejecutarColmap(
       '--Mapper.min_model_size', '2',
       '--Mapper.init_min_num_inliers', '15',
       '--Mapper.ba_global_max_num_iterations', '30',
-    ], { ref, onLog, timeoutMs: 180 * 60 * 1000 }); // 3h
+    ], { ref, onLog, timeoutMs: 180 * 60 * 1000 }); 
     allLogs.push(...r3.log);
 
-    // Contar imágenes registradas desde el log del mapper
     const imagenesRegistradas = r3.log.filter((l) => /Registering image #/.test(l)).length;
     logger.info(`[colmap] mapper registró ${imagenesRegistradas} imágenes`);
 
-    // ── Elegir mejor modelo sparse ────────────────────────────────────────
     const mejorModelo = elegirMejorModelo(sparsePath);
     if (!mejorModelo) {
       logger.warn('[colmap] mapper no produjo ningún modelo sparse');
@@ -252,7 +205,6 @@ export function ejecutarColmap(
 
     logger.info(`[colmap] mejor modelo sparse: ${mejorModelo}`);
 
-    // ── Etapa 4: Exportar a PLY ───────────────────────────────────────────
     chequearCancelado();
     chequearTimeout('exportar');
     if (onProgreso) onProgreso(72, 'Exportando nube de puntos 3D…');
@@ -272,7 +224,7 @@ export function ejecutarColmap(
     const stats = fs.statSync(plyPath);
     logger.info(`[colmap] PLY sparse exportado: ${stats.size} bytes (${imagenesRegistradas} imágenes registradas)`);
 
-    return { mallaPly: plyPath, log: allLogs, imagenesRegistradas };
+    return { mallaPly: plyPath, modeloSparse: mejorModelo, log: allLogs, imagenesRegistradas };
   })();
 
   return { promesa, detener };

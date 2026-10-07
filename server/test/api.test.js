@@ -6,13 +6,11 @@ import request from 'supertest';
 import { crearApp } from '../src/app.js';
 import crearConfig from '../src/config.js';
 
-// PNG 1x1 válido (mínimo posible).
 const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
   'base64'
 );
 
-// GLB mínimo válido: cabecera glTF 2.0 + chunk JSON con el asset.
 const GLB = (() => {
   const json = Buffer.from(JSON.stringify({ asset: { version: '2.0', generator: 'test' } }));
   const pad = (4 - (json.length % 4)) % 4;
@@ -23,7 +21,7 @@ const GLB = (() => {
   header.writeUInt32LE(12 + 8 + jsonPadded.length, 8);
   const chunk = Buffer.alloc(8);
   chunk.writeUInt32LE(jsonPadded.length, 0);
-  chunk.writeUInt32LE(0x4e4f534a, 4); // 'JSON'
+  chunk.writeUInt32LE(0x4e4f534a, 4); 
   return Buffer.concat([header, chunk, jsonPadded]);
 })();
 
@@ -127,9 +125,6 @@ describe('API del worker', () => {
   });
 
   it('un video sin ffmpeg termina en estado error (no queda trabado) y borra los archivos', async () => {
-    // En esta máquina ffmpeg no está instalado (healthz lo reporta). Si algún
-    // día lo está, los bytes basura del video igual hacen fallar la extracción:
-    // el resultado determinístico es estado 'error' + input eliminado.
     const creado = await request(app)
       .post('/api/jobs')
       .field('titulo', 'Video roto')
@@ -146,7 +141,6 @@ describe('API del worker', () => {
     }
     expect(estado?.estado).toBe('error');
     expect(estado?.error).toBeTruthy();
-    // Las fotos/video también se borran cuando el trabajo falla.
     const inputDir = path.join(dir, 'jobs', creado.body.id, 'input');
     expect(fs.existsSync(inputDir)).toBe(false);
   });
@@ -159,7 +153,6 @@ describe('API del worker', () => {
   });
 
   it('GET /api/jobs/:id/modelo antes de estar listo → 409', async () => {
-    // App dedicada con simulación lenta para poder "atrapar" el trabajo en curso.
     const dir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'gemelo-api2-'));
     const config2 = crearConfig({
       GEMELO_MODO: 'simular',
@@ -190,7 +183,6 @@ describe('API del worker', () => {
     expect(res.body.modeloUrl).toContain('/api/jobs/');
     expect(res.body.modeloBytes).toBe(glb.length);
 
-    // El modelo se descarga como cualquier otro.
     const descarga = await request(app).get(res.body.modeloUrl);
     expect(descarga.status).toBe(200);
     expect(descarga.headers['content-type']).toContain('model/gltf-binary');

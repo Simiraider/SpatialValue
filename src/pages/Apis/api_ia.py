@@ -277,6 +277,14 @@ def health():
         "modelo": "listo" if modelo_v4 is not None else "sin datos",
     }
 
+@app.get("/health")
+def health_check():
+    return {
+        "status": "ok",
+        "servicio": "API IA Estimador SpatialValue",
+        "modelo": "listo" if modelo_v4 is not None else "sin datos",
+    }
+
 
 @app.post("/estimar-precio")
 def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(default=None)):

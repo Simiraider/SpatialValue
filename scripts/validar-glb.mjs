@@ -1,16 +1,4 @@
 #!/usr/bin/env node
-/**
- * Validador profundo de un archivo .glb.
- *
- * Verifica:
- *  - Cabecera glTF 2.0 y largo total
- *  - Chunks JSON/BIN y buffer byteLength
- *  - Accesoors dentro de los bufferViews / del binario
- *  - min/max del POSITION contra los datos reales
- *  - Índices dentro del rango de vértices
- *
- * Uso: node scripts/validar-glb.mjs modelo.glb
- */
 
 import fs from 'node:fs';
 
@@ -23,7 +11,6 @@ if (!ruta) {
 const buf = fs.readFileSync(ruta);
 const fallas = [];
 
-// ── Cabecera ─────────────────────────────────────────────────────────────────
 const magic = buf.readUInt32LE(0);
 const version = buf.readUInt32LE(4);
 const total = buf.readUInt32LE(8);
@@ -34,7 +21,6 @@ if (magic !== 0x46546c67) {
 if (version !== 2) fallas.push(`versión ${version} (esperada 2)`);
 if (total !== buf.length) fallas.push(`largo declarado ${total} != real ${buf.length}`);
 
-// ── JSON + BIN ───────────────────────────────────────────────────────────────
 const jsonLen = buf.readUInt32LE(12);
 let json;
 try {
@@ -64,7 +50,6 @@ for (const acc of json.accessors || []) {
   if (bv.byteOffset + bytes > bin.length) fallas.push('accessor fuera del binario');
 }
 
-// ── min/max del POSITION contra los datos reales ─────────────────────────────
 if (json.accessors?.[0]) {
   const posAcc = json.accessors[0];
   const posBv = json.bufferViews[posAcc.bufferView];
@@ -80,8 +65,12 @@ if (json.accessors?.[0]) {
   }
 }
 
-// ── Índices dentro de rango ──────────────────────────────────────────────────
-const idxAcc = json.accessors[json.accessors.length - 1];
+const prim = json.meshes?.[0]?.primitives?.[0];
+const attrs = prim?.attributes || {};
+const tieneIndices = prim?.indices !== undefined;
+const esNube = prim?.mode === 0 || !tieneIndices;
+
+const idxAcc = tieneIndices ? json.accessors[prim.indices] : null;
 if (idxAcc) {
   const idxBv = json.bufferViews[idxAcc.bufferView];
   const idx =
@@ -96,12 +85,11 @@ if (idxAcc) {
   }
 }
 
-const prim = json.meshes?.[0]?.primitives?.[0];
-const attrs = prim?.attributes || {};
+const nTriangulos = esNube || !idxAcc ? 0 : idxAcc.count / 3;
 
 console.log(`\n📦 ${ruta}`);
 console.log(`   GLB v${version} · ${(buf.length / 1024).toFixed(1)} KB`);
-console.log(`   Vértices: ${nVertices} · Triángulos: ${idxAcc ? idxAcc.count / 3 : 0}`);
+console.log(`   Vértices: ${nVertices} · Triángulos: ${nTriangulos}${esNube ? ' (nube de puntos)' : ''}`);
 console.log(`   Bounds X: [${json.accessors[0].min[0].toFixed(2)}, ${json.accessors[0].max[0].toFixed(2)}]`);
 console.log(`   Bounds Z: [${json.accessors[0].min[2].toFixed(2)}, ${json.accessors[0].max[2].toFixed(2)}]`);
 console.log(`   Attributes: ${Object.keys(attrs).join(', ') || 'ninguno'}`);

@@ -1,16 +1,3 @@
-/**
- * Estimaciones de tiempo de procesamiento según cantidad de fotos.
- * Mantener sincronizado con src/lib/gemelo.ts (frontend).
- *
- * Modo fotogrametría real (COLMAP), puntos de referencia de la especificación:
- *   5 fotos  ≈ 2 min   (120 s)
- *   20 fotos ≈ 10 min  (600 s)
- *   50 fotos ≈ 40 min  (2400 s)
- *   100 fotos ≈ 90 min (5400 s)
- * Interpolación lineal por tramos entre esos puntos.
- *
- * Modo simulación: es rápido a propósito (15 s + 2 s por foto, tope 135 s).
- */
 
 const PUNTOS = [
   { fotos: 5, seg: 120 },
@@ -35,13 +22,6 @@ function interpolar(fotos) {
   return Math.round(ultimo.seg + (fotos - ultimo.fotos) * pendiente);
 }
 
-/**
- * @param {number} fotos cantidad de fotos (o frames extraídos)
- * @param {object} [opciones]
- * @param {boolean} [opciones.esVideo] un video se estima equivalente a ~40 fotos
- * @param {string} [opciones.modo] 'colmap' | 'simular'
- * @returns {number} segundos estimados
- */
 export function tiempoEstimadoSeg(fotos, { esVideo = false, modo = 'colmap' } = {}) {
   const n = Math.max(1, Number(fotos) || 1);
   const efectivas = esVideo ? Math.max(n, 40) : n;

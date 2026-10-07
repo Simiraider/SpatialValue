@@ -3,7 +3,6 @@ import { tiempoEstimadoSeg } from '../src/services/tiempo.js';
 
 describe('tiempoEstimadoSeg (modo colmap)', () => {
   it('respeta los puntos de referencia de la especificación', () => {
-    // 5 fotos ≈ 2 min, 20 ≈ 10 min, 50 ≈ 40 min, 100 ≈ 90 min
     const casos = [
       [5, 120],
       [20, 600],

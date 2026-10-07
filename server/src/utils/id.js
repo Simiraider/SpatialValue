@@ -1,8 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
-const ALFABETO = 'abcdefghijkmnpqrstuvwxyz23456789'; // sin l/o/0/1 para evitar confusiones
+const ALFABETO = 'abcdefghijkmnpqrstuvwxyz23456789'; 
 
-/** Id corto y legible: p.ej. "g3k7-x9p2-m4q8" */
 export function generarId(longitud = 12) {
   const bytes = randomBytes(longitud);
   let out = '';
@@ -13,7 +12,6 @@ export function generarId(longitud = 12) {
   return out;
 }
 
-/** Hash numérico estable de un string (para seeds determinísticos). */
 export function hashString(texto) {
   let h = 2166136261;
   for (let i = 0; i < texto.length; i++) {

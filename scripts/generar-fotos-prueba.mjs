@@ -1,20 +1,4 @@
 #!/usr/bin/env node
-/**
- * generar-fotos-prueba.mjs — Genera fotos sintéticas de una habitación con
- * paralaje y textura reales (raycasting en Node puro, sin dependencias) para
- * probar el pipeline de reconstrucción 3D del worker gemelo.
- *
- * Las imágenes son vistas de una cámara orbitando dentro de una habitación
- * texturada: consecutive frames comparten ~60% de contenido, así que COLMAP
- * encuentra cientos de correspondencias por par y puede reconstruir.
- *
- * Uso:
- *   node scripts/generar-fotos-prueba.mjs [carpeta_salida] [cantidad]
- *
- * Luego, para probar el worker:
- *   curl -F "titulo=Prueba sintetica" -F "opciones={\"calidad\":\"rapida\"}" \
- *     -F "fotos=@/tmp/fotos-prueba/foto_01.png" ... http://localhost:4000/api/jobs
- */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -24,21 +8,19 @@ const SALIDA = process.argv[2] || '/tmp/fotos-prueba';
 const CANTIDAD = Number(process.argv[3]) || 12;
 const W = 960, H = 720;
 
-// ── Escena: habitación convexa (sin oclusiones internas) ────────────────────
-const ROOM = { w: 4.0, d: 3.6, h: 2.7 }; // metros (x, y-arriba, z)
+const ROOM = { w: 4.0, d: 3.6, h: 2.7 }; 
 const lim = (x0, x1, y0, y1, z0, z1) => ({ x: [x0, x1], y: [y0, y1], z: [z0, z1] });
 const LIMITES_ROOM = lim(0, ROOM.w, 0, ROOM.h, 0, ROOM.d);
 
 const PLANOS = [
-  { n: [0, 1, 0], p: [0, 0, 0], ejes: ['x', 'z'], tinte: [150, 120, 95], limites: LIMITES_ROOM },   // suelo
-  { n: [0, -1, 0], p: [0, ROOM.h, 0], ejes: ['x', 'z'], tinte: [235, 235, 230], limites: LIMITES_ROOM }, // techo
-  { n: [0, 0, 1], p: [0, 0, 0], ejes: ['x', 'y'], tinte: [225, 215, 195], limites: LIMITES_ROOM },       // pared fondo
-  { n: [0, 0, -1], p: [0, 0, ROOM.d], ejes: ['x', 'y'], tinte: [215, 205, 185], limites: LIMITES_ROOM }, // pared frente
-  { n: [1, 0, 0], p: [0, 0, 0], ejes: ['z', 'y'], tinte: [200, 220, 225], limites: LIMITES_ROOM },       // pared izq
-  { n: [-1, 0, 0], p: [ROOM.w, 0, 0], ejes: ['z', 'y'], tinte: [220, 200, 210], limites: LIMITES_ROOM }, // pared der
+  { n: [0, 1, 0], p: [0, 0, 0], ejes: ['x', 'z'], tinte: [150, 120, 95], limites: LIMITES_ROOM },   
+  { n: [0, -1, 0], p: [0, ROOM.h, 0], ejes: ['x', 'z'], tinte: [235, 235, 230], limites: LIMITES_ROOM }, 
+  { n: [0, 0, 1], p: [0, 0, 0], ejes: ['x', 'y'], tinte: [225, 215, 195], limites: LIMITES_ROOM },       
+  { n: [0, 0, -1], p: [0, 0, ROOM.d], ejes: ['x', 'y'], tinte: [215, 205, 185], limites: LIMITES_ROOM }, 
+  { n: [1, 0, 0], p: [0, 0, 0], ejes: ['z', 'y'], tinte: [200, 220, 225], limites: LIMITES_ROOM },       
+  { n: [-1, 0, 0], p: [ROOM.w, 0, 0], ejes: ['z', 'y'], tinte: [220, 200, 210], limites: LIMITES_ROOM }, 
 ];
 
-// Muebles-caja: rompen la degeneración plana y agregan estructura 3D única.
 const CAJAS = [
   { x: [0.5, 1.6], y: [0, 0.75], z: [1.1, 2.5], tinte: [110, 135, 175] },
   { x: [2.7, 3.5], y: [0, 1.9], z: [2.55, 3.35], tinte: [175, 145, 110] },
@@ -54,7 +36,6 @@ for (const c of CAJAS) {
   );
 }
 
-// Textura procedural: damero + ruido determinista (hash entero).
 function hash2(u, v) {
   let h = (Math.imul(Math.floor(u * 97) | 0, 374761393) ^ Math.imul(Math.floor(v * 97) | 0, 668265263)) | 0;
   h = Math.imul(h ^ (h >>> 13), 1274126177);
@@ -62,14 +43,12 @@ function hash2(u, v) {
 }
 
 function colorEn(plano, u, v) {
-  // Celdas con color saturado único (hash→HSV) + líneas oscuras de grilla:
-  // cada esquina tiene un descriptor SIFT distintivo y gradiente fuerte.
   const cel = 0.35;
   const cu = Math.floor(u / cel), cv = Math.floor(v / cel);
   const semilla = plano.tinte[0] * 1.7 + plano.tinte[2];
-  const h1 = hash2(cu * 7.31 + semilla, cv * 9.77 - semilla);     // brillo
-  const h2 = hash2(cu * 3.71 - semilla, cv * 5.13 + semilla);     // tono
-  const h3 = hash2(cu * 9.13 + semilla * 2.1, cv * 2.71 - semilla); // saturación
+  const h1 = hash2(cu * 7.31 + semilla, cv * 9.77 - semilla);     
+  const h2 = hash2(cu * 3.71 - semilla, cv * 5.13 + semilla);     
+  const h3 = hash2(cu * 9.13 + semilla * 2.1, cv * 2.71 - semilla); 
   const hue = h2 * 6.283;
   const sat = 0.3 + 0.5 * h3;
   const val = 0.4 + 0.55 * h1;
@@ -85,7 +64,7 @@ function colorEn(plano, u, v) {
   const fraccu = u / cel - cu, fraccv = v / cel - cv;
   const linea = fraccu < 0.08 || fraccv < 0.08 ? 0.5 : 1;
   const ruido = 0.92 + 0.16 * hash2(u * 11.3, v * 7.7);
-  const mezcla = 0.55; // mezcla con el tinte del plano para conservar identidad de cada superficie
+  const mezcla = 0.55; 
   return [
     Math.min(255, (hsv[0] * 255 * mezcla + plano.tinte[0] * (1 - mezcla)) * linea * ruido),
     Math.min(255, (hsv[1] * 255 * mezcla + plano.tinte[1] * (1 - mezcla)) * linea * ruido),
@@ -93,7 +72,6 @@ function colorEn(plano, u, v) {
   ];
 }
 
-// ── Cámara pinhole ───────────────────────────────────────────────────────────
 const FX = 1000, FY = 1000, CX = W / 2, CY = H / 2;
 const CENTRO = { x: ROOM.w / 2, y: 1.35, z: ROOM.d / 2 };
 const RADIO = 0.95;
@@ -101,7 +79,6 @@ const RADIO = 0.95;
 function poseCamara(i, total) {
   const a = (i / total) * Math.PI * 2;
   const pos = { x: CENTRO.x + RADIO * Math.cos(a), y: CENTRO.y + 0.15 * Math.sin(a * 2), z: CENTRO.z + RADIO * Math.sin(a) };
-  // Mira hacia un punto que avanza con la órbita → solapamiento fuerte entre consecutivas.
   const objetivo = { x: CENTRO.x + 0.55 * Math.cos(a + 0.9), y: CENTRO.y - 0.05, z: CENTRO.z + 0.55 * Math.sin(a + 0.9) };
   return { pos, objetivo };
 }
@@ -114,7 +91,7 @@ function normalizar(v) {
 function renderFoto(i, total) {
   const { pos, objetivo } = poseCamara(i, total);
   const fwd = normalizar({ x: objetivo.x - pos.x, y: objetivo.y - pos.y, z: objetivo.z - pos.z });
-  const right = normalizar({ x: fwd.z, y: 0, z: -fwd.x }); // cross(fwd, up) aprox
+  const right = normalizar({ x: fwd.z, y: 0, z: -fwd.x }); 
   const up = {
     x: right.y * fwd.z - right.z * fwd.y,
     y: right.z * fwd.x - right.x * fwd.z,
@@ -124,7 +101,6 @@ function renderFoto(i, total) {
   const img = Buffer.alloc(W * H * 3);
   for (let py = 0; py < H; py++) {
     for (let px = 0; px < W; px++) {
-      // Dirección del rayo en mundo (cámara sin roll: base ortonormal fwd/right/up).
       const dcx = (px + 0.5 - CX) / FX;
       const dcy = (py + 0.5 - CY) / FY;
       const d = normalizar({
@@ -133,7 +109,6 @@ function renderFoto(i, total) {
         z: fwd.z + dcx * right.z + dcy * up.z,
       });
 
-      // Intersección con los 6 planos; gana el hit más cercano dentro de la habitación.
       let mejorT = Infinity, mejorPlano = null, mejorP = null;
       for (const plano of PLANOS) {
         const [nx, ny, nz] = plano.n;
@@ -148,11 +123,10 @@ function renderFoto(i, total) {
       }
 
       const off = (py * W + px) * 3;
-      let r = 26, g = 30, b = 38; // fondo (no debería verse: interior convexo)
+      let r = 26, g = 30, b = 38; 
       if (mejorPlano) {
         const u = mejorP[mejorPlano.ejes[0]];
         const v = mejorP[mejorPlano.ejes[1]];
-        // Sombreado simple por distancia para dar volumen.
         const sombra = Math.max(0.45, 1 - mejorT / 9);
         const [cr, cg, cb] = colorEn(mejorPlano, u, v);
         r = cr * sombra; g = cg * sombra; b = cb * sombra;
@@ -163,7 +137,6 @@ function renderFoto(i, total) {
   return img;
 }
 
-// ── PNG encoder mínimo (RGB8, sin filtros por fila) ─────────────────────────
 const TABLA_CRC = (() => {
   const t = new Int32Array(256);
   for (let n = 0; n < 256; n++) {
@@ -189,10 +162,10 @@ function chunk(tipo, datos) {
 function pngDe(img) {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(W, 0); ihdr.writeUInt32BE(H, 4);
-  ihdr[8] = 8; ihdr[9] = 2; // 8 bits, RGB
+  ihdr[8] = 8; ihdr[9] = 2; 
   const crudo = Buffer.alloc((W * 3 + 1) * H);
   for (let y = 0; y < H; y++) {
-    crudo[y * (W * 3 + 1)] = 0; // filtro none
+    crudo[y * (W * 3 + 1)] = 0; 
     img.copy(crudo, y * (W * 3 + 1) + 1, y * W * 3, (y + 1) * W * 3);
   }
   return Buffer.concat([
@@ -203,7 +176,6 @@ function pngDe(img) {
   ]);
 }
 
-// ── Main ─────────────────────────────────────────────────────────────────────
 fs.mkdirSync(SALIDA, { recursive: true });
 console.log(`Generando ${CANTIDAD} fotos ${W}x${H} en ${SALIDA} …`);
 for (let i = 0; i < CANTIDAD; i++) {

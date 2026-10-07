@@ -1,18 +1,32 @@
 import Delaunator from 'delaunator';
 
-/**
- * Triangula una nube de puntos 3D proyectando al plano principal
- * y aplicando Delaunay 2D. Produce una malla orientada que envuelve
- * la nube sparse de COLMAP.
- * 
- * @param {number[]} posiciones Array plano de coordenadas [x0, y0, z0, x1, y1, z1, ...]
- * @returns {number[][]} Array de caras (cada cara es un array de 3 índices de vértices)
- */
-export function triangularNube(posiciones) {
+export function evaluarNube(posiciones) {
+  const nPuntos = Math.floor(posiciones.length / 3);
+  if (nPuntos < 2) return { nPuntos, diagonalCaja: 0, densidad: 0 };
+
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < nPuntos; i++) {
+    for (let e = 0; e < 3; e++) {
+      const v = posiciones[i * 3 + e];
+      if (v < min[e]) min[e] = v;
+      if (v > max[e]) max[e] = v;
+    }
+  }
+  const dx = max[0] - min[0];
+  const dy = max[1] - min[1];
+  const dz = max[2] - min[2];
+  const diagonalCaja = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+
+  const densidad = nPuntos / Math.pow(diagonalCaja, 3);
+
+  return { nPuntos, diagonalCaja, densidad };
+}
+
+export function triangularNube(posiciones, { factorArista = 3 } = {}) {
   const nVertices = posiciones.length / 3;
   if (nVertices < 3) return [];
 
-  // 1. Encontrar el centroide
   let mx = 0, my = 0, mz = 0;
   for (let i = 0; i < nVertices; i++) {
     mx += posiciones[i * 3];
@@ -23,7 +37,6 @@ export function triangularNube(posiciones) {
   my /= nVertices;
   mz /= nVertices;
 
-  // 2. Calcular la varianza en los 3 ejes para elegir el plano de proyección
   let cxx = 0, cyy = 0, czz = 0;
   for (let i = 0; i < nVertices; i++) {
     const dx = posiciones[i * 3] - mx;
@@ -34,7 +47,6 @@ export function triangularNube(posiciones) {
     czz += dz * dz;
   }
 
-  // Descartamos el eje con menor varianza (usualmente representa la "profundidad" de un plano)
   let dropAxis = 0;
   if (cyy < cxx && cyy < czz) dropAxis = 1;
   if (czz < cxx && czz < cyy) dropAxis = 2;
@@ -42,23 +54,19 @@ export function triangularNube(posiciones) {
   const uAxis = (dropAxis + 1) % 3;
   const vAxis = (dropAxis + 2) % 3;
 
-  // 3. Proyectar a 2D
   const puntos2D = new Float64Array(nVertices * 2);
   for (let i = 0; i < nVertices; i++) {
     puntos2D[i * 2] = posiciones[i * 3 + uAxis];
     puntos2D[i * 2 + 1] = posiciones[i * 3 + vAxis];
   }
 
-  // 4. Triangulación Delaunay 2D (muy rápido, O(N log N))
   const delaunay = new Delaunator(puntos2D);
   const triangulos = delaunay.triangles;
 
-  // 5. Filtrar triángulos con aristas muy largas (outliers)
   const caras = [];
   let sumLongitud = 0;
   let countAristas = 0;
 
-  // Calculamos la longitud media para filtrar
   for (let i = 0; i < triangulos.length; i += 3) {
     const i0 = triangulos[i];
     const i1 = triangulos[i + 1];
@@ -84,8 +92,7 @@ export function triangularNube(posiciones) {
   }
 
   const longitudMedia = countAristas > 0 ? sumLongitud / countAristas : 0;
-  // Umbral: descartamos triángulos que tengan aristas > 3x la longitud media
-  const maxLongitud = longitudMedia * 3;
+  const maxLongitud = longitudMedia * factorArista;
 
   for (let i = 0; i < triangulos.length; i += 3) {
     const i0 = triangulos[i];
@@ -107,8 +114,6 @@ export function triangularNube(posiciones) {
     const dz3 = posiciones[i0 * 3 + 2] - posiciones[i2 * 3 + 2];
     if (dx3 * dx3 + dy3 * dy3 + dz3 * dz3 > maxLongitud * maxLongitud) continue;
 
-    // Dependiendo de dropAxis, el winding order de Delaunay (que proyecta en UV) puede requerir invertirse
-    // para que las normales apunten "hacia afuera" (acá no nos preocupa tanto porque glTF se renderizará doubleSided)
     caras.push([i0, i1, i2]);
   }
 

@@ -16,6 +16,7 @@ interface Props {
   config: ConfigGemelo;
   tituloInicial?: string;
   propiedad?: string | null;
+  denseRemoto?: boolean;
   onTrabajoCreado: (id: string) => void;
 }
 
@@ -24,24 +25,21 @@ const esVideo = (f: File) =>
   ['video/mp4', 'video/quicktime', 'video/webm'].includes(f.type) ||
   /\.(mp4|mov|m4v|webm)$/i.test(f.name);
 
-export const SubidaFotos = ({ config, tituloInicial = '', propiedad, onTrabajoCreado }: Props) => {
+export const SubidaFotos = ({ config, tituloInicial = '', propiedad, denseRemoto = false, onTrabajoCreado }: Props) => {
   const [archivos, setArchivos] = useState<File[]>([]);
   const [titulo, setTitulo] = useState(tituloInicial);
   const [calidad, setCalidad] = useState<'rapida' | 'equilibrada' | 'alta'>('equilibrada');
   const [dragging, setDragging] = useState(false);
-  const [subiendo, setSubiendo] = useState<number | null>(null); // 0..1
+  const [subiendo, setSubiendo] = useState<number | null>(null); 
   const [error, setError] = useState<string | null>(null);
   const [previews, setPreviews] = useState<Record<string, string>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const esVideoSubido = archivos.some(esVideo);
 
-  // Si cambia el título sugerido (p.ej. se elige el ambiente a escanear) y el
-  // usuario no escribió uno propio, se actualiza.
   useEffect(() => {
     if (tituloInicial) setTitulo(tituloInicial);
   }, [tituloInicial]);
 
-  // Limpia los object URLs al desmontar.
   useEffect(() => {
     return () => {
       Object.values(previews).forEach((u) => URL.revokeObjectURL(u));
@@ -58,7 +56,6 @@ export const SubidaFotos = ({ config, tituloInicial = '', propiedad, onTrabajoCr
       return false;
     });
     const conTamaño = validos.filter((f) => {
-      // videos hasta 2 GB; el worker tambien es multilí, pero el navegador manda el archivo igual
       if (f.size > 2 * 1024 * 1024 * 1024) {
         pesados.push(f.name);
         return false;
@@ -77,13 +74,11 @@ export const SubidaFotos = ({ config, tituloInicial = '', propiedad, onTrabajoCr
     setError(errores.length ? errores.join(' ') : null);
     setArchivos((prev) => {
       const juntos = [...prev, ...conTamaño];
-      // Evita duplicados por nombre+tamaño.
       const unicos = juntos.filter(
         (f, i) => juntos.findIndex((g) => g.name === f.name && g.size === f.size) === i
       );
       return unicos.slice(0, config.maxFotos);
     });
-    // Crea previews para imágenes nuevas.
     for (const f of conTamaño) {
       if (esImagen(f)) {
         const url = URL.createObjectURL(f);
@@ -154,7 +149,6 @@ export const SubidaFotos = ({ config, tituloInicial = '', propiedad, onTrabajoCr
         />
       </div>
 
-      {/* Dropzone */}
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -198,7 +192,6 @@ export const SubidaFotos = ({ config, tituloInicial = '', propiedad, onTrabajoCr
         </p>
       </div>
 
-      {/* Previews */}
       {archivos.length > 0 && (
         <div>
           <div className="mb-2 flex items-center justify-between">
@@ -256,7 +249,6 @@ export const SubidaFotos = ({ config, tituloInicial = '', propiedad, onTrabajoCr
         </div>
       )}
 
-      {/* Confianza + tiempos */}
       {archivos.length > 0 && (
         <div className="space-y-3">
           <AvisoConfianza fotos={fotos} esVideo={esVideoSubido} />
@@ -310,6 +302,15 @@ export const SubidaFotos = ({ config, tituloInicial = '', propiedad, onTrabajoCr
             />
           </div>
         </div>
+      )}
+
+      {denseRemoto && archivos.length > 0 && (
+        <p className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-800">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          Con la reconstrucción en alta densidad activada, tus fotos/cuadros se envían a Kaggle
+          (Google) solo para calcular la geometría y se descartan al terminar. No se comparten con
+          terceros ni se usan para otro fin.
+        </p>
       )}
 
       <Button

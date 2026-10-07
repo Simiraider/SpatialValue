@@ -1,6 +1,3 @@
-/**
- * App Express del worker. Exporta crearApp() para poder testear con supertest.
- */
 
 import express from 'express';
 import crearConfig from './config.js';
@@ -19,7 +16,6 @@ export function crearApp(opciones = {}) {
   app.disable('x-powered-by');
   app.set('trust proxy', true);
 
-  // CORS (el navegador sube fotos y consulta el estado directamente).
   app.use((req, res, next) => {
     res.set('Access-Control-Allow-Origin', config.corsOrigin);
     res.set('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
@@ -29,11 +25,8 @@ export function crearApp(opciones = {}) {
     next();
   });
 
-  // Body JSON solo para metadata; files van por multipart (capacidad de 5 MB para
-  // headers + campos extras; el size real de fotos/video está con multer en routes/jobs.js).
   app.use(express.json({ limit: '5mb' }));
 
-  // Root informativo.
   app.get('/', (req, res) => {
     res.json({
       servicio: 'spatial-value-gemelo-worker',

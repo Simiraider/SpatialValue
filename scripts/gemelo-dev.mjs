@@ -1,59 +1,68 @@
 #!/usr/bin/env node
-/**
- * Wrapper del worker gemelo (WSL) para `npm run dev`.
- *
- * Problema que resuelve: Ctrl+C en la terminal mata los procesos de Windows
- * (concurrently, astro, python y wsl.exe) pero el `node src/index.js` que
- * corre DENTRO de la VM de WSL queda huérfano y sigue ocupando el puerto 4000
- * (de ahí los EADDRINUSE al reiniciar).
- *
- * Solución:
- *  - Al arrancar: mata cualquier worker previo dentro de WSL (auto-curación).
- *  - Al recibir Ctrl+C (SIGINT): mata el worker dentro de WSL antes de salir.
- *  - `npm run gemelo:parar` hace lo mismo manualmente sin levantar el dev.
- *
- * El patrón de pkill usa [.] para que la expresión no matchee su propia
- * línea de comando (clásico footgun de pkill -f).
- */
 
 import { spawn, spawnSync } from 'node:child_process';
 
 const WSL = ['wsl.exe', '-d', 'Ubuntu', '--exec', 'bash', '-c'];
-const PATRON = 'watch src/index[.]js';
-const ARRANCAR =
-  `pkill -f '${PATRON}' 2>/dev/null; sleep 1; ` +
-  'cd /home/simon/SpatialValue/server && exec npm run dev';
-const MATAR = `pkill -f '${PATRON}' 2>/dev/null; exit 0`;
+const PATRON = 'src/index[.]js';
+const ARRANCAR = `cd /home/simon/SpatialValue/server && exec npm run dev`;
+const MATAR = `pkill -9 -f '${PATRON}' 2>/dev/null; exit 0`;
+const INTERVALO_MS = 10000;
 
-const hijo = spawn(WSL[0], [...WSL.slice(1), ARRANCAR], {
-  stdio: 'inherit',
-  windowsHide: true,
-});
-
-let limpiando = false;
-function limpiar() {
-  if (limpiando) return;
-  limpiando = true;
-  try {
-    spawnSync(WSL[0], [...WSL.slice(1), MATAR], { stdio: 'ignore', timeout: 15000 });
-  } catch {
-    /* best effort */
-  }
+function workerVivo() {
+  const r = spawnSync(
+    WSL[0],
+    [...WSL.slice(1), 'curl -s -m 3 -o /dev/null -w "%{http_code}" http://localhost:4000/api/healthz'],
+    { encoding: 'utf8', windowsHide: true, timeout: 10000 }
+  );
+  return (r.stdout || '').trim() === '200';
 }
 
-process.on('SIGINT', () => {
-  try { hijo.kill('SIGKILL'); } catch { /* ya murió */ }
-  limpiar();
-  process.exit(130);
-});
-process.on('SIGTERM', () => {
-  try { hijo.kill('SIGKILL'); } catch { /* ya murió */ }
-  limpiar();
-  process.exit(143);
-});
-process.on('exit', limpiar);
+function matarRestos() {
+  try {
+    spawnSync(WSL[0], [...WSL.slice(1), MATAR], { stdio: 'ignore', timeout: 15000 });
+  } catch {}
+}
 
-hijo.on('exit', (code) => {
-  // El worker terminó solo (p.ej. error de configuración): propagar el código.
-  process.exit(code ?? 0);
-});
+let hijo = null;
+let monitoreando = true;
+
+function arrancar() {
+  console.log('[gemelo] arrancando worker en WSL…');
+  hijo = spawn(WSL[0], [...WSL.slice(1), ARRANCAR], {
+    stdio: 'inherit',
+    windowsHide: true,
+  });
+  hijo.on('exit', (code) => {
+    hijo = null;
+    if (monitoreando) console.log(`[gemelo] el worker terminó (código ${code}); reintentando…`);
+  });
+}
+
+if (workerVivo()) {
+  console.log('[gemelo] ya hay un worker corriendo en :4000 — se reutiliza.');
+} else {
+  matarRestos();
+  arrancar();
+}
+
+const timer = setInterval(() => {
+  if (!monitoreando || hijo) return;
+  if (workerVivo()) return;
+  console.log('[gemelo] el worker no responde; reiniciando…');
+  matarRestos();
+  arrancar();
+}, INTERVALO_MS);
+
+function limpiar() {
+  if (!monitoreando) return;
+  monitoreando = false;
+  clearInterval(timer);
+  if (hijo) {
+    try { hijo.kill('SIGKILL'); } catch {}
+  }
+  matarRestos();
+}
+
+process.on('SIGINT', () => { limpiar(); process.exit(130); });
+process.on('SIGTERM', () => { limpiar(); process.exit(143); });
+process.on('exit', limpiar);

@@ -1,14 +1,3 @@
-/**
- * Calidad estimada del gemelo digital según la cantidad de fotos.
- * Basado en las recomendaciones de COLMAP (cada objeto debe aparecer en ≥3 fotos).
- * Mantener sincronizado con src/lib/gemelo.ts (frontend).
- *
- * Rangos (asumidos a partir de la especificación):
- *   5–14  → aproximado   ("Tu modelo 3D será aproximado")
- *   15–29 → moderado     ("modelo 3D moderado")
- *   30–59 → bueno        ("buena fidelidad")
- *   ≥60   → alto         ("alta fidelidad")
- */
 
 export function calidadPorFotos(n) {
   const num = Number(n);

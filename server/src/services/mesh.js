@@ -1,25 +1,15 @@
-/**
- * Conversión de mallas a .glb sin dependencias:
- *   PLY (salida de COLMAP) → OBJ → GLB.
- * Soporta PLY ASCII y binario little-endian (los dos formatos que emite COLMAP).
- *
- * Nota: el offset de datos se calcula con buffer.indexOf('end_header') y NO con
- * el índice de línea (un bug histórico: los índices de línea no son offsets de
- * bytes). Cubierto por server/test/mesh.test.js.
- */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { escribirGLB } from '../utils/glb.js';
 import { logger } from '../utils/logger.js';
 
-// ── PLY → OBJ ────────────────────────────────────────────────────────────────
 
 function parsearCabeceraPLY(texto) {
   const lineas = texto.split(/\r?\n/);
   if (lineas[0].trim() !== 'ply') throw new Error('No es un archivo PLY válido');
   let formato = null;
-  const elementos = []; // { nombre, cantidad, propiedades: [{nombre, tipo}] }
+  const elementos = []; 
   let actual = null;
   let i = 1;
   for (; i < lineas.length; i++) {
@@ -44,11 +34,6 @@ function parsearCabeceraPLY(texto) {
 
 const TAMANOS = { char: 1, uchar: 1, short: 2, ushort: 2, int: 4, uint: 4, float: 4, double: 8 };
 
-/**
- * Convierte un PLY a OBJ (con colores de vértice al estilo Maya: "v x y z r g b").
- * @param {string} plyPath
- * @param {string} objPath
- */
 export function plyAObj(plyPath, objPath) {
   const buffer = fs.readFileSync(plyPath);
   const cabecera = parsearCabeceraPLY(
@@ -58,8 +43,6 @@ export function plyAObj(plyPath, objPath) {
   const caras = cabecera.elementos.find((e) => e.nombre === 'face');
   if (!vertices) throw new Error('PLY sin elemento "vertex"');
 
-  // Byte donde arrancan los datos: justo después de la línea "end_header"
-  // (robusto a LF y CRLF, a diferencia de contar líneas).
   const idxEnd = buffer.indexOf(Buffer.from('end_header'));
   if (idxEnd === -1) throw new Error('PLY sin end_header');
   let bytesDeDatos = idxEnd + Buffer.byteLength('end_header');
@@ -142,19 +125,19 @@ export function plyAObj(plyPath, objPath) {
   return objPath;
 }
 
-// ── OBJ → GLB ────────────────────────────────────────────────────────────────
 
 function normalizar(v) {
   const l = Math.hypot(v[0], v[1], v[2]) || 1;
   return [v[0] / l, v[1] / l, v[2] / l];
 }
 
-/**
- * Convierte un OBJ (vértices con o sin color, caras triangulares) a GLB.
- * @param {string} objPath
- * @param {string} glbPath
- */
-export async function objAGlb(objPath, glbPath) {
+export async function objAGlb(objPath, glbPath, opciones = {}) {
+  const {
+    permitirNube = false,
+    factorArista = 3,
+    minPuntosMalla = 1500,
+    densidadMinMalla = 0.0008,
+  } = opciones;
   const posiciones = [];
   const colores = [];
   const indices = [];
@@ -181,17 +164,33 @@ export async function objAGlb(objPath, glbPath) {
         caras.push([refs[0] - 1, refs[t] - 1, refs[t + 1] - 1]);
       }
     }
-    // 'p' (puntos) y 'l' (líneas) se ignoran: model-viewer renderiza mallas.
   }
 
   if (posiciones.length === 0) throw new Error('OBJ sin vértices');
+
+  const triangular = await import('./triangular.js');
+
   if (caras.length === 0) {
-    logger.info('[mesh] OBJ sin caras: triangulando nube de puntos con Delaunay...');
-    const carasDelaunay = await import('./triangular.js').then(m => m.triangularNube(posiciones));
-    if (carasDelaunay.length === 0) {
+    const metrica = triangular.evaluarNube(posiciones);
+    const intentarMalla =
+      metrica.nPuntos >= minPuntosMalla && metrica.densidad >= densidadMinMalla;
+
+    if (intentarMalla) {
+      logger.info(
+        `[mesh] OBJ sin caras (${metrica.nPuntos} puntos): triangulando con Delaunay (factor ${factorArista})…`
+      );
+      const carasDelaunay = triangular.triangularNube(posiciones, { factorArista });
+      caras.push(...carasDelaunay);
+    } else {
+      logger.info(
+        `[mesh] OBJ sin caras y nube poco densa (${metrica.nPuntos} puntos, ` +
+          `densidad ${metrica.densidad.toFixed(5)}): no se triangula para no generar basura.`
+      );
+    }
+
+    if (caras.length === 0 && !permitirNube) {
       throw new Error('OBJ sin caras y falló la triangulación Delaunay (muy pocos puntos válidos)');
     }
-    caras.push(...carasDelaunay);
   }
 
   const nVertices = posiciones.length / 3;
@@ -199,13 +198,14 @@ export async function objAGlb(objPath, glbPath) {
     if (a < 0 || b < 0 || c < 0 || a >= nVertices || b >= nVertices || c >= nVertices) continue;
     indices.push(a, b, c);
   }
-  if (indices.length === 0) throw new Error('OBJ sin caras válidas');
 
-  // Si no hay normales declaradas, se calculan como promedio de las caras.
-  let normales;
+  const esNube = indices.length === 0;
+  if (esNube && !permitirNube) throw new Error('OBJ sin caras válidas');
+
+  let normales = [];
   if (normalesPorVertice.length === nVertices) {
     normales = normalesPorVertice.flat();
-  } else {
+  } else if (!esNube) {
     const acc = new Float32Array(nVertices * 3);
     for (let k = 0; k < indices.length; k += 3) {
       const i0 = indices[k], i1 = indices[k + 1], i2 = indices[k + 2];
@@ -232,20 +232,31 @@ export async function objAGlb(objPath, glbPath) {
   }
 
   const glb = escribirGLB(
-    { positions: posiciones, normals: normales, colors: colores.length ? colores : undefined, indices },
+    {
+      positions: posiciones,
+      normals: normales,
+      colors: colores.length ? colores : undefined,
+      indices,
+      mode: esNube ? 0 : 4,
+    },
     path.basename(glbPath, '.glb')
   );
   fs.writeFileSync(glbPath, glb);
-  return { archivo: glbPath, bytes: glb.length, vertices: nVertices, triangulos: indices.length / 3 };
+  return {
+    archivo: glbPath,
+    bytes: glb.length,
+    vertices: nVertices,
+    triangulos: indices.length / 3,
+    esNube,
+  };
 }
 
-/** Convierte la malla de salida de COLMAP (PLY) a un .glb. */
-export async function convertirMalla(mallaPly, glbPath) {
+export async function convertirMalla(mallaPly, glbPath, opciones = {}) {
   const tmpObj = glbPath.replace(/\.glb$/i, '.obj');
   plyAObj(mallaPly, tmpObj);
-  const resultado = await objAGlb(tmpObj, glbPath);
+  const resultado = await objAGlb(tmpObj, glbPath, opciones);
   try {
-    fs.unlinkSync(tmpObj); // el OBJ es intermedio
+    fs.unlinkSync(tmpObj); 
   } catch {
     logger.warn('[mesh] no se pudo borrar el OBJ temporal');
   }

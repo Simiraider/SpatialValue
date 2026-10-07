@@ -134,7 +134,6 @@ const parsearPrecioUSD = (texto) => {
                     const items = [...document.querySelectorAll('[class*="feature"],[class*="Feature"]')];
                     for (const el of items) {
                         const txt = (el.innerText || '').toLowerCase().trim();
-                        // Capturar número solo si está cerca de la palabra clave (evitar falsos positivos)
                         if (!superficie && /\d+\s*[mM]²/.test(txt)) {
                             const n = txt.match(/^.*?(\d+)\s*[mM]²/);
                             if (n) superficie = parseInt(n[1], 10);
@@ -185,9 +184,7 @@ const parsearPrecioUSD = (texto) => {
                 }
                 if (!ambientes) ambientes = dormitorios ? dormitorios + 1 : 1;
 
-                // Validaciones de coherencia para evitar datos corruptos
                 if (dormitorios && dormitorios > ambientes && ambientes > 0) {
-                    // Si los dormitorios superan los ambientes, es un error de scraping
                     console.warn(`Datos incoherentes para ${id_propiedad}: dorm=${dormitorios}, amb=${ambientes}. Usando fallback.`);
                     dormitorios = Math.min(dormitorios, ambientes);
                 }

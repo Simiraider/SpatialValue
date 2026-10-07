@@ -11,7 +11,6 @@ afterAll(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-// Un cuadrado de 4 vértices con colores, 2 caras triangulares.
 const VERTICES = [
   [0, 0, 0, 255, 0, 0],
   [1, 0, 0, 0, 255, 0],
@@ -69,7 +68,7 @@ async function comprobarRoundTrip(nombre) {
   const objTexto = fs.readFileSync(obj, 'utf8');
   expect(objTexto.split('\n').filter((l) => l.startsWith('v ')).length).toBe(4);
   expect(objTexto.split('\n').filter((l) => l.startsWith('f ')).length).toBe(2);
-  expect(objTexto).toContain('1.0000 0.0000 0.0000'); // color rojo del primer vértice
+  expect(objTexto).toContain('1.0000 0.0000 0.0000'); 
 
   const res = await objAGlb(obj, glb);
   expect(res.vertices).toBe(4);
@@ -80,7 +79,7 @@ async function comprobarRoundTrip(nombre) {
   const posAcc = json.accessors[0];
   expect(posAcc.count).toBe(4);
   expect(posAcc.type).toBe('VEC3');
-  expect(json.accessors[json.accessors.length - 1].count).toBe(6); // índices
+  expect(json.accessors[json.accessors.length - 1].count).toBe(6); 
   const atributos = json.meshes[0].primitives[0].attributes;
   expect(atributos.COLOR_0).toBeDefined();
 }
@@ -135,7 +134,27 @@ describe('plyAObj + objAGlb (formato COLMAP)', () => {
     fs.writeFileSync(ply, Buffer.concat([Buffer.from(header, 'latin1'), bytes]));
     const obj = path.join(tmp, 'puntos.obj');
     const glb = path.join(tmp, 'puntos.glb');
-    plyAObj(ply, obj); // no debe tirar: el OBJ queda solo con vértices
+    plyAObj(ply, obj); 
     await expect(objAGlb(obj, glb)).rejects.toThrow(/sin caras/);
+  });
+
+  it('con permitirNube genera un GLB de puntos (mode 0) en vez de fallar', async () => {
+    const ply = path.join(tmp, 'nube.ply');
+    const header =
+      'ply\nformat binary_little_endian 1.0\nelement vertex 4\n' +
+      'property float x\nproperty float y\nproperty float z\nend_header\n';
+    const bytes = Buffer.alloc(4 * 12);
+    for (let i = 0; i < 4; i++) bytes.writeFloatLE(i, i * 12);
+    fs.writeFileSync(ply, Buffer.concat([Buffer.from(header, 'latin1'), bytes]));
+    const obj = path.join(tmp, 'nube.obj');
+    const glb = path.join(tmp, 'nube.glb');
+    plyAObj(ply, obj);
+    const res = await objAGlb(obj, glb, { permitirNube: true });
+    expect(res.esNube).toBe(true);
+    expect(res.triangulos).toBe(0);
+    const { json } = leerGLB(fs.readFileSync(glb));
+    expect(json.meshes[0].primitives[0].mode).toBe(0);
+    expect(json.meshes[0].primitives[0].attributes.POSITION).toBeDefined();
+    expect(json.meshes[0].primitives[0].indices).toBeUndefined();
   });
 });

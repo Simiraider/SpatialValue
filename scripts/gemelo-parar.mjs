@@ -1,20 +1,20 @@
 #!/usr/bin/env node
-/**
- * Apaga el worker gemelo que corre dentro de WSL (npm run gemelo:parar).
- * Complemento de scripts/gemelo-dev.mjs — mismo patrón de proceso.
- * El patrón usa [.] para que pkill no matchee su propia línea de comando.
- */
 
 import { spawnSync } from 'node:child_process';
 
+const SCRIPT =
+  "pkill -9 -f 'src/index[.]js' 2>/dev/null; " +
+  "sleep 1; " +
+  "PIDS=$(ss -ltnp 2>/dev/null | grep ':4000 ' | grep -oP 'pid=\\K[0-9]+' | sort -u); " +
+  "[ -n \"$PIDS\" ] && kill -9 $PIDS 2>/dev/null; sleep 1; " +
+  "if ss -ltn 2>/dev/null | grep -q ':4000 '; then " +
+  "  echo 'aviso: el puerto 4000 sigue ocupado'; " +
+  "  ss -ltnp 2>/dev/null | grep ':4000 '; " +
+  "else echo 'worker_apagado (puerto 4000 libre)'; fi";
+
 const res = spawnSync(
   'wsl.exe',
-  [
-    '-d', 'Ubuntu',
-    '--exec', 'bash', '-c',
-    "pkill -f 'watch src/index[.]js' 2>/dev/null; sleep 1; " +
-      "ss -ltn | grep -q ':4000 ' && echo 'aviso: el puerto 4000 sigue ocupado' || echo worker_apagado",
-  ],
+  ['-d', 'Ubuntu', '--exec', 'bash', '-c', SCRIPT],
   { stdio: 'inherit', windowsHide: true, timeout: 30000 }
 );
 

@@ -1,10 +1,5 @@
 export const prerender = false;
 
-/**
- * Configuración pública del servicio de gemelos digitales.
- * El worker de reconstrucción corre fuera de Vercel (Render/VPS/local)
- * porque COLMAP y ffmpeg no pueden ejecutarse en funciones serverless.
- */
 export async function GET() {
   const workerUrl = (
     import.meta.env.PUBLIC_GEMELO_WORKER_URL ||

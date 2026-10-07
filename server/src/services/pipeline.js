@@ -1,15 +1,3 @@
-/**
- * Pipeline de reconstrucción 3D.
- *
- * Flujo por trabajo:
- *   recibiendo → extrayendo_frames (solo video) → reconstruyendo → convirtiendo → listo | error
- *
- * Las FOTOS NUNCA se guardan: se borran del workspace al terminar (o al fallar).
- * El modelo .glb queda en el filesystem local hasta que expira el TTL.
- *
- * `detener(id)` mata los procesos hijos (ffmpeg/COLMAP) en vuelo para que
- * cancelar un trabajo no deje procesos huérfanos.
- */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,14 +6,15 @@ import { colmapDisponible, ejecutarColmap } from './colmap.js';
 import { convertirMalla } from './mesh.js';
 import { generarModeloDemo } from './simulador.js';
 import { guardarModelo } from './storage.js';
+import { densificarEnNube } from './nube/denso.js';
 import { logger } from '../utils/logger.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export function crearPipeline({ config, estado }) {
   const cola = [];
-  const procesos = new Map(); // jobId → { promesa, detener } de procesos hijos
-  const cancelados = new Set(); // jobId → pedido de cancelación
+  const procesos = new Map(); 
+  const cancelados = new Set(); 
   let procesando = false;
 
   function encolar(job) {
@@ -50,7 +39,6 @@ export function crearPipeline({ config, estado }) {
     procesando = false;
   }
 
-  /** Pide cancelar un trabajo: mata procesos hijos y marca la cancelación. */
   function detener(jobId) {
     cancelados.add(jobId);
     const ctl = procesos.get(jobId);
@@ -58,17 +46,15 @@ export function crearPipeline({ config, estado }) {
       try {
         ctl.detener();
       } catch {
-        /* ya terminó */
       }
     }
   }
 
   const limpiarFotos = (job) => {
-    if (config.keepFotos) return; // debug: conservar fotos/frames para diagnóstico
+    if (config.keepFotos) return; 
     try {
       fs.rmSync(path.join(estado.dirDe(job.id), 'input'), { recursive: true, force: true });
     } catch {
-      /* sin fotos */
     }
   };
 
@@ -82,9 +68,6 @@ export function crearPipeline({ config, estado }) {
     try {
       await procesarInterno(job);
     } catch (e) {
-      // Cualquier falla (ffmpeg ausente, COLMAP, conversión, cancelación) debe:
-      //  1) pasar el trabajo a estado 'error' (si no quedaba trabado en procesando)
-      //  2) borrar SIEMPRE las fotos subidas (no se guardan, ni siquiera al fallar)
       const mensaje = e instanceof Error ? e.message : String(e);
       limpiarFotos(job);
       estado.actualizar(job.id, {
@@ -105,10 +88,8 @@ export function crearPipeline({ config, estado }) {
 
     let nFotos = job.nFotos || 0;
 
-    // 1) Recepción ────────────────────────────────────────────────────────────
     estado.actualizar(job.id, { estado: 'recibiendo', etapa: 'recibiendo', progreso: 5, mensaje: 'Recibiendo fotos…' });
 
-    // 2) Video → frames (los frames de video tampoco se guardan) ──────────────
     if (job.esVideo) {
       estado.actualizar(job.id, {
         estado: 'procesando',
@@ -119,8 +100,6 @@ export function crearPipeline({ config, estado }) {
       const video = fs.readdirSync(inputDir).find((f) => /\.(mp4|mov|m4v|webm)$/i.test(f));
       if (!video) throw new Error('No se encontró el video subido.');
 
-      // Control de calidad preventivo: un video de baja resolución (p.ej. re-comprimido
-      // por WhatsApp o redes sociales) no tiene features suficientes para fotogrametría.
       const dim = dimensionesVideo(config.ffmpegBin, path.join(inputDir, video));
       if (dim && Math.min(dim.w, dim.h) < 600) {
         throw new Error(
@@ -146,13 +125,11 @@ export function crearPipeline({ config, estado }) {
       }
       estado.actualizar(job.id, { nFotos, mensaje: `${nFotos} cuadros extraídos del video.` });
       try {
-        fs.unlinkSync(path.join(inputDir, video)); // el video original no se guarda
+        fs.unlinkSync(path.join(inputDir, video)); 
       } catch {
-        /* ya no existe */
       }
     }
 
-    // 3) Motor de reconstrucción ──────────────────────────────────────────────
     const modo =
       config.modo === 'auto'
         ? colmapDisponible(config.colmapBin)
@@ -176,6 +153,7 @@ export function crearPipeline({ config, estado }) {
         imagePath: inputDir,
         workspacePath: path.join(outputDir, 'colmap'),
         calidad: job.opciones?.calidad || 'equilibrada',
+        esVideo: !!job.esVideo,
         onProgreso: (p, m) => estado.actualizar(job.id, { progreso: Math.min(p, 84), mensaje: m }),
         onLog: (m) => estado.actualizar(job.id, { mensaje: m }),
       });
@@ -187,24 +165,57 @@ export function crearPipeline({ config, estado }) {
       } finally {
         procesos.delete(job.id);
       }
-      if (resultado.mallaPly) {
+
+      let glbDenso = null;
+      if (resultado.modeloSparse && config.dense?.habilitado) {
+        estado.actualizar(job.id, {
+          etapa: 'densificando',
+          progreso: 80,
+          mensaje: 'Refinando el modelo en GPU (nube densa, puede tardar)…',
+        });
+        try {
+          const denso = await densificarEnNube(config, {
+            inputDir,
+            sparseModelPath: resultado.modeloSparse,
+            jobId: job.id,
+          });
+          if (denso?.glb && fs.existsSync(denso.glb)) {
+            fs.copyFileSync(denso.glb, glbPath);
+            glbDenso = true;
+            motor = 'colmap';
+            mensajeExtra = 'Modelo reconstruido en alta densidad (fotogrametría densa en GPU).';
+            logger.info('[pipeline] modelo denso recibido de Kaggle');
+          }
+        } catch (e) {
+          logger.warn(`[pipeline] densificado en nube falló (${e.message}); sigo con lo local`);
+        }
+        asegurarNoCancelado(job);
+      }
+
+      if (!glbDenso && resultado.mallaPly) {
         estado.actualizar(job.id, {
           etapa: 'convirtiendo',
           progreso: 86,
           mensaje: 'Convirtiendo la malla a .glb…',
         });
         try {
-          const conv = await convertirMalla(resultado.mallaPly, glbPath);
-          logger.info(`[pipeline] malla convertida: ${conv.vertices} vértices, ${conv.triangulos} triángulos`);
+          const conv = await convertirMalla(resultado.mallaPly, glbPath, { permitirNube: true });
+          logger.info(
+            `[pipeline] malla convertida: ${conv.vertices} vértices, ${conv.triangulos} triángulos` +
+              (conv.esNube ? ' (nube de puntos: COLMAP no logró una geometría densa)' : '')
+          );
+          if (conv.esNube) {
+            mensajeExtra =
+              'La reconstrucción quedó como nube de puntos: COLMAP no encontró suficiente ' +
+              'solapamiento para una superficie continua. Sumá fotos o usá un video recorriendo ' +
+              'cada ambiente despacio, con cada zona en al menos 3 vistas.';
+          }
         } catch (e) {
-          // La malla de COLMAP no se pudo convertir (p.ej. era solo una nube de
-          // puntos): en vez de fallar el trabajo, se usa el simulador como respaldo.
           logger.warn(`[pipeline] conversión de malla falló (${e.message}); respaldo con simulador`);
           motor = 'simular';
           mensajeExtra = 'La malla de COLMAP no se pudo convertir; se usó un modelo de demostración.';
         }
-      } else {
-        // COLMAP no produjo malla → respaldo con simulador
+      } else if (!glbDenso) {
         logger.warn('[pipeline] COLMAP sin malla; respaldo con simulador');
         motor = 'simular';
         resumenColmap = (resultado.log || []).slice(-60).join('\n').slice(-4000);
@@ -234,10 +245,8 @@ export function crearPipeline({ config, estado }) {
       logger.info(`[pipeline] modelo demo: ${res.vertices} vértices, ${res.triangulos} triángulos`);
     }
 
-    // 4) Las fotos se borran SIEMPRE ─────────────────────────────────────────
     limpiarFotos(job);
 
-    // 5) Guardar modelo y marcar listo ───────────────────────────────────────
     const storage = await guardarModelo(config, job.id, glbPath);
     const bytes = fs.statSync(glbPath).size;
     const expiraEn = Date.now() + config.ttlMs;
@@ -255,7 +264,7 @@ export function crearPipeline({ config, estado }) {
     if (storage.tipo === 'local') {
       cambios.modeloUrl = `/api/jobs/${job.id}/modelo`;
     } else {
-      cambios.modeloUrl = storage.url; // URL firmada de S3/B2
+      cambios.modeloUrl = storage.url; 
     }
     estado.actualizar(job.id, cambios);
     logger.info(`[pipeline] trabajo ${job.id} listo (${bytes} bytes, motor=${motor})`);

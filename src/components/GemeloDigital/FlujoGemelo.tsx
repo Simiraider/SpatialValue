@@ -25,6 +25,7 @@ export const FlujoGemelo = ({ titulo, propiedad }: Props) => {
   const [detalle, setDetalle] = useState('');
   const [jobId, setJobId] = useState<string | null>(null);
   const [job, setJob] = useState<EstadoTrabajo | null>(null);
+  const [denseRemoto, setDenseRemoto] = useState(false);
 
   useEffect(() => {
     let activo = true;
@@ -36,10 +37,10 @@ export const FlujoGemelo = ({ titulo, propiedad }: Props) => {
         return;
       }
       setConfig(c);
-      // Diagnóstico: ¿el worker responde?
       const conn = await probarConexionWorker(c);
       if (!activo) return;
       if (conn.ok) {
+        setDenseRemoto(!!conn.denseRemoto);
         setFase('subir');
       } else {
         setDetalle(`No responde en ${c.workerUrl} (${conn.detalle}).`);
@@ -55,8 +56,10 @@ export const FlujoGemelo = ({ titulo, propiedad }: Props) => {
     if (!config) return;
     setFase('cargando');
     const conn = await probarConexionWorker(config);
-    if (conn.ok) setFase('subir');
-    else {
+    if (conn.ok) {
+      setDenseRemoto(!!conn.denseRemoto);
+      setFase('subir');
+    } else {
       setDetalle(`No responde en ${config.workerUrl} (${conn.detalle}).`);
       setFase('worker-fuera');
     }
@@ -145,6 +148,7 @@ export const FlujoGemelo = ({ titulo, propiedad }: Props) => {
           config={config!}
           tituloInicial={titulo || ''}
           propiedad={propiedad}
+          denseRemoto={denseRemoto}
           onTrabajoCreado={alCrearTrabajo}
         />
       )}

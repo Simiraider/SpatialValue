@@ -13,7 +13,6 @@ export async function POST({ request }) {
   try {
     await asegurarEsquemaConfig();
 
-    // Anti abuso: máx 40 likes por IP cada 5 minutos.
     if (!permitirFrecuencia(`like:${ipDePeticion(request)}`, 40)) {
       return new Response(
         JSON.stringify({ error: 'Demasiadas acciones. Esperá un momento.' }),

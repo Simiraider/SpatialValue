@@ -1,10 +1,3 @@
-/**
- * Cliente del gemelo digital 3D.
- *
- * Habla con el worker de reconstrucción (server/) directamente desde el
- * navegador: sube fotos/video, consulta el estado y descarga el .glb.
- * La lógica de confianza/tiempos espeja la del worker (mantener sincronizada).
- */
 
 export type ModoGemelo = 'auto' | 'colmap' | 'simular';
 
@@ -14,12 +7,14 @@ export interface ConfigGemelo {
   maxFotos: number;
   maxVideoMb: number;
   modo: ModoGemelo;
+  denseRemoto?: boolean;
 }
 
 export type EtapaTrabajo =
   | 'recibiendo'
   | 'extrayendo_frames'
   | 'reconstruyendo'
+  | 'densificando'
   | 'convirtiendo'
   | 'listo'
   | 'error';
@@ -51,7 +46,6 @@ export interface CalidadInfo {
   nivel: number;
 }
 
-// ── Confianza según cantidad de fotos (espejo del worker) ────────────────────
 
 export function calidadPorFotos(n: number): CalidadInfo {
   if (!Number.isFinite(n) || n <= 0) {
@@ -106,7 +100,6 @@ export function calidadPorFotos(n: number): CalidadInfo {
   };
 }
 
-// ── Estimación de tiempos (espejo del worker) ────────────────────────────────
 
 const PUNTOS: Array<[fotos: number, seg: number]> = [
   [5, 120],
@@ -160,22 +153,23 @@ export function formatearBytes(bytes: number | null): string {
   return `${v.toFixed(v >= 100 ? 0 : 1)} ${unidades[i]}`;
 }
 
-// ── Configuración del servicio ───────────────────────────────────────────────
 
 export interface ConexionWorker {
   ok: boolean;
   detalle: string;
+  denseRemoto?: boolean;
 }
 
-/**
- * Ping al worker (/api/healthz) para diagnosticar conectividad antes de subir.
- */
 export async function probarConexionWorker(config: ConfigGemelo): Promise<ConexionWorker> {
   try {
     const res = await fetch(`${config.workerUrl}/api/healthz`, { signal: AbortSignal.timeout(5000) });
     if (!res.ok) return { ok: false, detalle: `HTTP ${res.status}` };
     const data = await res.json();
-    return { ok: true, detalle: `worker ${data.modo} (COLMAP: ${data.colmapInstalado ? 'sí' : 'no'})` };
+    return {
+      ok: true,
+      detalle: `worker ${data.modo} (COLMAP: ${data.colmapInstalado ? 'sí' : 'no'})`,
+      denseRemoto: !!(data.denseHabilitado && data.kaggleListo),
+    };
   } catch {
     return { ok: false, detalle: 'no responde' };
   }
@@ -199,7 +193,6 @@ export async function obtenerConfigGemelo(): Promise<ConfigGemelo | null> {
   }
 }
 
-// ── Subida de fotos con progreso (XMLHttpRequest) ────────────────────────────
 
 export interface DatosSubida {
   titulo: string;
@@ -251,7 +244,6 @@ export function subirTrabajo(config: ConfigGemelo, datos: DatosSubida): Promise<
   });
 }
 
-// ── Consultas al worker ──────────────────────────────────────────────────────
 
 export async function obtenerEstadoTrabajo(config: ConfigGemelo, id: string): Promise<EstadoTrabajo> {
   const res = await fetch(`${config.workerUrl}/api/jobs/${id}`, { signal: AbortSignal.timeout(10000) });
@@ -261,7 +253,7 @@ export async function obtenerEstadoTrabajo(config: ConfigGemelo, id: string): Pr
 
 export function urlModelo(config: ConfigGemelo, job: Pick<EstadoTrabajo, 'modeloUrl'>): string | null {
   if (!job.modeloUrl) return null;
-  if (/^https?:\/\//.test(job.modeloUrl)) return job.modeloUrl; // S3/B2 firmado
+  if (/^https?:\/\//.test(job.modeloUrl)) return job.modeloUrl; 
   return `${config.workerUrl}${job.modeloUrl}`;
 }
 
@@ -274,11 +266,9 @@ export async function cancelarTrabajo(config: ConfigGemelo, id: string): Promise
   try {
     await fetch(`${config.workerUrl}/api/jobs/${id}`, { method: 'DELETE' });
   } catch {
-    /* el worker puede no estar disponible; se ignora */
   }
 }
 
-// ── Subida de un modelo 3D externo (Scaniverse, Polycam, etc.) ───────────────
 
 export interface DatosModeloExterno {
   titulo: string;
@@ -287,10 +277,6 @@ export interface DatosModeloExterno {
   archivo: File;
 }
 
-/**
- * Sube un .glb ya escaneado desde otra app. El worker lo valida (magic glTF 2.0)
- * y lo devuelve como un trabajo 'listo' con motor 'externo'.
- */
 export function subirModeloExterno(config: ConfigGemelo, datos: DatosModeloExterno): Promise<EstadoTrabajo> {
   return new Promise((resolve, reject) => {
     const fd = new FormData();
@@ -322,7 +308,6 @@ export function subirModeloExterno(config: ConfigGemelo, datos: DatosModeloExter
   });
 }
 
-// ── Historial local de trabajos (solo el navegador, no se guarda nada en BD) ─
 
 export interface HistorialItem {
   id: string;
@@ -339,7 +324,6 @@ export function guardarEnHistorial(item: HistorialItem): void {
     actual.unshift(item);
     localStorage.setItem(HISTORIAL_KEY, JSON.stringify(actual.slice(0, 10)));
   } catch {
-    /* localStorage no disponible */
   }
 }
 

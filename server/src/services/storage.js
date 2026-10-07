@@ -1,23 +1,12 @@
-/**
- * Almacenamiento del modelo final.
- *
- * Por defecto (gratis y simple): el .glb queda en el filesystem local del worker
- * y se sirve desde GET /api/jobs/:id/modelo.
- *
- * OPCIONAL: si configurás S3_BUCKET (AWS S3 o Backblaze B2), el modelo se sube
- * al bucket y el endpoint devuelve una URL firmada. Las fotos nunca se guardan.
- */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { logger } from '../utils/logger.js';
 
-/** ¿Está configurado el almacenamiento en S3/B2? */
 export function s3Configurado(config) {
   return Boolean(config.s3?.bucket);
 }
 
-/** Sube el .glb a S3/B2 y devuelve { tipo:'s3', key, urlFirmada }. */
 export async function subirAS3(config, jobId, glbPath) {
   const { S3Client, PutObjectCommand, GetObjectCommand, getSignedUrl } = await import('@aws-sdk/client-s3');
   const { bucket, region, endpoint, accessKeyId, secretAccessKey } = config.s3;
@@ -46,10 +35,6 @@ export async function subirAS3(config, jobId, glbPath) {
   return { tipo: 's3', key, urlFirmada };
 }
 
-/**
- * Guarda el modelo generado. Devuelve cómo se servirá.
- * @returns {Promise<{tipo:'local'|'s3', ruta?:string, key?:string, url?:string}>}
- */
 export async function guardarModelo(config, jobId, glbPath) {
   if (s3Configurado(config)) {
     try {

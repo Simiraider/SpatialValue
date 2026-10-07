@@ -112,7 +112,6 @@ export async function POST({ request }) {
   try {
     await asegurarEsquemaConfig();
 
-    // Anti abuso: máx 30 acciones por IP cada 5 minutos.
     if (!permitirFrecuencia(`config:${ipDePeticion(request)}`, 30)) {
       return respuestaError('Demasiadas acciones seguidas. Esperá un momento.', 429);
     }

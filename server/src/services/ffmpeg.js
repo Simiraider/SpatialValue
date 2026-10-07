@@ -1,8 +1,3 @@
-/**
- * Extracción de cuadros de video con ffmpeg (video → fotos para fotogrametría).
- * Devuelve { promesa, detener }: `detener()` mata el proceso hijo para no dejar
- * procesos huérfanos al cancelar un trabajo.
- */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,30 +13,16 @@ export function ffmpegDisponible(ffmpegBin) {
   }
 }
 
-/**
- * Dimensiones del primer stream de video (parsea la salida de `ffmpeg -i`).
- * Devuelve { w, h } o null si no se pudo determinar.
- */
 export function dimensionesVideo(ffmpegBin, videoPath) {
   try {
     const r = spawnSync(ffmpegBin, ['-i', videoPath], { encoding: 'utf8', timeout: 15000 });
     const m = (r.stderr || '').match(/(\d{2,5})x(\d{2,5})/);
     if (m) return { w: Number(m[1]), h: Number(m[2]) };
   } catch {
-    /* sin dimensión */
   }
   return null;
 }
 
-/**
- * @param {string} videoPath
- * @param {string} outDir
- * @param {object} [opciones]
- * @param {number} [opciones.fps]
- * @param {number} [opciones.maxFrames]
- * @param {(linea:string)=>void} [opciones.onLog]
- * @returns {{ promesa: Promise<number>, detener: () => void }} cantidad de frames
- */
 function comandoFrames(videoPath, outDir, { fps, maxFrames }) {
   return [
     '-y',
@@ -88,10 +69,6 @@ export function extraerFrames(ffmpegBin, videoPath, outDir, { fps = 1, maxFrames
 
     (async () => {
       try {
-        // 1) Intento principal: 1 cuadro cada 3 s. Un recorrido lento a fps fijo
-        // genera fotogramas casi duplicados (baseline ~0) que degeneran la
-        // geometría y rompen el ajuste de COLMAP; espaciarlos en el tiempo da
-        // baseline real entre vistas consecutivas.
         const pasos = [
           { fps: '1/3', etiqueta: '1 cuadro cada 3 s' },
           { fps, etiqueta: `fps=${fps}` },
@@ -105,8 +82,6 @@ export function extraerFrames(ffmpegBin, videoPath, outDir, { fps = 1, maxFrames
             return;
           }
           if (paso === pasos[pasos.length - 1]) {
-            // Último intento: si sacó algo (aunque sea poco), lo dejamos pasar;
-            // COLMAP decidirá si alcanza para reconstruir.
             if (r.frames > 0) {
               resolve(r.frames);
               return;
@@ -119,7 +94,6 @@ export function extraerFrames(ffmpegBin, videoPath, outDir, { fps = 1, maxFrames
               if (/\.jpe?g$/i.test(f)) fs.unlinkSync(path.join(outDir, f));
             });
           } catch {
-            /* sin frames */
           }
         }
       } catch (e) {

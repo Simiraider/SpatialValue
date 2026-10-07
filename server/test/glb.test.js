@@ -11,7 +11,7 @@ const mallaBase = () => ({
 describe('escribirGLB', () => {
   it('produce un GLB con cabecera válida (glTF 2.0)', () => {
     const buf = escribirGLB(mallaBase(), 'test');
-    expect(buf.readUInt32LE(0)).toBe(0x46546c67); // "glTF"
+    expect(buf.readUInt32LE(0)).toBe(0x46546c67); 
     expect(buf.readUInt32LE(4)).toBe(2);
     expect(buf.readUInt32LE(8)).toBe(buf.length);
     const { json } = leerGLB(buf);
@@ -35,8 +35,6 @@ describe('escribirGLB', () => {
   });
 
   it('los datos reales se escriben en los offsets correctos (round-trip)', () => {
-    // Regresión del bug de offsets: se acumulaban con .length (elementos) en
-    // vez de .byteLength (bytes), corrompiendo NORMAL/COLOR/índices.
     const mesh = mallaBase();
     const buf = escribirGLB(mesh, 'rt');
     const { json, jsonLength } = leerGLB(buf);
@@ -48,18 +46,15 @@ describe('escribirGLB', () => {
       return new Ctor(bin.buffer, bin.byteOffset + bv.byteOffset, n);
     };
 
-    // POSITION (offset 0) y NORMAL (ahora en bytes correctos)
     const pos = leer(json.accessors[0], Float32Array);
     expect(Array.from(pos.subarray(0, 6))).toEqual(mesh.positions.slice(0, 6));
     const norm = leer(json.accessors[1], Float32Array);
     expect(Array.from(norm.subarray(0, 3))).toEqual(mesh.normals.slice(0, 3));
 
-    // COLOR_0
     const colAcc = json.accessors.find((_, i) => json.accessors[i].bufferView === 2);
     const col = leer(colAcc || json.accessors[2], Float32Array);
     expect(Array.from(col.subarray(0, 3))).toEqual(mesh.colors.slice(0, 3));
 
-    // Índices (último accessor), en el offset de bytes correcto
     const idxAcc = json.accessors[json.accessors.length - 1];
     const idx = leer(idxAcc, idxAcc.componentType === 5125 ? Uint32Array : Uint16Array);
     expect(Array.from(idx.subarray(0, 6))).toEqual(mesh.indices.slice(0, 6));
@@ -89,7 +84,7 @@ describe('escribirGLB', () => {
     const buf = escribirGLB({ positions, normals, indices }, 'grande');
     const { json } = leerGLB(buf);
     const accIndices = json.accessors[json.accessors.length - 1];
-    expect(accIndices.componentType).toBe(5125); // UNSIGNED_INT
+    expect(accIndices.componentType).toBe(5125); 
   });
 
   it('rechaza mallas inválidas', () => {

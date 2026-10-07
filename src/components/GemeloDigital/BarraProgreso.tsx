@@ -15,6 +15,7 @@ const ORDEN: EtapaTrabajo[] = [
   'recibiendo',
   'extrayendo_frames',
   'reconstruyendo',
+  'densificando',
   'convirtiendo',
   'listo',
 ];
@@ -22,7 +23,8 @@ const ORDEN: EtapaTrabajo[] = [
 const PASOS: Record<string, { titulo: string; detalle: string }> = {
   recibiendo: { titulo: 'Subiendo fotos', detalle: 'Transfiriendo archivos al servicio de reconstrucción…' },
   extrayendo_frames: { titulo: 'Extrayendo cuadros', detalle: 'Convirtiendo el video en fotos (1 por segundo)…' },
-  reconstruyendo: { titulo: 'Reconstruyendo en 3D', detalle: 'Estimando poses de cámara y generando la malla…' },
+  reconstruyendo: { titulo: 'Reconstruyendo en 3D', detalle: 'Estimando poses de cámara y generando la nube de puntos…' },
+  densificando: { titulo: 'Refinando en GPU', detalle: 'Calculando superficie densa y textura (puede tardar unos minutos)…' },
   convirtiendo: { titulo: 'Generando modelo .glb', detalle: 'Optimizando y texturizando el modelo…' },
   listo: { titulo: '¡Modelo listo!', detalle: 'Tu gemelo digital está disponible.' },
 };
@@ -93,7 +95,6 @@ export const BarraProgreso = ({ config, jobId, onListo, onCancelar }: Props) => 
         </p>
       </div>
 
-      {/* Pasos */}
       <ol className="space-y-3">
         {PASOS_LIST.map(([clave], i) => {
           const completado = i < idxActual || etapa === 'listo';
@@ -131,7 +132,6 @@ export const BarraProgreso = ({ config, jobId, onListo, onCancelar }: Props) => 
         })}
       </ol>
 
-      {/* Barra + mensaje vivo */}
       <div>
         <div className="mb-1 flex items-center justify-between text-sm">
           <span className="truncate font-medium text-slate-700">{job?.mensaje || 'Preparando…'}</span>
@@ -202,6 +202,7 @@ const PASOS_LIST = [
   ['recibiendo', PASOS.recibiendo],
   ['extrayendo_frames', PASOS.extrayendo_frames],
   ['reconstruyendo', PASOS.reconstruyendo],
+  ['densificando', PASOS.densificando],
   ['convirtiendo', PASOS.convirtiendo],
   ['listo', PASOS.listo],
 ] as const;
