@@ -94,7 +94,10 @@ def exportar_glb(ply_path, glb_path):
     escena = trimesh.load(str(ply_path), process=False)
 
     if isinstance(escena, trimesh.Scene):
-        geom = max(escena.geometry.values(), key=lambda g: len(g.vertices))
+        candidatos = [g for g in escena.geometry.values() if len(getattr(g, "vertices", [])) > 0]
+        if not candidatos:
+            raise RuntimeError("La reconstruccion quedo sin geometria (escena vacia)")
+        geom = max(candidatos, key=lambda g: len(g.vertices))
     else:
         geom = escena
 
@@ -132,27 +135,250 @@ def exportar_glb(ply_path, glb_path):
     return {"modo": "nube", "vertices": int(len(vertices)), "caras": 0}
 
 
+def _espaciado_medio(pcd, np):
+    from scipy.spatial import cKDTree
+
+    puntos = np.asarray(pcd.points)
+    if len(puntos) > 20000:
+        idx = np.random.RandomState(0).choice(len(puntos), 20000, replace=False)
+        puntos = puntos[idx]
+    arbol = cKDTree(puntos)
+    dist, _ = arbol.query(puntos, k=2)
+    return float(np.median(dist[:, 1]))
+
+
+def _limpiar_nube(pcd, o3d, np):
+    esp = _espaciado_medio(pcd, np)
+    if esp <= 0:
+        esp = 0.01
+    voxel = esp * 1.5
+    pcd = pcd.voxel_down_sample(voxel_size=voxel)
+    pcd, _ = pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=1.4)
+    pcd, _ = pcd.remove_radius_outlier(nb_points=5, radius=voxel * 4)
+    print(f"[dense] limpieza: espaciado={esp:.4f}, voxel={voxel:.4f}, quedan {len(pcd.points)} puntos")
+    return pcd, esp
+
+
+def _aplanar_estructura(puntos, total, o3d, np, esp):
+    planos = []
+    umbral = max(esp * 2.0, 0.01)
+    resto = o3d.geometry.PointCloud()
+    resto.points = o3d.utility.Vector3dVector(puntos)
+    for _ in range(3):
+        if len(resto.points) < 200:
+            break
+        modelo, inliers = resto.segment_plane(
+            distance_threshold=umbral, ransac_n=3, num_iterations=2000
+        )
+        if len(inliers) < max(150, int(0.06 * total)):
+            break
+        planos.append(modelo)
+        resto = resto.select_by_index(inliers, invert=True)
+
+    for a, b, c, d in planos:
+        normal = np.array([a, b, c], dtype=float)
+        norma = np.linalg.norm(normal)
+        if norma == 0:
+            continue
+        unitaria = normal / norma
+        desplazamiento = d / norma
+        firmado = puntos @ unitaria + desplazamiento
+        cerca = np.abs(firmado) <= umbral * 1.5
+        puntos[cerca] -= np.outer(firmado[cerca], unitaria)
+    return puntos, len(planos)
+
+
 def meshear_si_puede(fused_ply, out_ply):
     try:
         import open3d as o3d
         import numpy as np
+    except Exception as e:
+        print(f"[dense] meshing omitido (open3d no disponible): {e}")
+        return None
 
+    try:
         pcd = o3d.io.read_point_cloud(str(fused_ply))
-        pcd.estimate_normals()
-        malla, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd, depth=9)
+        n_original = len(pcd.points)
+        if n_original < 500:
+            print(f"[dense] muy pocos puntos densos ({n_original}) para una malla limpia")
+            return None
+
+        pcd, esp = _limpiar_nube(pcd, o3d, np)
+        if len(pcd.points) < 300:
+            print("[dense] la nube quedo vacia tras el filtrado")
+            return None
+
+        puntos = np.asarray(pcd.points).copy()
+        puntos, n_planos = _aplanar_estructura(puntos, len(pcd.points), o3d, np, esp)
+
+        colores = np.asarray(pcd.colors) if pcd.has_colors() else None
+        limpia = o3d.geometry.PointCloud()
+        limpia.points = o3d.utility.Vector3dVector(puntos)
+        if colores is not None:
+            limpia.colors = o3d.utility.Vector3dVector(colores)
+
+        radio = max(esp * 6.0, 0.02)
+        limpia.estimate_normals(
+            search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=radio, max_nn=30)
+        )
+        try:
+            limpia.orient_normals_consistent_tangent_plane(30)
+        except Exception:
+            pass
+
+        profundidad = 8 if len(limpia.points) < 60000 else 9
+        malla, densidades = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
+            limpia, depth=profundidad
+        )
+        densidades = np.asarray(densidades)
+        if len(densidades):
+            corte = float(np.quantile(densidades, 0.08))
+            malla.remove_vertices_by_mask(densidades < corte)
+        malla.remove_degenerate_triangles()
+        malla.remove_duplicated_vertices()
+        malla.remove_unreferenced_vertices()
         malla.compute_vertex_normals()
-        colores = np.asarray(pcd.colors)
-        if len(colores) and len(malla.vertices):
+
+        if colores is not None and len(malla.vertices):
             from scipy.spatial import cKDTree
 
-            arbol = cKDTree(np.asarray(pcd.points))
+            arbol = cKDTree(puntos)
             _, idx = arbol.query(np.asarray(malla.vertices), k=1)
             malla.vertex_colors = o3d.utility.Vector3dVector(colores[idx])
+
         o3d.io.write_triangle_mesh(str(out_ply), malla)
+        print(
+            f"[dense] malla limpia: {len(malla.vertices)} verts, "
+            f"{len(malla.triangles)} caras, {n_planos} planos aplanados "
+            f"(de {n_original} puntos densos)"
+        )
         return out_ply
     except Exception as e:
-        print(f"[dense] meshing opcional omitido: {e}")
+        print(f"[dense] meshing fallo: {e}")
         return None
+
+
+def _reutilizar_sparse(sparse_entrada, output_path):
+    import pycolmap
+
+    try:
+        for nombre in ("cameras.bin", "images.bin", "points3D.bin", "rigs.bin", "frames.bin"):
+            origen = sparse_entrada / nombre
+            if origen.exists():
+                shutil.copy(str(origen), str(output_path / nombre))
+
+        recon = pycolmap.Reconstruction(str(output_path))
+        n_imagenes = _imagenes_registradas(recon)
+        n_puntos = len(recon.points3D)
+    except Exception as e:
+        print(f"[dense] no se pudo leer el sparse recibido ({e}); rehago el SfM")
+        _limpiar_carpetas(output_path)
+        return None
+
+    if n_imagenes < 4 or n_puntos < 1000:
+        print(
+            f"[dense] sparse recibido descartado: {n_puntos} puntos, "
+            f"{n_imagenes} imagenes (minimo 4 imagenes / 1000 puntos)"
+        )
+        _limpiar_carpetas(output_path)
+        return None
+
+    print(f"[dense] sparse reutilizado: {n_puntos} puntos, {n_imagenes} imagenes")
+    return recon
+
+
+def _imagenes_registradas(recon):
+    try:
+        return int(recon.num_reg_images())
+    except Exception:
+        pass
+    total = 0
+    for imagen in recon.images.values():
+        if getattr(imagen, "registered", None) is None:
+            total += 1
+            continue
+        if imagen.registered:
+            total += 1
+    return total or len(recon.images)
+
+
+def _limpiar_carpetas(output_path):
+    for basura in Path(output_path).glob("*"):
+        try:
+            basura.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+
+def _reset_sparse(database_path, output_path):
+    for basura in Path(database_path).glob("*"):
+        try:
+            basura.unlink(missing_ok=True)
+        except Exception:
+            pass
+    _limpiar_carpetas(output_path)
+
+
+def _mapping(pycolmap, database_path, image_dir, output_path):
+    opciones = pycolmap.IncrementalPipelineOptions()
+    opciones.min_model_size = 2
+    opciones.multiple_models = True
+    opciones.mapper.init_min_num_inliers = 15
+    opciones.mapper.abs_pose_min_num_inliers = 10
+    opciones.mapper.init_min_tri_angle = 4.0
+    maps = pycolmap.incremental_mapping(
+        database_path, image_dir, output_path, options=opciones
+    )
+    if not maps:
+        return None
+    mejor = max(maps.values(), key=lambda m: len(m.points3D))
+    if len(mejor.points3D) == 0:
+        return None
+    return mejor
+
+
+def _construir_sparse(pycolmap, database_path, image_dir, output_path, imgs):
+    pycolmap.extract_features(
+        database_path,
+        image_dir,
+        camera_mode=pycolmap.CameraMode.SINGLE,
+    )
+    parece_video = any("frame" in Path(p).name.lower() for p in imgs[:5])
+
+    if parece_video:
+        try:
+            pycolmap.match_sequential(database_path)
+            print("[dense] matching secuencial OK (video)")
+            mejor = _mapping(pycolmap, database_path, image_dir, output_path)
+            if mejor is not None and len(mejor.images) >= 8:
+                mejor.write(output_path)
+                print(
+                    f"[dense] sparse OK (secuencial): {len(mejor.points3D)} puntos, "
+                    f"{len(mejor.images)} imagenes"
+                )
+                return mejor
+            n_reg = len(mejor.images) if mejor is not None else 0
+            print(f"[dense] el secuencial registro {n_reg} imagenes; reintento con exhaustivo")
+        except Exception as e:
+            print(f"[dense] secuencial no disponible ({e})")
+
+    _reset_sparse(database_path, output_path)
+    pycolmap.extract_features(
+        database_path,
+        image_dir,
+        camera_mode=pycolmap.CameraMode.SINGLE,
+    )
+    pycolmap.match_exhaustive(database_path)
+    mejor = _mapping(pycolmap, database_path, image_dir, output_path)
+    if mejor is None:
+        escribir_estado(etapa="error", error="La reconstruccion sparse no produjo modelos")
+        return None
+    mejor.write(output_path)
+    print(
+        f"[dense] sparse OK (exhaustivo): {len(mejor.points3D)} puntos, "
+        f"{len(mejor.images)} imagenes"
+    )
+    return mejor
 
 
 def main():
@@ -212,49 +438,12 @@ def main():
             if sparse_entrada is not None:
                 break
 
-        if sparse_entrada is not None:
-            for nombre in ("cameras.bin", "images.bin", "points3D.bin", "rigs.bin", "frames.bin"):
-                origen = sparse_entrada / nombre
-                if origen.exists():
-                    shutil.copy(str(origen), str(output_path / nombre))
-            mejor = pycolmap.Reconstruction(str(output_path))
-            print(f"[dense] sparse reutilizado: {len(mejor.points3D)} puntos, {len(mejor.images)} imagenes")
-        else:
-            pycolmap.extract_features(
-                database_path,
-                image_dir,
-                camera_mode=pycolmap.CameraMode.SINGLE,
-            )
-            parece_video = any("frame" in Path(p).name.lower() for p in imgs[:5])
-            emparejado = False
-            if parece_video:
-                try:
-                    pycolmap.match_sequential(database_path)
-                    print("[dense] matching secuencial OK (video)")
-                    emparejado = True
-                except Exception as e:
-                    print(f"[dense] secuencial no disponible ({e})")
-            if not emparejado:
-                pycolmap.match_exhaustive(database_path)
+        mejor = _reutilizar_sparse(sparse_entrada, output_path) if sparse_entrada else None
 
-            opciones = pycolmap.IncrementalPipelineOptions()
-            opciones.min_model_size = 2
-            opciones.multiple_models = True
-            opciones.mapper.init_min_num_inliers = 15
-            opciones.mapper.abs_pose_min_num_inliers = 10
-            opciones.mapper.init_min_tri_angle = 4.0
-            maps = pycolmap.incremental_mapping(
-                database_path, image_dir, output_path, options=opciones
-            )
-            if not maps:
-                escribir_estado(etapa="error", error="La reconstruccion sparse no produjo modelos")
+        if mejor is None:
+            mejor = _construir_sparse(pycolmap, database_path, image_dir, output_path, imgs)
+            if mejor is None:
                 return
-            mejor = max(maps.values(), key=lambda m: len(m.points3D))
-            if len(mejor.points3D) == 0:
-                escribir_estado(etapa="error", error="El modelo sparse quedo sin puntos 3D")
-                return
-            mejor.write(output_path)
-            print(f"[dense] sparse OK: {len(mejor.points3D)} puntos, {len(mejor.images)} imagenes")
     except Exception as e:
         escribir_estado(etapa="error", error=f"Sparse fallo: {e}", traza=traceback.format_exc()[-2000:])
         return

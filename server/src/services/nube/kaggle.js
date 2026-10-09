@@ -77,10 +77,10 @@ export async function lanzarKernel(config, { carpetaKernel, carpetaDataset, kern
       licenses: [{ name: 'other' }],
     };
     fs.writeFileSync(path.join(carpetaDataset, 'dataset-metadata.json'), JSON.stringify(meta));
-    const crear = await ejecutar(bin, ['datasets', 'create', '-p', carpetaDataset, '--dir-mode', 'zip'], { env });
+    const crear = await ejecutar(bin, ['datasets', 'create', '-p', carpetaDataset, '--dir-mode=zip'], { env });
     const subir = crear.code === 0 ? crear : await ejecutar(
       bin,
-      ['datasets', 'version', '-p', carpetaDataset, '-m', 'input', '--dir-mode', 'zip'],
+      ['datasets', 'version', '-p', carpetaDataset, '-m', 'input', '--dir-mode=zip'],
       { env }
     );
     if (subir.code !== 0) {
