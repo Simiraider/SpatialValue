@@ -17,9 +17,9 @@ async function estaArriba(base) {
 
 const arg = (flag) => process.argv.includes(flag);
 const errores = [];
-const ok = (msg) => console.log(`  ✓ ${msg}`);
+const ok = (msg) => console.log(`  âœ“ ${msg}`);
 const fail = (msg) => {
-  console.error(`  ✗ ${msg}`);
+  console.error(`  âœ— ${msg}`);
   errores.push(msg);
 };
 
@@ -46,7 +46,7 @@ async function main() {
   if (!baseEnUso) {
     const PORT = PUERTOS_CANDIDATOS[PUERTOS_CANDIDATOS.length - 1];
     baseEnUso = `http://${HOST}:${PORT}`;
-    console.log(`▶ Levantando servidor aparte (astro dev, puerto ${PORT})…`);
+    console.log(`â–¶ Levantando servidor aparte (astro dev, puerto ${PORT})…`);
     server = spawn('npx', ['astro', 'dev', '--host', HOST, '--port', String(PORT)], {
       cwd: ROOT,
       stdio: 'pipe',
@@ -67,7 +67,7 @@ async function main() {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     page.on('pageerror', (err) => fail(`Error JS en página: ${err.message}`));
 
-    console.log('▶ Landing (/)');
+    console.log('â–¶ Landing (/)');
     await page.goto(BASE, { waitUntil: 'networkidle' });
     if ((await page.title()).includes('Spatial Value')) ok(`Título correcto: ${await page.title()}`);
     else fail(`Título inesperado: ${await page.title()}`);
@@ -79,24 +79,24 @@ async function main() {
       imgs.map((img) => ({ src: img.getAttribute('src'), ok: img.naturalWidth > 0 }))
     );
     if (iconos.length === 3 && iconos.every((i) => i.ok)) ok(`3 íconos del hero cargan (${iconos.map((i) => i.src).join(', ')})`);
-    else fail(`Íconos del hero rotos o incompletos: ${JSON.stringify(iconos)}`);
+    else fail(`Ãconos del hero rotos o incompletos: ${JSON.stringify(iconos)}`);
 
-    console.log('▶ Flujo sin sesión');
+    console.log('â–¶ Flujo sin sesión');
     await page.evaluate(() => localStorage.clear());
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.click('.button-primary-large');
     await page.waitForURL('**/login', { timeout: 5000 }).then(
-      () => ok('CTA "Comenzá a tasar" sin sesión → /login'),
+      () => ok('CTA "Comenzá a tasar" sin sesión â†’ /login'),
       () => fail(`CTA no redirigió a /login (quedó en ${page.url()})`)
     );
 
     await page.goto(`${BASE}/tasacion`, { waitUntil: 'domcontentloaded' });
     await page.waitForURL('**/login', { timeout: 5000 }).then(
-      () => ok('/tasacion sin sesión → redirige a /login'),
+      () => ok('/tasacion sin sesión â†’ redirige a /login'),
       () => fail(`/tasacion sin sesión quedó en ${page.url()}`)
     );
 
-    console.log('▶ Flujo con sesión');
+    console.log('â–¶ Flujo con sesión');
     await page.context().addCookies([
       { name: 'usuario_id', value: 'test-user', url: BASE },
     ]);
@@ -119,7 +119,7 @@ async function main() {
 
     await page.goto(`${BASE}/tasacion`, { waitUntil: 'domcontentloaded' });
     await wait(400);
-    if (!page.url().includes('/login')) ok('/tasacion con sesión → se muestra el formulario');
+    if (!page.url().includes('/login')) ok('/tasacion con sesión â†’ se muestra el formulario');
     else fail('/tasacion con sesión igual redirigió a /login');
 
     await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle' });
@@ -128,7 +128,7 @@ async function main() {
 
     await page.evaluate(() => document.cookie = 'usuario_id=; Max-Age=0; path=/');
     await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle' });
-    if (page.url().includes('/login')) ok('/dashboard sin cookie → re-login');
+    if (page.url().includes('/login')) ok('/dashboard sin cookie â†’ re-login');
     else fail(`/dashboard sin cookie quedó en ${page.url()}`);
     await page.evaluate(() => localStorage.clear());
 
@@ -140,7 +140,7 @@ async function main() {
     }
   }
 
-  console.log(errores.length ? `\n✖ ${errores.length} verificación(es) fallaron` : '\n✔ Todo verificado sin errores');
+  console.log(errores.length ? `\nâœ– ${errores.length} verificación(es) fallaron` : '\n✔ Todo verificado sin errores');
   process.exit(errores.length ? 1 : 0);
 }
 

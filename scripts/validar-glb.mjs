@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 
 import fs from 'node:fs';
 
@@ -15,7 +14,7 @@ const magic = buf.readUInt32LE(0);
 const version = buf.readUInt32LE(4);
 const total = buf.readUInt32LE(8);
 if (magic !== 0x46546c67) {
-  console.error('❌ Magic inválido (no es un GLB).');
+  console.error('Œ Magic inválido (no es un GLB).');
   process.exit(1);
 }
 if (version !== 2) fallas.push(`versión ${version} (esperada 2)`);
@@ -26,7 +25,7 @@ let json;
 try {
   json = JSON.parse(buf.subarray(20, 20 + jsonLen).toString('utf8'));
 } catch (e) {
-  console.error('❌ El chunk JSON no parsea:', e.message);
+  console.error('Œ El chunk JSON no parsea:', e.message);
   process.exit(1);
 }
 const binStart = 20 + jsonLen + 8;
@@ -87,7 +86,7 @@ if (idxAcc) {
 
 const nTriangulos = esNube || !idxAcc ? 0 : idxAcc.count / 3;
 
-console.log(`\n📦 ${ruta}`);
+console.log(`\nðŸ“¦ ${ruta}`);
 console.log(`   GLB v${version} · ${(buf.length / 1024).toFixed(1)} KB`);
 console.log(`   Vértices: ${nVertices} · Triángulos: ${nTriangulos}${esNube ? ' (nube de puntos)' : ''}`);
 console.log(`   Bounds X: [${json.accessors[0].min[0].toFixed(2)}, ${json.accessors[0].max[0].toFixed(2)}]`);
@@ -95,8 +94,8 @@ console.log(`   Bounds Z: [${json.accessors[0].min[2].toFixed(2)}, ${json.access
 console.log(`   Attributes: ${Object.keys(attrs).join(', ') || 'ninguno'}`);
 
 if (fallas.length) {
-  console.log(`\n❌ ${fallas.length} falla(s):`);
+  console.log(`\nŒ ${fallas.length} falla(s):`);
   for (const f of fallas) console.log(`   - ${f}`);
   process.exit(1);
 }
-console.log('\n✅ GLB válido: estructura, accesoors, min/max e índices OK');
+console.log('\nâœ… GLB válido: estructura, accesoors, min/max e índices OK');

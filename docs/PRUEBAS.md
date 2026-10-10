@@ -3,14 +3,14 @@
 ## Ejecutar los tests
 
 ```bash
-# Todo (frontend + worker) desde la raíz:
-npm test
+# Todo (frontend + worker) — verifica servidor, BD, APIs, IA y E2E:
+npm run verificar
 
-# Solo el worker de reconstrucción:
+# Solo el worker de reconstrucción (suite oficial, vitest + supertest):
 cd server && npm test
 
-# Solo la librería del frontend:
-npx vitest run src/lib/gemelo.test.ts
+# Solo la librería del frontend (vitest):
+npx vitest run --root . src/lib/gemelo.test.ts
 
 # Build de producción (valida que el frontend compila):
 npm run build

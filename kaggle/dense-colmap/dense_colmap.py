@@ -261,10 +261,12 @@ def meshear_si_puede(fused_ply, out_ply):
 def _reutilizar_sparse(sparse_entrada, output_path):
     import pycolmap
 
+    tamanios = {}
     try:
         for nombre in ("cameras.bin", "images.bin", "points3D.bin", "rigs.bin", "frames.bin"):
             origen = sparse_entrada / nombre
             if origen.exists():
+                tamanios[nombre] = origen.stat().st_size
                 shutil.copy(str(origen), str(output_path / nombre))
 
         recon = pycolmap.Reconstruction(str(output_path))
@@ -278,7 +280,9 @@ def _reutilizar_sparse(sparse_entrada, output_path):
     if n_imagenes < 4 or n_puntos < 1000:
         print(
             f"[dense] sparse recibido descartado: {n_puntos} puntos, "
-            f"{n_imagenes} imagenes (minimo 4 imagenes / 1000 puntos)"
+            f"{n_imagenes} imagenes (minimo 4 imagenes / 1000 puntos); "
+            f"leidos points3D.bin={tamanios.get('points3D.bin', 0)}B "
+            f"images.bin={tamanios.get('images.bin', 0)}B"
         )
         _limpiar_carpetas(output_path)
         return None
@@ -305,7 +309,10 @@ def _imagenes_registradas(recon):
 def _limpiar_carpetas(output_path):
     for basura in Path(output_path).glob("*"):
         try:
-            basura.unlink(missing_ok=True)
+            if basura.is_dir():
+                shutil.rmtree(basura, ignore_errors=True)
+            else:
+                basura.unlink(missing_ok=True)
         except Exception:
             pass
 
@@ -317,6 +324,13 @@ def _reset_sparse(database_path, output_path):
         except Exception:
             pass
     _limpiar_carpetas(output_path)
+
+
+def _elegir_modelo(modelos):
+    validos = [m for m in modelos if m is not None and len(m.points3D)]
+    if not validos:
+        return None
+    return max(validos, key=lambda m: (len(m.images), len(m.points3D)))
 
 
 def _mapping(pycolmap, database_path, image_dir, output_path):
@@ -331,13 +345,13 @@ def _mapping(pycolmap, database_path, image_dir, output_path):
     )
     if not maps:
         return None
-    mejor = max(maps.values(), key=lambda m: len(m.points3D))
-    if len(mejor.points3D) == 0:
-        return None
-    return mejor
+    for k, m in maps.items():
+        print(f"[dense] modelo {k}: {len(m.images)} imagenes, {len(m.points3D)} puntos")
+    return _elegir_modelo(maps.values())
 
 
 def _construir_sparse(pycolmap, database_path, image_dir, output_path, imgs):
+    umbral = max(8, int(len(imgs) * 0.35))
     pycolmap.extract_features(
         database_path,
         image_dir,
@@ -350,15 +364,18 @@ def _construir_sparse(pycolmap, database_path, image_dir, output_path, imgs):
             pycolmap.match_sequential(database_path)
             print("[dense] matching secuencial OK (video)")
             mejor = _mapping(pycolmap, database_path, image_dir, output_path)
-            if mejor is not None and len(mejor.images) >= 8:
+            n_reg = len(mejor.images) if mejor is not None else 0
+            if mejor is not None and n_reg >= umbral:
                 mejor.write(output_path)
                 print(
                     f"[dense] sparse OK (secuencial): {len(mejor.points3D)} puntos, "
-                    f"{len(mejor.images)} imagenes"
+                    f"{n_reg} imagenes"
                 )
                 return mejor
-            n_reg = len(mejor.images) if mejor is not None else 0
-            print(f"[dense] el secuencial registro {n_reg} imagenes; reintento con exhaustivo")
+            print(
+                f"[dense] el secuencial registro {n_reg} imagenes (< {umbral}); "
+                "reintento con exhaustivo"
+            )
         except Exception as e:
             print(f"[dense] secuencial no disponible ({e})")
 
@@ -369,16 +386,24 @@ def _construir_sparse(pycolmap, database_path, image_dir, output_path, imgs):
         camera_mode=pycolmap.CameraMode.SINGLE,
     )
     pycolmap.match_exhaustive(database_path)
-    mejor = _mapping(pycolmap, database_path, image_dir, output_path)
-    if mejor is None:
+    estricto = _mapping(pycolmap, database_path, image_dir, output_path)
+    if estricto is not None and len(estricto.images) >= umbral:
+        estricto.write(output_path)
+        print(
+            f"[dense] sparse OK (exhaustivo): {len(estricto.points3D)} puntos, "
+            f"{len(estricto.images)} imagenes"
+        )
+        return estricto
+
+    if estricto is None:
         escribir_estado(etapa="error", error="La reconstruccion sparse no produjo modelos")
         return None
-    mejor.write(output_path)
+    estricto.write(output_path)
     print(
-        f"[dense] sparse OK (exhaustivo): {len(mejor.points3D)} puntos, "
-        f"{len(mejor.images)} imagenes"
+        f"[dense] sparse OK (exhaustivo): {len(estricto.points3D)} puntos, "
+        f"{len(estricto.images)} imagenes (umbral {umbral})"
     )
-    return mejor
+    return estricto
 
 
 def main():

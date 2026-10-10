@@ -17,11 +17,11 @@ const user = env.SMTP_USER;
 const pass = env.SMTP_PASS;
 
 if (!host || !user || !pass) {
-  console.log('✖ Faltan variables: SMTP_HOST, SMTP_USER o SMTP_PASS en .env.local');
+  console.log('âœ– Faltan variables: SMTP_HOST, SMTP_USER o SMTP_PASS en .env.local');
   process.exit(1);
 }
 
-console.log(`▶ Probando handshake con ${host}:${port} como ${user}…`);
+console.log(`â–¶ Probando handshake con ${host}:${port} como ${user}…`);
 
 const nodemailer = (await import('nodemailer')).default;
 const transporter = nodemailer.createTransport({
@@ -35,7 +35,7 @@ try {
   await transporter.verify();
   console.log('✔ Credenciales SMTP válidas: Gmail aceptó la conexión y la autenticación.');
 } catch (err) {
-  console.log(`✖ Falló la autenticación SMTP: ${err?.message || err}`);
+  console.log(`âœ– Falló la autenticación SMTP: ${err?.message || err}`);
   if (String(err?.message).includes('Invalid login')) {
     console.log('  Pista: SMTP_PASS debe ser la contraseña de aplicación de 16 caracteres (sin espacios), no la contraseña normal de Gmail.');
   }

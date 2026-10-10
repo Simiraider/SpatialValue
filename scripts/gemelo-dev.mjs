@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 
 import { spawn, spawnSync } from 'node:child_process';
 
@@ -39,7 +38,7 @@ function arrancar() {
 }
 
 if (workerVivo()) {
-  console.log('[gemelo] ya hay un worker corriendo en :4000 — se reutiliza.');
+  console.log('[gemelo] ya hay un worker corriendo en :4000 â€” se reutiliza.');
 } else {
   matarRestos();
   arrancar();

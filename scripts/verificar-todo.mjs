@@ -4,8 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 const MODO_DEV = process.argv.includes('--dev');
 const OK = '\x1b[32m✔\x1b[0m';
-const WARN = '\x1b[33m⚠\x1b[0m';
-const MAL = '\x1b[31m✖\x1b[0m';
+const WARN = '\x1b[33mâš \x1b[0m';
+const MAL = '\x1b[31mâœ–\x1b[0m';
 
 const PUERTOS = ['4321', '4322', '4599'];
 const PUERTO_EFIMERO = '4599';
@@ -25,7 +25,7 @@ try {
       })
   );
 } catch (err) {
-  console.log(`⚠ No se pudo leer .env.local: ${err?.message || err}`);
+  console.log(`âš  No se pudo leer .env.local: ${err?.message || err}`);
 }
 
 for (const [clave, valor] of Object.entries(env)) {
@@ -100,7 +100,7 @@ async function limpiarDaemonAstro() {
   const vivo = pidVivo(estado.pid);
   if (vivo && puerto && (await alcance(`http://localhost:${puerto}/`, 1500))) return;
   if (vivo) {
-    console.log(`▶ Daemon de astro trabado (pid ${estado.pid}, puerto ${puerto} sin responder): reiniciándolo…`);
+    console.log(`â–¶ Daemon de astro trabado (pid ${estado.pid}, puerto ${puerto} sin responder): reiniciándolo…`);
     spawnSync('taskkill', ['/pid', String(estado.pid), '/T', '/F'], { shell: true, timeout: 15000 });
   }
   fs.rmSync('.astro/dev.json', { force: true });
@@ -117,7 +117,7 @@ async function elegirServidor() {
   }
   if (MODO_DEV) return { base: null, servidor: null };
 
-  console.log(`▶ Sin servidor activo: levantando uno efímero en :${PUERTO_EFIMERO}…`);
+  console.log(`â–¶ Sin servidor activo: levantando uno efímero en :${PUERTO_EFIMERO}…`);
   const levantar = () =>
     spawn('npx', ['astro', 'dev', '--host', 'localhost', '--port', PUERTO_EFIMERO], {
       stdio: 'ignore',
@@ -242,7 +242,7 @@ async function capaApis(base) {
   const updateData = await updateRes?.json().catch(() => null);
   if (updateRes?.ok && updateData?.config?.moneda === monedaPrueba && 'email_verificado' in (updateData?.config ?? {})) {
     okCount++;
-    registrar('APIs backend', 'ok', `ActualizarConfigUsuario (moneda → ${monedaPrueba})`);
+    registrar('APIs backend', 'ok', `ActualizarConfigUsuario (moneda â†’ ${monedaPrueba})`);
   } else {
     registrar('APIs backend', 'mal', `ActualizarConfigUsuario falló (HTTP ${updateRes?.status})`);
   }
@@ -259,7 +259,7 @@ async function capaApis(base) {
   }).catch(() => null);
   if (verifRes?.status === 409 || verifRes?.status === 400 || verifRes?.status === 429) {
     okCount++;
-    registrar('APIs backend', 'ok', 'guard de verificación activo (409 destino ≠ guardado)');
+    registrar('APIs backend', 'ok', 'guard de verificación activo (409 destino â‰  guardado)');
   } else {
     registrar('APIs backend', 'mal', `guard de verificación no responde como se espera (HTTP ${verifRes?.status})`);
   }
@@ -295,7 +295,7 @@ async function capaIA() {
 
   let efimera = null;
   if (!salud && !MODO_DEV) {
-    console.log(`▶ IA no activa: levantando instancia efímera en :8000…`);
+    console.log(`â–¶ IA no activa: levantando instancia efímera en :8000…`);
     efimera = spawn(process.platform === 'win32' ? 'python' : 'python3', ['src/pages/Apis/api_ia.py'], { stdio: 'ignore' });
     const inicioSpawn = Date.now();
     while (Date.now() - inicioSpawn < 60000) {
@@ -307,7 +307,7 @@ async function capaIA() {
 
   if (!salud) {
     matarProceso(efimera);
-    registrar('IA', 'mal', `no responde en ${IA_URL} — revisá la terminal de python`);
+    registrar('IA', 'mal', `no responde en ${IA_URL} â€” revisá la terminal de python`);
     return;
   }
 
@@ -416,7 +416,7 @@ if (base) {
 matarProceso(efimero);
 if (base) matarPuerto(PUERTO_EFIMERO);
 
-console.log('\n══════════ Resumen de verificación ══════════');
+console.log('\nâ•â•â•â•â•â•â•â•â•â• Resumen de verificación â•â•â•â•â•â•â•â•â•â•');
 let malos = 0;
 for (const { seccion, estado, texto } of lineas) {
   const icono = estado === 'ok' ? OK : estado === 'aviso' ? WARN : MAL;
@@ -426,7 +426,7 @@ for (const { seccion, estado, texto } of lineas) {
 if (!lineas.length) console.log(`  ${MAL} sin resultados (servidor no disponible)`);
 
 if (MODO_DEV) {
-  console.log(malos ? `\n${MAL} ${malos} capa(s) con problemas (el dev sigue corriendo igual)\n` : `\n${OK} Todo el sistema verificado — el dev sigue corriendo\n`);
+  console.log(malos ? `\n${MAL} ${malos} capa(s) con problemas (el dev sigue corriendo igual)\n` : `\n${OK} Todo el sistema verificado â€” el dev sigue corriendo\n`);
   process.exit(0);
 }
 console.log(malos ? `\n${MAL} ${malos} capa(s) con problemas\n` : `\n${OK} Todo el sistema verificado sin errores\n`);

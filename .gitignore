@@ -23,6 +23,7 @@ pnpm-debug.log*
 
 __pycache__/
 *.pyc
+*.pdf
 
 chrome_scraper_data/
 /chrome_scraper_data

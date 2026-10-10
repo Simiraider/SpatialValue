@@ -28,13 +28,11 @@
     "jspdf": "^4.2.1",
     "lucide-react": "^1.14.0",
     "nodemailer": "^10.0.10",
-    "playwright": "^1.62.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.6.0",
-    "tailwindcss": "^4.1.8",
-    "tsx": "^4.23.9"
+    "tailwindcss": "^4.1.8"
   },
   "overrides": {
     "path-to-regexp": "6.3.0",
@@ -45,6 +43,8 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
     "concurrently": "^10.0.4",
+    "playwright": "^1.62.1",
+    "tsx": "^4.23.9",
     "typescript": "^6.0.3",
     "vitest": "^2.1.9"
   }

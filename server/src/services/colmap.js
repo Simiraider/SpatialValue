@@ -1,5 +1,6 @@
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { logger } from '../utils/logger.js';
@@ -80,7 +81,28 @@ function correrEtapa(colmapBin, subcomando, args, { ref, onLog, timeoutMs = 30 *
 }
 
 
-export function elegirMejorModelo(sparsePath) {
+function contarImagenesModelo(modelo, colmapBin) {
+  let tmp = null;
+  try {
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sv-modelo-'));
+    const r = spawnSync(colmapBin, [
+      'model_converter',
+      '--input_path', modelo,
+      '--output_path', tmp,
+      '--output_type', 'TXT',
+    ], { stdio: 'ignore', timeout: 60 * 1000 });
+    if (r.status !== 0) return 0;
+    const txt = fs.readFileSync(path.join(tmp, 'images.txt'), 'utf8');
+    return txt.split(/\r?\n/).filter((l) => /\.(jpe?g|png|webp|bmp)/i.test(l)).length;
+  } catch {
+    return 0;
+  } finally {
+    if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+
+export function elegirMejorModelo(sparsePath, colmapBin = 'colmap') {
   if (!fs.existsSync(sparsePath)) return null;
 
   const modelos = fs.readdirSync(sparsePath)
@@ -88,17 +110,24 @@ export function elegirMejorModelo(sparsePath) {
 
   if (!modelos.length) return null;
 
+  // Para MVS conviene el modelo con mas camaras registradas (cobertura);
+  // los puntos3D desempatan. Si el conteo falla, manda el tamano de puntos.
   let mejor = null;
+  let mejorImagenes = -1;
   let mejorTam = -1;
   for (const m of modelos) {
-    const pts = path.join(sparsePath, m, 'points3D.bin');
+    const carpeta = path.join(sparsePath, m);
+    let tam = 0;
     try {
-      const tam = fs.statSync(pts).size;
-      if (tam > mejorTam) {
-        mejorTam = tam;
-        mejor = path.join(sparsePath, m);
-      }
+      tam = fs.statSync(path.join(carpeta, 'points3D.bin')).size;
     } catch {
+      continue;
+    }
+    const imagenes = contarImagenesModelo(carpeta, colmapBin);
+    if (imagenes > mejorImagenes || (imagenes === mejorImagenes && tam > mejorTam)) {
+      mejorImagenes = imagenes;
+      mejorTam = tam;
+      mejor = carpeta;
     }
   }
 
@@ -197,7 +226,7 @@ export function ejecutarColmap(
     const imagenesRegistradas = r3.log.filter((l) => /Registering image #/.test(l)).length;
     logger.info(`[colmap] mapper registró ${imagenesRegistradas} imágenes`);
 
-    const mejorModelo = elegirMejorModelo(sparsePath);
+    const mejorModelo = elegirMejorModelo(sparsePath, colmapBin);
     if (!mejorModelo) {
       logger.warn('[colmap] mapper no produjo ningún modelo sparse');
       return { mallaPly: null, log: allLogs, imagenesRegistradas: 0 };
