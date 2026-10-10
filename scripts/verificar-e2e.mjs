@@ -79,7 +79,7 @@ async function main() {
       imgs.map((img) => ({ src: img.getAttribute('src'), ok: img.naturalWidth > 0 }))
     );
     if (iconos.length === 3 && iconos.every((i) => i.ok)) ok(`3 íconos del hero cargan (${iconos.map((i) => i.src).join(', ')})`);
-    else fail(`Ãconos del hero rotos o incompletos: ${JSON.stringify(iconos)}`);
+    else fail(`Íconos del hero rotos o incompletos: ${JSON.stringify(iconos)}`);
 
     console.log('â–¶ Flujo sin sesión');
     await page.evaluate(() => localStorage.clear());
