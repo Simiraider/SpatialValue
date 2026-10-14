@@ -34,6 +34,73 @@ const tiene = (comodidades, nombre) =>
   Array.isArray(comodidades) &&
   comodidades.some((a) => normalizar(a) === normalizar(nombre));
 
+// Convierte direcciones como "Av. Santa Fe 4370" al slug "avenida-santa-fe-4370"
+function normalizarDireccionFichaprop(direccion) {
+  if (!direccion) return null;
+  return direccion
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\bav\.?\b/g, 'avenida')
+    .replace(/\bpje\.?\b/g, 'pasaje')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
+}
+
+// Consulta rápida a Fichaprop por HTTP desde el backend
+async function consultarFichaprop(direccion) {
+  const slug = normalizarDireccionFichaprop(direccion);
+  if (!slug) return null;
+
+  const url = `https://fichaprop.ar/edificio/${slug}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000); // Timeout de 6 segundos
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      },
+      signal: controller.signal
+    });
+
+    if (!res.ok) return null;
+    const html = await res.text();
+
+    if (html.includes("No encontramos este edificio") || html.includes("404")) {
+      return null;
+    }
+
+    const textContent = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+                            .replace(/<[^>]+>/g, ' ')
+                            .replace(/\s+/g, ' ');
+
+    const ruidoMatch = textContent.match(/(\d+[\s-]+\d+\s*dBA[^\.]*)/i) || textContent.match(/(\d+\s*dBA[^\.]*)/i);
+    const obrasMatch = textContent.match(/(\d+\s*m\s*a la más cercana[^\.]*)/i) || textContent.match(/(\d+\s*obras[^\.]*)/i);
+    const subteMatch = textContent.match(/(\d+\s*m\s*\d+\s*estaciones[^\.]*)/i) || textContent.match(/(\d+\s*estaciones de subte[^\.]*)/i);
+    const plazasMatch = textContent.match(/(\d+\s*m\s*\d+\s*plazas[^\.]*)/i) || textContent.match(/(\d+\s*plazas y parques[^\.]*)/i);
+    const escuelasMatch = textContent.match(/(\d+\s*m\s*\d+\s*escuelas[^\.]*)/i) || textContent.match(/(\d+\s*escuelas y jardines[^\.]*)/i);
+    const comunaMatch = textContent.match(/(Comuna\s*\d+)/i);
+    const resenasMatch = textContent.match(/(\d+)\s*reseñas/i);
+
+    return {
+      ruido: ruidoMatch ? ruidoMatch[1].trim() : null,
+      obras: obrasMatch ? obrasMatch[1].trim() : null,
+      subte: subteMatch ? subteMatch[1].trim() : null,
+      plazas: plazasMatch ? plazasMatch[1].trim() : null,
+      escuelas: escuelasMatch ? escuelasMatch[1].trim() : null,
+      comuna: comunaMatch ? comunaMatch[1].trim() : null,
+      resenas: resenasMatch ? parseInt(resenasMatch[1], 10) : 0
+    };
+  } catch (e) {
+    console.warn('Fichaprop no respondió a tiempo:', e.message);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 const IA_API_KEY = import.meta.env.INTERNAL_API_KEY || process.env.INTERNAL_API_KEY || '';
 async function llamarAI(payload) {
   const controller = new AbortController();
@@ -155,6 +222,9 @@ export async function POST({ request }) {
     const lngFinal = coordenadasFinales?.lng ?? null;
     const barrioFinal = canonizarBarrio(barrio || canonizarBarrio(barrioDetectado)) || barrio || null;
 
+    // CONSULTA AUTOMÁTICA A FICHAPROP CON LA DIRECCIÓN
+    const datosFP = await consultarFichaprop(direccionFormateada || direccion);
+
     const payloadIA = {
       tipo_propiedad,
       barrio_zona: barrioFinal || ciudad || 'Capital Federal',
@@ -213,7 +283,6 @@ export async function POST({ request }) {
       } else {
         precioFinal = referenciaLocal;
         fuentePrecio = 'modelo-local';
-        console.warn(`IA fuera de banda (${Math.round(precioEstimadoUsd)} vs referencia ${referenciaLocal}): se usa estimación local`);
       }
     } else if (esAlquiler) {
       precioFinal = 0;
@@ -225,7 +294,7 @@ export async function POST({ request }) {
 
     let publicacionGuardada = null;
     try {
-      await sql`ALTER TABLE publicaciones ADD COLUMN IF NOT EXISTS estado_tasacion varchar(20) NOT NULL DEFAULT 'completada'`;
+
       const nuevaPublicacion = await sql`
         INSERT INTO publicaciones (
           id_usuario,
@@ -248,7 +317,14 @@ export async function POST({ request }) {
           ciudad,
           latitud,
           longitud,
-          estado_tasacion
+          estado_tasacion,
+          fichaprop_ruido,
+          fichaprop_obras,
+          fichaprop_subte,
+          fichaprop_plazas,
+          fichaprop_escuelas,
+          fichaprop_comuna,
+          fichaprop_resenas_cant
         )
         VALUES (
           ${idUsuarioFinal},
@@ -271,7 +347,14 @@ export async function POST({ request }) {
           ${ciudad},
           ${latFinal},
           ${lngFinal},
-          ${es_borrador ? 'borrador' : 'completada'}
+          ${es_borrador ? 'borrador' : 'completada'},
+          ${datosFP?.ruido || null},
+          ${datosFP?.obras || null},
+          ${datosFP?.subte || null},
+          ${datosFP?.plazas || null},
+          ${datosFP?.escuelas || null},
+          ${datosFP?.comuna || null},
+          ${datosFP?.resenas || 0}
         )
         RETURNING *;
       `;
@@ -297,6 +380,7 @@ export async function POST({ request }) {
           fotos,
           fuente_precio: fuentePrecio,
           referencia_local_usd: referenciaLocal,
+          fichaprop: datosFP,
         });
         await sql`
           INSERT INTO tasacion_detalles (id_publicacion, datos)
@@ -307,7 +391,7 @@ export async function POST({ request }) {
         console.warn('No se pudo guardar el detalle ampliado de la tasación:', detailError.message);
       }
     } catch (error) {
-      console.error("No se pudo guardar la publicación (igual se devuelve la estimación):", error.message);
+      console.error("No se pudo guardar la publicación:", error.message);
     }
 
     return new Response(
@@ -315,7 +399,7 @@ export async function POST({ request }) {
         success: true,
         message: publicacionGuardada
           ? "Publicación creada con éxito"
-          : "Tasación estimada (no guardada: servicio de datos no disponible)",
+          : "Tasación estimada (no guardada)",
         data: {
           id: publicacionGuardada?.id_publicacion ?? null,
           precio_estimado_usd: precioEstimadoUsd != null ? Math.round(precioEstimadoUsd) : null,
@@ -326,6 +410,7 @@ export async function POST({ request }) {
           barrio_coincide: barrioCoincide,
           fuente_geocoding: fuenteGeocoding,
           fuente_precio: fuentePrecio,
+          fichaprop: datosFP,
           saved: Boolean(publicacionGuardada),
         },
       }),
