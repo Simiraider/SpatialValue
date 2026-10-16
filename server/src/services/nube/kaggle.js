@@ -77,14 +77,48 @@ export async function lanzarKernel(config, { carpetaKernel, carpetaDataset, kern
       licenses: [{ name: 'other' }],
     };
     fs.writeFileSync(path.join(carpetaDataset, 'dataset-metadata.json'), JSON.stringify(meta));
+
+    const marcador = `verificacion-${Date.now()}.json`;
+    fs.writeFileSync(path.join(carpetaDataset, marcador), JSON.stringify({ ts: Date.now() }));
+
+    const fallo = (r) =>
+      r.code !== 0 || /creation error|already in use|already exists/i.test(`${r.stdout}\n${r.stderr}`);
+
     const crear = await ejecutar(bin, ['datasets', 'create', '-p', carpetaDataset, '--dir-mode=zip'], { env });
-    const subir = crear.code === 0 ? crear : await ejecutar(
-      bin,
-      ['datasets', 'version', '-p', carpetaDataset, '-m', 'input', '--dir-mode=zip'],
-      { env }
-    );
-    if (subir.code !== 0) {
-      return { ok: false, detalle: `dataset: ${subir.stderr.slice(-400)}` };
+    let subir = crear;
+    if (fallo(crear)) {
+      logger.info('[nube] el dataset ya existe; subiendo una nueva version…');
+      subir = await ejecutar(
+        bin,
+        ['datasets', 'version', '-p', carpetaDataset, '-m', 'input', '--dir-mode=zip'],
+        { env, timeoutMs: 40 * 60 * 1000 }
+      );
+    }
+    if (fallo(subir)) {
+      return { ok: false, detalle: `dataset: ${(subir.stderr || subir.stdout).slice(-400)}` };
+    }
+
+    const carpetaPrueba = path.join(carpetaDataset, '..', 'verificacion');
+    const t0 = Date.now();
+    const limiteMs = 10 * 60 * 1000;
+    for (;;) {
+      fs.rmSync(carpetaPrueba, { recursive: true, force: true });
+      const dl = await ejecutar(
+        bin,
+        ['datasets', 'download', '-d', datasetSlug, '-f', marcador, '-p', carpetaPrueba, '-o', '-q'],
+        { env, timeoutMs: 2 * 60 * 1000 }
+      );
+      if (dl.code === 0 && fs.existsSync(path.join(carpetaPrueba, marcador))) {
+        logger.info(`[nube] version del dataset viva tras ${Math.round((Date.now() - t0) / 1000)} s`);
+        break;
+      }
+      if (Date.now() - t0 >= limiteMs) {
+        return {
+          ok: false,
+          detalle: `la version del dataset no quedó disponible en ${limiteMs / 60000} min`,
+        };
+      }
+      await new Promise((r) => setTimeout(r, 15000));
     }
   }
 

@@ -95,7 +95,7 @@ export function crearPipeline({ config, estado }) {
         estado: 'procesando',
         etapa: 'extrayendo_frames',
         progreso: 10,
-        mensaje: 'Extrayendo cuadros del video (ffmpeg, 1 fps)…',
+        mensaje: 'Extrayendo cuadros del video (muestreo uniforme)…',
       });
       const video = fs.readdirSync(inputDir).find((f) => /\.(mp4|mov|m4v|webm)$/i.test(f));
       if (!video) throw new Error('No se encontró el video subido.');
@@ -112,7 +112,8 @@ export function crearPipeline({ config, estado }) {
       const framesDir = path.join(inputDir, 'frames');
       const ctl = extraerFrames(config.ffmpegBin, path.join(inputDir, video), framesDir, {
         fps: 1,
-        maxFrames: config.maxFotos,
+        maxFrames: config.maxFramesVideo,
+        duracion: dim?.dur ?? null,
         onLog: (linea) =>
           estado.actualizar(job.id, { mensaje: `Extrayendo cuadros… (${linea.slice(-60).trim()})` }),
       });

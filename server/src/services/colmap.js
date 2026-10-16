@@ -139,7 +139,11 @@ export function elegirMatching(esVideo, dbPath) {
   if (esVideo) {
     return {
       subcomando: 'sequential_matcher',
-      args: ['--database_path', dbPath, '--SequentialMatching.overlap', '10'],
+      args: [
+        '--database_path', dbPath,
+        '--SequentialMatching.overlap', '10',
+        '--SiftMatching.guided_matching', '1',
+      ],
     };
   }
   return {
@@ -223,16 +227,14 @@ export function ejecutarColmap(
     ], { ref, onLog, timeoutMs: 180 * 60 * 1000 }); 
     allLogs.push(...r3.log);
 
-    const imagenesRegistradas = r3.log.filter((l) => /Registering image #/.test(l)).length;
-    logger.info(`[colmap] mapper registró ${imagenesRegistradas} imágenes`);
-
     const mejorModelo = elegirMejorModelo(sparsePath, colmapBin);
     if (!mejorModelo) {
       logger.warn('[colmap] mapper no produjo ningún modelo sparse');
       return { mallaPly: null, log: allLogs, imagenesRegistradas: 0 };
     }
 
-    logger.info(`[colmap] mejor modelo sparse: ${mejorModelo}`);
+    const imagenesRegistradas = contarImagenesModelo(mejorModelo, colmapBin);
+    logger.info(`[colmap] mejor modelo sparse: ${mejorModelo} (${imagenesRegistradas} imágenes registradas)`);
 
     chequearCancelado();
     chequearTimeout('exportar');

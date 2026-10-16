@@ -258,7 +258,7 @@ def meshear_si_puede(fused_ply, out_ply):
         return None
 
 
-def _reutilizar_sparse(sparse_entrada, output_path):
+def _reutilizar_sparse(sparse_entrada, output_path, n_total):
     import pycolmap
 
     tamanios = {}
@@ -277,10 +277,12 @@ def _reutilizar_sparse(sparse_entrada, output_path):
         _limpiar_carpetas(output_path)
         return None
 
-    if n_imagenes < 4 or n_puntos < 1000:
+    cobertura_min = max(8, int(n_total * 0.3))
+    if n_imagenes < 4 or n_puntos < 1000 or n_imagenes < cobertura_min:
         print(
             f"[dense] sparse recibido descartado: {n_puntos} puntos, "
-            f"{n_imagenes} imagenes (minimo 4 imagenes / 1000 puntos); "
+            f"{n_imagenes} de {n_total} imagenes (minimo 4 imagenes / "
+            f"1000 puntos / cobertura {cobertura_min}); "
             f"leidos points3D.bin={tamanios.get('points3D.bin', 0)}B "
             f"images.bin={tamanios.get('images.bin', 0)}B"
         )
@@ -289,6 +291,34 @@ def _reutilizar_sparse(sparse_entrada, output_path):
 
     print(f"[dense] sparse reutilizado: {n_puntos} puntos, {n_imagenes} imagenes")
     return recon
+
+
+def _alininear_imagenes(recon, image_dir):
+    redirigidas = 0
+    faltantes = 0
+    for imagen in recon.images.values():
+        nombre = imagen.name
+        destino = image_dir / nombre
+        if destino.exists():
+            continue
+        base = image_dir / Path(nombre).name
+        if base.exists():
+            try:
+                destino.parent.mkdir(parents=True, exist_ok=True)
+                os.symlink(base.resolve(), destino)
+            except OSError:
+                try:
+                    shutil.copy(str(base), str(destino))
+                except OSError:
+                    faltantes += 1
+                    continue
+            redirigidas += 1
+        else:
+            faltantes += 1
+    if redirigidas:
+        print(f"[dense] {redirigidas} imagenes del sparse reubicadas a sus rutas relativas")
+    if faltantes:
+        print(f"[dense] WARNING: {faltantes} imagenes del sparse no estan en el dataset")
 
 
 def _imagenes_registradas(recon):
@@ -463,12 +493,13 @@ def main():
             if sparse_entrada is not None:
                 break
 
-        mejor = _reutilizar_sparse(sparse_entrada, output_path) if sparse_entrada else None
+        mejor = _reutilizar_sparse(sparse_entrada, output_path, len(imgs)) if sparse_entrada else None
 
         if mejor is None:
             mejor = _construir_sparse(pycolmap, database_path, image_dir, output_path, imgs)
             if mejor is None:
                 return
+        _alininear_imagenes(mejor, image_dir)
     except Exception as e:
         escribir_estado(etapa="error", error=f"Sparse fallo: {e}", traza=traceback.format_exc()[-2000:])
         return

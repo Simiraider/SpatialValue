@@ -7,6 +7,7 @@ const numero = (valor, defecto) => {
 const crearConfig = (env = process.env) => {
   const minFotos = Math.round(numero(env.GEMELO_MIN_FOTOS, 5));
   const maxFotos = Math.round(numero(env.GEMELO_MAX_FOTOS, 100));
+  const maxFramesVideo = Math.round(numero(env.GEMELO_MAX_FRAMES_VIDEO, 500));
   const maxVideoMb = Math.max(300, Math.round(numero(env.GEMELO_MAX_VIDEO_MB, 500))); 
   const ttlHoras = numero(env.GEMELO_TTL_HORAS, 1);
   const maxJobsPorIp = Math.round(numero(env.GEMELO_MAX_JOBS_POR_IP, 5));
@@ -18,6 +19,7 @@ const crearConfig = (env = process.env) => {
     modo: (env.GEMELO_MODO || 'auto').toLowerCase(),
     minFotos,
     maxFotos: Math.max(maxFotos, minFotos),
+    maxFramesVideo: Math.max(maxFramesVideo, minFotos),
     maxVideoMb,
     ttlHoras,
     ttlMs: ttlHoras * 3600 * 1000,

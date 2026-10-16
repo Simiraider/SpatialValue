@@ -16,8 +16,11 @@ export function ffmpegDisponible(ffmpegBin) {
 export function dimensionesVideo(ffmpegBin, videoPath) {
   try {
     const r = spawnSync(ffmpegBin, ['-i', videoPath], { encoding: 'utf8', timeout: 15000 });
-    const m = (r.stderr || '').match(/(\d{2,5})x(\d{2,5})/);
-    if (m) return { w: Number(m[1]), h: Number(m[2]) };
+    const salida = r.stderr || '';
+    const m = salida.match(/(\d{2,5})x(\d{2,5})/);
+    const d = salida.match(/Duration:\s*(\d+):(\d{2}):(\d{2})[.,](\d{2})/);
+    const dur = d ? Number(d[1]) * 3600 + Number(d[2]) * 60 + Number(d[3]) + Number(d[4]) / 100 : null;
+    if (m) return { w: Number(m[1]), h: Number(m[2]), dur };
   } catch {
   }
   return null;
@@ -34,7 +37,7 @@ function comandoFrames(videoPath, outDir, { fps, maxFrames }) {
   ];
 }
 
-export function extraerFrames(ffmpegBin, videoPath, outDir, { fps = 1, maxFrames = 100, onLog } = {}) {
+export function extraerFrames(ffmpegBin, videoPath, outDir, { fps = 1, maxFrames = 100, duracion = null, onLog } = {}) {
   let proc = null;
   let detener = () => {};
 
@@ -69,8 +72,14 @@ export function extraerFrames(ffmpegBin, videoPath, outDir, { fps = 1, maxFrames
 
     (async () => {
       try {
+        const uniforme = duracion && duracion > 0 ? Math.min(5, maxFrames / duracion) : null;
         const pasos = [
-          { fps: '1/3', etiqueta: '1 cuadro cada 3 s' },
+          uniforme
+            ? {
+                fps: uniforme.toFixed(3),
+                etiqueta: `muestreo uniforme ${uniforme.toFixed(2)} fps (1 cuadro cada ${(1 / uniforme).toFixed(1)} s)`,
+              }
+            : { fps: '1/3', etiqueta: '1 cuadro cada 3 s' },
           { fps, etiqueta: `fps=${fps}` },
         ];
         for (const paso of pasos) {
