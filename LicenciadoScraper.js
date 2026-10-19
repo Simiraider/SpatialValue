@@ -7,8 +7,11 @@ dotenv.config();
 
 const CONFIG = {
     PAGINAS_MAXIMAS: 5,
+    URL_BASE: 'https://www.zonaprop.com.ar/casas-venta-capital-federal.html',
+    URL_PAGINA: (n) => `https://www.zonaprop.com.ar/casas-venta-capital-federal-pagina-${n}.html`,
     CDP_ENDPOINT: 'http://localhost:9222',
     IA_URL: process.env.IA_URL || 'http://127.0.0.1:8000',
+    IA_API_KEY: process.env.INTERNAL_API_KEY || '',
     DB_URL: process.env.SpatialValueStorage_DATABASE_URL || process.env.DATABASE_URL || process.env.NEON_DATABASE_URL,
     NOMINATIM_URL: 'https://nominatim.openstreetmap.org/search',
     NOMINATIM_USER_AGENT: 'SpatialValue-Scraper/1.0 (tu-email@ejemplo.com)',
@@ -120,17 +123,48 @@ const resolverCoordenadas = async (direccionTexto, barrioZona) => {
     return CONFIG.COORDENADAS_DEFAULT;
 };
 
+// El IPS de la red (ej. FortiGuard) puede bloquear la request por patrón de tráfico
+// automatizado de forma intermitente, no por tener el dominio en una lista negra fija.
+// Por eso NO se desactiva Fichaprop para toda la corrida: solo se reintenta una vez
+// con una pausa, y si sigue bloqueado se omite esa propiedad puntual.
+const esPaginaDeBloqueoRed = (titulo, textoCompleto) => {
+    const marcas = ['fortiguard', 'access blocked', 'web page blocked', 'web filter', 'blocked by'];
+    const combinado = `${titulo} ${textoCompleto}`.toLowerCase();
+    return marcas.some(m => combinado.includes(m));
+};
+
+const irAFichaprop = async (pageFP, slug) => {
+    const response = await pageFP.goto(`https://fichaprop.ar/edificio/${slug}`, {
+        waitUntil: 'domcontentloaded',
+        timeout: 15000,
+    });
+    if (!response || response.status() === 404) return 'no-encontrado';
+
+    const titulo = await pageFP.title();
+    const textoInicial = await pageFP.evaluate(() => document.body?.innerText || '').catch(() => '');
+    if (esPaginaDeBloqueoRed(titulo, textoInicial)) return 'bloqueado';
+
+    return 'ok';
+};
+
 const consultarFichaprop = async (context, direccion) => {
     const slug = normalizarDireccionFichaprop(direccion);
     if (!slug) return null;
 
     const pageFP = await context.newPage();
     try {
-        const response = await pageFP.goto(`https://fichaprop.ar/edificio/${slug}`, {
-            waitUntil: 'domcontentloaded',
-            timeout: 15000,
-        });
-        if (!response || response.status() === 404) return null;
+        let resultado = await irAFichaprop(pageFP, slug);
+
+        if (resultado === 'bloqueado') {
+            await pageFP.waitForTimeout(2000 + Math.random() * 2000);
+            resultado = await irAFichaprop(pageFP, slug);
+        }
+
+        if (resultado === 'no-encontrado') return null;
+        if (resultado === 'bloqueado') {
+            console.warn('Fichaprop: bloqueado por el IPS de la red en este intento. Se omite esta propiedad.');
+            return null;
+        }
 
         await pageFP.waitForTimeout(800);
 
@@ -174,9 +208,7 @@ const obtenerLinksDeListado = async (page) => {
     let linksTotales = [];
 
     for (let pagina = 1; pagina <= CONFIG.PAGINAS_MAXIMAS; pagina++) {
-        const urlPagina = pagina === 1
-            ? 'https://www.zonaprop.com.ar/departamentos-alquiler-capital-federal.html'
-            : `https://www.zonaprop.com.ar/departamentos-alquiler-capital-federal-pagina-${pagina}.html`;
+        const urlPagina = pagina === 1 ? CONFIG.URL_BASE : CONFIG.URL_PAGINA(pagina);
 
         try {
             console.log(`Página ${pagina}: buscando links...`);
@@ -356,21 +388,46 @@ const extraerDatosDePagina = (textoAdicionalTabs) => {
     // Precio: __INITIAL_STATE__ -> data-qa="price" -> cualquier nodo con clase Price/price -> texto completo.
     // El fallback por clase es clave: el chequeo de "página cargada" usa ese selector amplio,
     // así que la extracción tiene que aceptarlo también o queda vacía aunque el precio sí esté visible.
+    // Un candidato nunca es el precio si el texto menciona expensas, aunque matchee
+    // el selector o el regex de moneda (ej. "Expensas $ 1.200" en el mismo nodo).
+    const pareceExpensas = (txt) => /expensa/i.test(txt);
+    // El precio tachado "antes del descuento" vive en un bloque separado
+    // (ej. id="react-discount-2", clase "...discount-container...") que puede
+    // aparecer antes del precio real en el DOM y colarse si no se excluye.
+    const esNodoDeDescuento = (el) =>
+        !!el.closest('[class*="discount" i],[id*="discount" i]');
+
     let precioUSD = precioState;
 
     if (!precioUSD) {
+        // Selector específico visto en el DOM real (price-item-container > price-value),
+        // antes de caer a selectores genéricos que son más propensos a falsos positivos.
+        const porClaseEspecifica = document.querySelector(
+            '[class*="price-value" i]:not([class*="discount" i]), [class*="PriceValue" i]'
+        );
+        if (porClaseEspecifica && !esNodoDeDescuento(porClaseEspecifica)) {
+            const txt = (porClaseEspecifica.innerText || porClaseEspecifica.textContent || '').trim();
+            if (txt && !pareceExpensas(txt) && /(?:USD|U\$S|\$)\s*[\d.,]+/i.test(txt)) precioUSD = txt;
+        }
+    }
+
+    if (!precioUSD) {
         const byQa = document.querySelector('[data-qa="price"]');
-        if (byQa) precioUSD = (byQa.innerText || byQa.textContent || '').trim();
+        if (byQa && !esNodoDeDescuento(byQa)) {
+            const txt = (byQa.innerText || byQa.textContent || '').trim();
+            if (txt && !pareceExpensas(txt)) precioUSD = txt;
+        }
     }
 
     if (!precioUSD) {
         const candidatos = [...document.querySelectorAll('[class*="Price"],[class*="price"]')];
         for (const el of candidatos) {
             if (el.closest('[class*="xpens"],[class*="Expens"]')) continue;
+            if (esNodoDeDescuento(el)) continue;
             const txt = (el.innerText || el.textContent || '').trim();
             // El texto tiene que parecer un precio (moneda + números), no cualquier
-            // elemento cuya clase matchee "price" (ej. un botón "Ocultar aviso").
-            if (txt && txt.length < 40 && /(?:USD|U\$S|\$)\s*[\d.,]+/i.test(txt)) {
+            // elemento cuya clase matchee "price" (ej. un botón "Ocultar aviso" o expensas).
+            if (txt && txt.length < 40 && !pareceExpensas(txt) && /(?:USD|U\$S|\$)\s*[\d.,]+/i.test(txt)) {
                 precioUSD = txt;
                 break;
             }
@@ -454,14 +511,20 @@ const construirPropiedadData = (data) => {
     };
 };
 
+const headersIA = () => ({
+    'Content-Type': 'application/json',
+    ...(CONFIG.IA_API_KEY ? { 'X-Api-Key': CONFIG.IA_API_KEY } : {}),
+});
+
 const estimarPrecioIA = async (propiedadData) => {
     try {
         const res = await fetch(`${CONFIG.IA_URL}/estimar-precio`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: headersIA(),
             body: JSON.stringify(propiedadData),
         });
         if (res.ok) return await res.json();
+        if (res.status === 401) console.warn('API de IA: 401 Unauthorized (revisá INTERNAL_API_KEY en .env.local).');
     } catch {
         // si la API de IA no responde, seguimos sin estimación
     }
@@ -550,7 +613,15 @@ const procesarPropiedad = async (context, link, id_propiedad, indice, total) => 
         const fechaPublicacion = calcularFechaPublicacion(textoFechaNodo);
 
         const textoPestanias = await expandirPestanias(detailPage);
-        const data = await detailPage.evaluate(extraerDatosDePagina, textoPestanias);
+        let data = await detailPage.evaluate(extraerDatosDePagina, textoPestanias);
+
+        // El gate anterior ("cargadoOk") solo garantiza que ALGÚN nodo con clase
+        // Price/price tiene texto, no que sea el que después leemos: a veces el precio
+        // real todavía no hidrató. Si salió vacío, se reintenta una vez tras una pausa corta.
+        if (!data.precioUSD) {
+            await detailPage.waitForTimeout(800);
+            data = await detailPage.evaluate(extraerDatosDePagina, textoPestanias);
+        }
 
         const precio_real_usd = parsearPrecioUSD(data.precioUSD);
         if (!precio_real_usd) {
@@ -629,16 +700,15 @@ const procesarPropiedad = async (context, link, id_propiedad, indice, total) => 
 
         if (nuevos > 0) {
             try {
-                await fetch(`${CONFIG.IA_URL}/reentrenar`, { method: 'POST' });
+                await fetch(`${CONFIG.IA_URL}/reentrenar`, { method: 'POST', headers: headersIA() });
             } catch {
-                // no crítico si falla el reentrenamiento
             }
         }
 
     } catch (e) {
         console.error(`Error general: ${e.message}`);
     } finally {
-        if (browser) await browser.disconnect();
+        if (browser) await browser.close();
         await pool.end();
     }
 })();

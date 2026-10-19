@@ -192,17 +192,29 @@ def entrenar_modelo():
     superficies = pd.to_numeric(df["superficie_cubierta_m2"], errors="coerce").clip(lower=1)
     df = df.assign(precio_m2=precios / superficies)
 
-    def _filtrar_outliers(g: pd.DataFrame) -> pd.DataFrame:
-        if len(g) < 20:
-            return g
-        q1 = g["precio_m2"].quantile(0.05)
-        q3 = g["precio_m2"].quantile(0.95)
-        return g[(g["precio_m2"] >= q1) & (g["precio_m2"] <= q3)]
+    # Se usa transform() en vez de groupby().apply(): apply() reconstruye el
+    # resultado a partir de lo que devuelve la función por grupo, y en pandas
+    # recientes (2.2+) eso excluye por default la columna de agrupación
+    # ("barrio_zona" desaparecía del DataFrame filtrado). transform() calcula
+    # los percentiles por grupo pero devuelve una Serie alineada al índice
+    # original, así que el resto de las columnas nunca se tocan.
+    conteo_por_barrio = df.groupby("barrio_zona")["precio_m2"].transform("count")
+
+    q1 = df.groupby("barrio_zona")["precio_m2"].transform(
+        lambda s: s.quantile(0.05)
+    )
+    q3 = df.groupby("barrio_zona")["precio_m2"].transform(
+        lambda s: s.quantile(0.95)
+    )
+
+    # Barrios con pocos datos (<20) no se filtran, igual que antes.
+    # Filas sin precio_m2 calculable (NaN) tampoco se descartan por este filtro.
+    grupo_chico = conteo_por_barrio < 20
+    sin_dato = df["precio_m2"].isna()
+    dentro_de_rango = (df["precio_m2"] >= q1) & (df["precio_m2"] <= q3)
 
     antes = len(df)
-    filtrado = df.groupby("barrio_zona", group_keys=False).apply(_filtrar_outliers)
-    if not filtrado.empty:
-        df = filtrado
+    df = df[grupo_chico | sin_dato | dentro_de_rango]
     df = df.drop(columns=["precio_m2"])
     print(f"Filtro de outliers por barrio: {antes - len(df)} filas descartadas de {antes}")
 
@@ -276,6 +288,27 @@ def health():
         "servicio": "API IA Estimador SpatialValue",
         "modelo": "listo" if modelo_v4 is not None else "sin datos",
     }
+
+
+@app.get("/propiedad/{id_propiedad}")
+def obtener_propiedad(id_propiedad: str, x_api_key: str | None = Header(default=None)):
+    _verificar_api_key(x_api_key)
+
+    conn = db_pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT * FROM propiedades WHERE id_propiedad = %s",
+                (id_propiedad,),
+            )
+            fila = cur.fetchone()
+            if not fila:
+                raise HTTPException(status_code=404, detail="Propiedad no encontrada")
+
+            columnas = [desc[0] for desc in cur.description]
+            return dict(zip(columnas, fila))
+    finally:
+        db_pool.putconn(conn)
 
 
 @app.post("/estimar-precio")
