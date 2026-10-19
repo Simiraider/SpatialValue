@@ -12,6 +12,8 @@ from pydantic import BaseModel
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
+from sklearn.impute import SimpleImputer
+from modelo_ia.limpieza_datos import limpiar_registros, normalizar_texto
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
@@ -78,80 +80,34 @@ db_pool = psycopg2.pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
 modelo_v4 = None
 
 def _extraer_coordenadas(row):
-    lat = pd.to_numeric(row.get("latitud"), errors="coerce")
-    lng = pd.to_numeric(row.get("longitud"), errors="coerce")
-    if pd.notna(lat) and pd.notna(lng) and lat != 0 and lng != 0:
-        return pd.Series([float(lat), float(lng)])
-
+    lat, lng = row.get("latitud"), row.get("longitud")
+    lat, lng = pd.to_numeric(lat, errors="coerce"), pd.to_numeric(lng, errors="coerce")
+    if pd.notna(lat) and pd.notna(lng) and -90 <= lat <= 90 and -180 <= lng <= 180 and (lat, lng) != (0, 0):
+        return pd.Series([lat, lng])
     gps = row.get("coordenadas_gps")
     try:
-        if gps:
-            coords = json.loads(gps) if isinstance(gps, str) else gps
-            return pd.Series([
-                float(coords.get("lat", COORDENADAS_DEFAULT["lat"])),
-                float(coords.get("lng", COORDENADAS_DEFAULT["lng"])),
-            ])
-    except (json.JSONDecodeError, TypeError, AttributeError, ValueError):
+        coords = json.loads(gps) if isinstance(gps, str) else gps
+        lat, lng = float(coords["lat"]), float(coords["lng"])
+        if -90 <= lat <= 90 and -180 <= lng <= 180 and (lat, lng) != (0, 0):
+            return pd.Series([lat, lng])
+    except (KeyError, TypeError, ValueError, OverflowError):
         pass
-    return pd.Series([COORDENADAS_DEFAULT["lat"], COORDENADAS_DEFAULT["lng"]])
+    return pd.Series([float("nan"), float("nan")])
 
 
 def _cargar_datos_entrenamiento():
     conn = db_pool.getconn()
     try:
         query = """
-            WITH datos_scraper AS (
-                SELECT
-                    tipo_propiedad, barrio_zona, estado, orientacion, disposicion, seguridad_tipo,
-                    ambientes, dormitorios, banos, superficie_total_m2, superficie_cubierta_m2,
-                    anios_de_antiguedad, piso, cochera, balcon, terraza, patio, pileta,
-                    parrilla, seguridad_24hs, ascensor, expensas_ars, baulera, sum,
-                    camara, gym, lounge, laundry, coordenadas_gps,
-                    NULL::numeric AS latitud, NULL::numeric AS longitud,
-                    precio_real_usd AS precio_usd
-                FROM propiedades
-                WHERE precio_real_usd IS NOT NULL
-            ),
-            datos_usuarios AS (
-                SELECT
-                    p.tipo_propiedad,
-                    p.barrio AS barrio_zona,
-                    COALESCE(p.estado, 'Usado') AS estado,
-                    COALESCE(d.datos->>'orientacion', 'No especificada') AS orientacion,
-                    COALESCE(d.datos->>'disposicion', 'No especificada') AS disposicion,
-                    CASE WHEN COALESCE(d.datos->'comodidades' ? 'Seguridad 24h', false) THEN '24hs' ELSE 'Ninguno' END AS seguridad_tipo,
-                    p.ambientes, p.dormitorios, p.banos,
-                    p.superficie_total AS superficie_total_m2,
-                    p.superficie_cubierta AS superficie_cubierta_m2,
-                    (CASE WHEN d.datos->>'antiguedad' ~ '^[0-9]+$' THEN (d.datos->>'antiguedad')::int END) AS anios_de_antiguedad,
-                    NULL::int AS piso,
-                    COALESCE(d.datos->'comodidades' ? 'Cochera', false) AS cochera,
-                    COALESCE(d.datos->'comodidades' ? 'Balcón', false) AS balcon,
-                    COALESCE(d.datos->'comodidades' ? 'Terraza', false) AS terraza,
-                    COALESCE(d.datos->'comodidades' ? 'Patio', false) AS patio,
-                    COALESCE(d.datos->'comodidades' ? 'Pileta', false) AS pileta,
-                    COALESCE(d.datos->'comodidades' ? 'Parrilla', false) AS parrilla,
-                    COALESCE(d.datos->'comodidades' ? 'Seguridad 24h', false) AS seguridad_24hs,
-                    COALESCE(d.datos->'comodidades' ? 'Ascensor', false) AS ascensor,
-                    p.expensas AS expensas_ars,
-                    COALESCE(d.datos->'comodidades' ? 'Baulera', false) AS baulera,
-                    COALESCE(d.datos->'comodidades' ? 'SUM', false) AS sum,
-                    COALESCE(d.datos->'comodidades' ? 'Cámaras', false) AS camara,
-                    COALESCE(d.datos->'comodidades' ? 'Gimnasio', false) AS gym,
-                    COALESCE(d.datos->'comodidades' ? 'Lounge', false) AS lounge,
-                    COALESCE(d.datos->'comodidades' ? 'Laundry', false) AS laundry,
-                    NULL::text AS coordenadas_gps,
-                    p.latitud, p.longitud,
-                    p.precio_estimado_ia AS precio_usd
-                FROM publicaciones p
-                LEFT JOIN tasacion_detalles d ON d.id_publicacion = p.id_publicacion::text
-                WHERE p.precio_estimado_ia IS NOT NULL
-                  AND p.tipo_operacion = 'venta'
-                  AND COALESCE(d.datos->>'fuente_precio', '') = 'ia'
-            )
-            SELECT * FROM datos_scraper
-            UNION ALL
-            SELECT * FROM datos_usuarios
+            SELECT id_propiedad, url,
+                tipo_propiedad, barrio_zona, estado, orientacion, disposicion, seguridad_tipo,
+                ambientes, dormitorios, banos, superficie_total_m2, superficie_cubierta_m2,
+                anios_de_antiguedad, piso, cochera, balcon, terraza, patio, pileta,
+                parrilla, seguridad_24hs, ascensor, expensas_ars, baulera, sum,
+                camara, gym, lounge, laundry, coordenadas_gps,
+                NULL::numeric AS latitud, NULL::numeric AS longitud,
+                precio_real_usd AS precio_usd
+            FROM propiedades
         """
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -161,17 +117,18 @@ def _cargar_datos_entrenamiento():
 
 
 def _preparar_features(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
     df[["latitud", "longitud"]] = df.apply(_extraer_coordenadas, axis=1)
 
     for col in COLUMNAS_TEXTO:
         if col not in df.columns:
             df[col] = "No especificada"
-        df[col] = df[col].fillna("No especificada")
+        df[col] = df[col].map(normalizar_texto)
 
     for col in COLUMNAS_NUMERICAS:
         if col not in df.columns:
-            df[col] = 0
-        df[col] = df[col].fillna(0)
+            df[col] = float("nan")
+        df[col] = pd.to_numeric(df[col], errors="coerce").replace([float("inf"), -float("inf")], float("nan"))
 
     return df
 
@@ -181,38 +138,18 @@ def entrenar_modelo():
 
     df = _cargar_datos_entrenamiento()
 
-    if df.empty:
-        print("La base de datos de Neon está vacía")
-        modelo_v4 = None
-        return
-
-    df = _preparar_features(df)
-
-    precios = pd.to_numeric(df["precio_usd"], errors="coerce")
-    superficies = pd.to_numeric(df["superficie_cubierta_m2"], errors="coerce").clip(lower=1)
-    df = df.assign(precio_m2=precios / superficies)
-
-    def _filtrar_outliers(g: pd.DataFrame) -> pd.DataFrame:
-        if len(g) < 20:
-            return g
-        q1 = g["precio_m2"].quantile(0.05)
-        q3 = g["precio_m2"].quantile(0.95)
-        return g[(g["precio_m2"] >= q1) & (g["precio_m2"] <= q3)]
-
-    antes = len(df)
-    filtrado = df.groupby("barrio_zona", group_keys=False).apply(_filtrar_outliers)
-    if not filtrado.empty:
-        df = filtrado
-    df = df.drop(columns=["precio_m2"])
-    print(f"Filtro de outliers por barrio: {antes - len(df)} filas descartadas de {antes}")
-
+    registros, informe = limpiar_registros(df.to_dict(orient="records"))
+    print(f"Limpieza de entrenamiento: {informe}")
+    if len(registros) < 5:
+        raise ValueError("Se necesitan al menos 5 registros válidos de venta; se conserva el modelo anterior si existe. Este mínimo no garantiza calidad estadística.")
+    df = _preparar_features(pd.DataFrame(registros))
     X = df[COLUMNAS_TEXTO + COLUMNAS_NUMERICAS]
-    y = df["precio_usd"].fillna(df["precio_usd"].median())
+    y = df["precio_usd"]
 
     preprocesador = ColumnTransformer(
         transformers=[
             ("texto", OneHotEncoder(handle_unknown="ignore"), COLUMNAS_TEXTO),
-            ("numeros", "passthrough", COLUMNAS_NUMERICAS),
+            ("numeros", SimpleImputer(strategy="median", add_indicator=True, keep_empty_features=True), COLUMNAS_NUMERICAS),
         ]
     )
 
@@ -281,6 +218,9 @@ def health():
 @app.post("/estimar-precio")
 def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(default=None)):
     _verificar_api_key(x_api_key)
+    total, cubierta = propiedad.superficie_total_m2, propiedad.superficie_cubierta_m2
+    if total is None or cubierta is None or total <= 0 or cubierta <= 0 or cubierta > total:
+        raise HTTPException(status_code=422, detail="Se requieren superficies positivas y cubierta menor o igual a total.")
     latitud = propiedad.latitud if propiedad.latitud is not None else COORDENADAS_DEFAULT["lat"]
     longitud = propiedad.longitud if propiedad.longitud is not None else COORDENADAS_DEFAULT["lng"]
 
@@ -299,13 +239,13 @@ def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(def
         "orientacion": [propiedad.orientacion or "No especificada"],
         "disposicion": [propiedad.disposicion or "No especificada"],
         "seguridad_tipo": [propiedad.seguridad_tipo or "Ninguno"],
-        "ambientes": [propiedad.ambientes or 1],
-        "dormitorios": [propiedad.dormitorios or 1],
-        "banos": [propiedad.banos or 1],
-        "superficie_total_m2": [propiedad.superficie_total_m2 or 45],
-        "superficie_cubierta_m2": [propiedad.superficie_cubierta_m2 or 40],
-        "anios_de_antiguedad": [propiedad.anios_de_antiguedad or 10],
-        "piso": [propiedad.piso or 1],
+        "ambientes": [propiedad.ambientes],
+        "dormitorios": [propiedad.dormitorios],
+        "banos": [propiedad.banos],
+        "superficie_total_m2": [propiedad.superficie_total_m2],
+        "superficie_cubierta_m2": [propiedad.superficie_cubierta_m2],
+        "anios_de_antiguedad": [propiedad.anios_de_antiguedad],
+        "piso": [propiedad.piso],
         "cochera": [int(propiedad.cochera)],
         "balcon": [int(propiedad.balcon)],
         "terraza": [int(propiedad.terraza)],
@@ -321,11 +261,11 @@ def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(def
         "gym": [int(propiedad.gym)],
         "lounge": [int(propiedad.lounge)],
         "laundry": [int(propiedad.laundry)],
-        "latitud": [latitud],
-        "longitud": [longitud],
+        "latitud": [propiedad.latitud],
+        "longitud": [propiedad.longitud],
     }
 
-    df_input = pd.DataFrame(datos_entrada)
+    df_input = _preparar_features(pd.DataFrame(datos_entrada))
     df_input = df_input[COLUMNAS_TEXTO + COLUMNAS_NUMERICAS]
 
     precio_predicho = modelo_v4.predict(df_input)[0]

@@ -1,0 +1,57 @@
+{
+  "fuente": "dataset_propiedades.json",
+  "registros": 15,
+  "tipos_registrados": {
+    "casa": 15
+  },
+  "barrios": {
+    "San telmo": 4,
+    "Recoleta": 2,
+    "Palermo": 7,
+    "Flores": 1,
+    "Belgrano": 1
+  },
+  "faltantes": {
+    "coordenadas_gps": 15,
+    "anios_de_antiguedad": 12,
+    "piso": 14,
+    "orientacion": 15,
+    "disposicion": 10,
+    "superficie_total_m2": 0,
+    "superficie_cubierta_m2": 0,
+    "precio_real_usd": 0
+  },
+  "atipicos_iqr": {
+    "precio_real_usd": {
+      "q1": 1025.0,
+      "q3": 3850.0,
+      "limite_inferior": -3212.5,
+      "limite_superior": 8087.5,
+      "registros": [
+        {
+          "id": "zp-59439561",
+          "valor": 11500.0
+        }
+      ]
+    },
+    "superficie_total_m2": {
+      "q1": 63.0,
+      "q3": 200.0,
+      "limite_inferior": -142.5,
+      "limite_superior": 405.5,
+      "registros": [
+        {
+          "id": "zp-59439561",
+          "valor": 598.0
+        }
+      ]
+    }
+  },
+  "inconsistencias": {
+    "banos_iguales_a_superficie_total": 15,
+    "dormitorios_mayores_que_ambientes": 13,
+    "cubierta_igual_a_90_por_ciento_truncado": 15,
+    "urls_clasificadas_como_alquiler": 15,
+    "ids_unicos": 15
+  }
+}
