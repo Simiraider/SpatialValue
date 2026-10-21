@@ -9,8 +9,7 @@ const year = new Date().getFullYear();
     <div class="footer-grid">
       <div class="footer-brand">
         <a href="/" class="logo">
-          <Logo />
-          <span>SpatialValue</span>
+          <Logo variant="claro" />
         </a>
         <p>Tasación inmobiliaria basada en datos, no en opiniones.</p>
       </div>
@@ -31,6 +30,8 @@ const year = new Date().getFullYear();
       </div>
     </div>
 
-    <p class="footer-bottom">&copy; {year} SpatialValue. Proyecto académico.</p>
+    <p class="footer-bottom">
+      &copy; {year} <Logo variant="claro" class="footer-logo-inline" />. Proyecto académico.
+    </p>
   </div>
 </footer>

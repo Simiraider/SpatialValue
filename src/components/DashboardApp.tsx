@@ -413,7 +413,7 @@ export const DashboardApp = () => {
     <div className={cn("dashboard", !sidebarVisible && "dashboard--sidebar-oculto")}>
       <header className="dashboard__cabecera">
         <a href="/" className="dashboard__cabecera-marca" aria-label="SpatialValue - Inicio">
-          <img src="/logo.svg" alt="SpatialValue" className="dashboard__logo-img" />
+          <img src="/logo-spatialvalue-claro.png" alt="SpatialValue" className="dashboard__logo-img" />
         </a>
 
         <div className="dashboard__buscador-zona">

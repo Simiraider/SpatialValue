@@ -1,11 +1,114 @@
-.hero { background: linear-gradient(180deg, #ffffff 0%, #eefaff 50%, #f8fafc 100%); padding: clamp(3rem, 7vw, 6rem) 1.5rem 5rem; }
-.hero-inner { max-width: 1440px; margin: auto; text-align: center; }
-.hero-title { margin: 0 0 clamp(2rem, 5vw, 4rem); color: var(--color-text); font-size: clamp(3rem, 7vw, 6.5rem); font-weight: 800; letter-spacing: -0.06em; line-height: .95; }
-.hero-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(1rem, 3vw, 3rem); }
-.hero-step { min-height: 265px; padding: 2rem; display: flex; align-items: center; gap: 1.5rem; text-align: left; border-radius: 2rem; background: #ffffff; box-shadow: 0 5px 12px rgba(0,135,192,.08), 0 1px 3px rgba(15,23,42,.06); border: 1px solid rgba(0,135,192,.08); transition: transform .2s ease, box-shadow .2s ease; }
-.hero-step:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(0,135,192,.12), 0 4px 8px rgba(15,23,42,.06); }
-.hero-step img { width: clamp(4.5rem, 9vw, 8.5rem); height: clamp(4.5rem, 9vw, 8.5rem); object-fit: contain; flex: 0 0 auto; }
-.hero-step h2 { margin: 0; color: var(--color-text); font-size: clamp(1.4rem, 2.2vw, 2.4rem); line-height: 1.05; font-weight: 700; }
-.hero-lead { margin: 2.6rem auto 1.35rem; max-width: 40rem; color: var(--color-text-muted); font-size: clamp(1.2rem, 2.2vw, 1.8rem); font-style: italic; font-weight: 700; }
-.button-primary-large { min-width: min(100%, 31rem); min-height: 4.75rem; font-size: clamp(1.25rem, 2vw, 2rem); border-radius: 2rem; }
-@media (max-width: 850px) { .hero { padding-inline: 1rem; } .hero-steps { grid-template-columns: 1fr; } .hero-step { min-height: 150px; } }
+.hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  min-height: clamp(420px, 44vw, 560px);
+  background: #dceef8 url("/hero/edificio.jpg") center right / cover no-repeat;
+}
+
+/* Fundido suave del hero hacia la sección blanca siguiente */
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: clamp(60px, 8vw, 110px);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 100%);
+  pointer-events: none;
+}
+
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.4rem;
+  padding: clamp(2.5rem, 5vw, 4.5rem) clamp(1.5rem, 6vw, 6rem);
+}
+
+.hero-title {
+  margin: 0;
+  font-family: var(--font-display, var(--font-sans));
+  font-size: clamp(2.1rem, 3.6vw, 3.4rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  color: #0c2f52;
+}
+
+.hero-title span {
+  display: block;
+}
+
+.hero-title-highlight {
+  color: #0098e7;
+}
+
+.hero-lead {
+  margin: 0;
+  max-width: 34rem;
+  color: #10406b;
+  font-size: clamp(0.95rem, 1.15vw, 1.1rem);
+  line-height: 1.55;
+  font-weight: 500;
+}
+
+.hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  align-self: flex-start;
+  padding: 0.9rem 1.6rem;
+  background: #0d84c8;
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: var(--radius-full);
+  box-shadow: 0 6px 16px rgba(8, 62, 100, 0.25);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.hero-cta:hover {
+  background: #0a6ea6;
+  transform: translateY(-1px);
+}
+
+.hero-cta-icon {
+  display: inline-flex;
+}
+
+.hero-cta-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* En desktop el hero ocupa casi toda la pantalla */
+@media (min-width: 901px) {
+  .hero {
+    min-height: max(560px, calc(100svh - 94px));
+  }
+}
+
+.hero-media {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+    background: none;
+  }
+
+  .hero-copy {
+    background: linear-gradient(155deg, #7ed2f6 0%, #4cb2e8 42%, #2a9fdb 72%, #1590cf 100%);
+  }
+
+  .hero-media {
+    display: block;
+    order: 2;
+    min-height: 220px;
+    background-color: #d9e2ea;
+    background-image: url("/hero/edificio.jpg");
+    background-size: cover;
+    background-position: 75% center;
+  }
+}
