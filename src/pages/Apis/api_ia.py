@@ -11,7 +11,6 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
@@ -19,13 +18,17 @@ BASE_PATH = Path(__file__).resolve().parent.parent.parent.parent
 ENV_PATH = BASE_PATH / ".env.local"
 load_dotenv(dotenv_path=ENV_PATH)
 
-DATABASE_URL = os.environ.get("SpatialValueStorage_DATABASE_URL")
+DATABASE_URL = (
+    os.environ.get("SpatialValueStorage_DATABASE_URL")
+    or os.environ.get("DATABASE_URL")
+    or os.environ.get("NEON_DATABASE_URL")
+)
 if not DATABASE_URL:
     raise ValueError(
-        "Error: No se encontró DATABASE_URL. Verificá que exista el archivo "
-        ".env.local en la raíz del proyecto o que la variable esté configurada "
-        "en el host (Render/Vercel)."
+        "Error: No se encontró la URL de la base de datos. Verificá .env.local "
+        "o la variable de entorno en el host (Render/Vercel)."
     )
+
 COORDENADAS_DEFAULT = {"lat": -34.6037, "lng": -58.3816}
 
 COLUMNAS_TEXTO = [
@@ -65,19 +68,20 @@ COLUMNAS_NUMERICAS = [
 ]
 
 app = FastAPI(title="API IA Estimador")
-
 INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
+db_pool = psycopg2.pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
+modelo_v4 = None
+
 
 def _verificar_api_key(x_api_key: str | None) -> None:
     if not INTERNAL_API_KEY:
         return
     if not x_api_key or x_api_key != INTERNAL_API_KEY:
         raise HTTPException(status_code=401, detail="API key inválida")
-db_pool = psycopg2.pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
 
-modelo_v4 = None
 
 def _extraer_coordenadas(row):
+    """Lee coordenadas guardadas como JSON; no inventa el centro de CABA."""
     lat = pd.to_numeric(row.get("latitud"), errors="coerce")
     lng = pd.to_numeric(row.get("longitud"), errors="coerce")
     if pd.notna(lat) and pd.notna(lng) and lat != 0 and lng != 0:
@@ -87,139 +91,124 @@ def _extraer_coordenadas(row):
     try:
         if gps:
             coords = json.loads(gps) if isinstance(gps, str) else gps
-            return pd.Series([
-                float(coords.get("lat", COORDENADAS_DEFAULT["lat"])),
-                float(coords.get("lng", COORDENADAS_DEFAULT["lng"])),
-            ])
+            lat = pd.to_numeric(coords.get("lat"), errors="coerce")
+            lng = pd.to_numeric(coords.get("lng"), errors="coerce")
+            if pd.notna(lat) and pd.notna(lng) and lat != 0 and lng != 0:
+                return pd.Series([float(lat), float(lng)])
     except (json.JSONDecodeError, TypeError, AttributeError, ValueError):
         pass
-    return pd.Series([COORDENADAS_DEFAULT["lat"], COORDENADAS_DEFAULT["lng"]])
+
+    # Cero marca ubicación desconocida durante el entrenamiento; no ubicar
+    # silenciosamente cualquier inmueble en el Obelisco.
+    return pd.Series([0.0, 0.0])
 
 
-def _cargar_datos_entrenamiento():
+def _cargar_datos_entrenamiento() -> pd.DataFrame:
+    """Entrena solo con precios de publicación observados, no con predicciones IA."""
     conn = db_pool.getconn()
     try:
         query = """
-            WITH datos_scraper AS (
-                SELECT
-                    tipo_propiedad, barrio_zona, estado, orientacion, disposicion, seguridad_tipo,
-                    ambientes, dormitorios, banos, superficie_total_m2, superficie_cubierta_m2,
-                    anios_de_antiguedad, piso, cochera, balcon, terraza, patio, pileta,
-                    parrilla, seguridad_24hs, ascensor, expensas_ars, baulera, sum,
-                    camara, gym, lounge, laundry, coordenadas_gps,
-                    NULL::numeric AS latitud, NULL::numeric AS longitud,
-                    precio_real_usd AS precio_usd
-                FROM propiedades
-                WHERE precio_real_usd IS NOT NULL
-            ),
-            datos_usuarios AS (
-                SELECT
-                    p.tipo_propiedad,
-                    p.barrio AS barrio_zona,
-                    COALESCE(p.estado, 'Usado') AS estado,
-                    COALESCE(d.datos->>'orientacion', 'No especificada') AS orientacion,
-                    COALESCE(d.datos->>'disposicion', 'No especificada') AS disposicion,
-                    CASE WHEN COALESCE(d.datos->'comodidades' ? 'Seguridad 24h', false) THEN '24hs' ELSE 'Ninguno' END AS seguridad_tipo,
-                    p.ambientes, p.dormitorios, p.banos,
-                    p.superficie_total AS superficie_total_m2,
-                    p.superficie_cubierta AS superficie_cubierta_m2,
-                    (CASE WHEN d.datos->>'antiguedad' ~ '^[0-9]+$' THEN (d.datos->>'antiguedad')::int END) AS anios_de_antiguedad,
-                    NULL::int AS piso,
-                    COALESCE(d.datos->'comodidades' ? 'Cochera', false) AS cochera,
-                    COALESCE(d.datos->'comodidades' ? 'Balcón', false) AS balcon,
-                    COALESCE(d.datos->'comodidades' ? 'Terraza', false) AS terraza,
-                    COALESCE(d.datos->'comodidades' ? 'Patio', false) AS patio,
-                    COALESCE(d.datos->'comodidades' ? 'Pileta', false) AS pileta,
-                    COALESCE(d.datos->'comodidades' ? 'Parrilla', false) AS parrilla,
-                    COALESCE(d.datos->'comodidades' ? 'Seguridad 24h', false) AS seguridad_24hs,
-                    COALESCE(d.datos->'comodidades' ? 'Ascensor', false) AS ascensor,
-                    p.expensas AS expensas_ars,
-                    COALESCE(d.datos->'comodidades' ? 'Baulera', false) AS baulera,
-                    COALESCE(d.datos->'comodidades' ? 'SUM', false) AS sum,
-                    COALESCE(d.datos->'comodidades' ? 'Cámaras', false) AS camara,
-                    COALESCE(d.datos->'comodidades' ? 'Gimnasio', false) AS gym,
-                    COALESCE(d.datos->'comodidades' ? 'Lounge', false) AS lounge,
-                    COALESCE(d.datos->'comodidades' ? 'Laundry', false) AS laundry,
-                    NULL::text AS coordenadas_gps,
-                    p.latitud, p.longitud,
-                    p.precio_estimado_ia AS precio_usd
-                FROM publicaciones p
-                LEFT JOIN tasacion_detalles d ON d.id_publicacion = p.id_publicacion::text
-                WHERE p.precio_estimado_ia IS NOT NULL
-                  AND p.tipo_operacion = 'venta'
-                  AND COALESCE(d.datos->>'fuente_precio', '') = 'ia'
-            )
-            SELECT * FROM datos_scraper
-            UNION ALL
-            SELECT * FROM datos_usuarios
+            SELECT
+                tipo_propiedad,
+                barrio_zona,
+                COALESCE(estado, 'Usado') AS estado,
+                COALESCE(orientacion, 'No especificada') AS orientacion,
+                COALESCE(disposicion, 'No especificada') AS disposicion,
+                COALESCE(seguridad_tipo, 'Ninguno') AS seguridad_tipo,
+                ambientes,
+                dormitorios,
+                banos,
+                superficie_total_m2,
+                superficie_cubierta_m2,
+                anios_de_antiguedad,
+                piso,
+                cochera,
+                balcon,
+                terraza,
+                patio,
+                pileta,
+                parrilla,
+                seguridad_24hs,
+                ascensor,
+                expensas_ars,
+                baulera,
+                sum,
+                camara,
+                gym,
+                lounge,
+                laundry,
+                coordenadas_gps,
+                NULL::numeric AS latitud,
+                NULL::numeric AS longitud,
+                precio_real_usd AS precio_usd
+            FROM propiedades
+            WHERE precio_real_usd IS NOT NULL
+              AND precio_real_usd BETWEEN 100 AND 20000000
+              AND (tipo_operacion = 'venta' OR tipo_operacion IS NULL)
         """
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            return pd.read_sql(query, conn)
+            return pd.read_sql_query(query, conn)
     finally:
         db_pool.putconn(conn)
 
 
 def _preparar_features(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
     df[["latitud", "longitud"]] = df.apply(_extraer_coordenadas, axis=1)
 
     for col in COLUMNAS_TEXTO:
         if col not in df.columns:
             df[col] = "No especificada"
-        df[col] = df[col].fillna("No especificada")
+        df[col] = df[col].fillna("No especificada").astype(str)
 
     for col in COLUMNAS_NUMERICAS:
         if col not in df.columns:
             df[col] = 0
-        df[col] = df[col].fillna(0)
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
     return df
 
 
-def entrenar_modelo():
+def entrenar_modelo() -> None:
     global modelo_v4
 
     df = _cargar_datos_entrenamiento()
-
     if df.empty:
-        print("La base de datos de Neon está vacía")
+        print("No hay precios reales disponibles en propiedades; modelo desactivado.")
+        modelo_v4 = None
+        return
+
+    df["precio_usd"] = pd.to_numeric(df["precio_usd"], errors="coerce")
+    df = df[df["precio_usd"].between(100, 20000000)].copy()
+    if df.empty:
+        print("No hay precios USD válidos para entrenar; modelo desactivado.")
         modelo_v4 = None
         return
 
     df = _preparar_features(df)
 
-    precios = pd.to_numeric(df["precio_usd"], errors="coerce")
-    superficies = pd.to_numeric(df["superficie_cubierta_m2"], errors="coerce").clip(lower=1)
-    df = df.assign(precio_m2=precios / superficies)
-
-    # Se usa transform() en vez de groupby().apply(): apply() reconstruye el
-    # resultado a partir de lo que devuelve la función por grupo, y en pandas
-    # recientes (2.2+) eso excluye por default la columna de agrupación
-    # ("barrio_zona" desaparecía del DataFrame filtrado). transform() calcula
-    # los percentiles por grupo pero devuelve una Serie alineada al índice
-    # original, así que el resto de las columnas nunca se tocan.
-    conteo_por_barrio = df.groupby("barrio_zona")["precio_m2"].transform("count")
-
-    q1 = df.groupby("barrio_zona")["precio_m2"].transform(
-        lambda s: s.quantile(0.05)
-    )
-    q3 = df.groupby("barrio_zona")["precio_m2"].transform(
-        lambda s: s.quantile(0.95)
-    )
-
-    # Barrios con pocos datos (<20) no se filtran, igual que antes.
-    # Filas sin precio_m2 calculable (NaN) tampoco se descartan por este filtro.
+    # El filtro usa el precio por m² solo para descartar valores extremos.
+    # No modifica el precio objetivo ni elimina barrios con pocas muestras.
+    superficie = pd.to_numeric(df["superficie_cubierta_m2"], errors="coerce").clip(lower=1)
+    precio_m2 = df["precio_usd"] / superficie
+    conteo_por_barrio = precio_m2.groupby(df["barrio_zona"]).transform("count")
+    q05 = precio_m2.groupby(df["barrio_zona"]).transform(lambda s: s.quantile(0.05))
+    q95 = precio_m2.groupby(df["barrio_zona"]).transform(lambda s: s.quantile(0.95))
     grupo_chico = conteo_por_barrio < 20
-    sin_dato = df["precio_m2"].isna()
-    dentro_de_rango = (df["precio_m2"] >= q1) & (df["precio_m2"] <= q3)
+    dentro_de_rango = precio_m2.between(q05, q95, inclusive="both")
 
     antes = len(df)
-    df = df[grupo_chico | sin_dato | dentro_de_rango]
-    df = df.drop(columns=["precio_m2"])
+    df = df[grupo_chico | dentro_de_rango].copy()
     print(f"Filtro de outliers por barrio: {antes - len(df)} filas descartadas de {antes}")
 
+    if df.empty:
+        print("El filtro dejó el conjunto vacío; modelo desactivado.")
+        modelo_v4 = None
+        return
+
     X = df[COLUMNAS_TEXTO + COLUMNAS_NUMERICAS]
-    y = df["precio_usd"].fillna(df["precio_usd"].median())
+    y = df["precio_usd"].astype(float)
 
     preprocesador = ColumnTransformer(
         transformers=[
@@ -231,17 +220,20 @@ def entrenar_modelo():
     nuevo_modelo = Pipeline(
         steps=[
             ("preprocesador", preprocesador),
-            ("modelo", RandomForestRegressor(n_estimators=100, random_state=42)),
+            ("modelo", RandomForestRegressor(
+                n_estimators=150,
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1,
+            )),
         ]
     )
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
-    nuevo_modelo.fit(X_train, y_train)
-
+    # Para producción se ajusta con todas las filas válidas. El código anterior
+    # reservaba un 20% como test pero nunca lo evaluaba ni lo reincorporaba.
+    nuevo_modelo.fit(X, y)
     modelo_v4 = nuevo_modelo
-    print("Modelo entrenado con éxito con los datos actuales de Neon")
+    print(f"Modelo entrenado con {len(df)} publicaciones con precio observado.")
 
 
 try:
@@ -249,37 +241,39 @@ try:
 except Exception as e:
     print(f"Error al entrenar el modelo inicial: {e}")
 
+
 class PropiedadInput(BaseModel):
     tipo_propiedad: str
     barrio_zona: str
-    ambientes: int | None
-    dormitorios: int | None
-    banos: int | None
-    superficie_total_m2: int | None
-    superficie_cubierta_m2: int | None
-    estado: str
-    anios_de_antiguedad: int | None
-    piso: int | None
-    orientacion: str | None
-    disposicion: str | None
-    cochera: bool
-    balcon: bool
-    terraza: bool
-    patio: bool
-    pileta: bool
-    parrilla: bool
-    seguridad_24hs: bool
-    ascensor: bool
-    expensas_ars: int
-    baulera: bool
-    sum: bool
-    seguridad_tipo: str
-    camara: bool
-    gym: bool
-    lounge: bool
-    laundry: bool
+    ambientes: int | None = None
+    dormitorios: int | None = None
+    banos: int | None = None
+    superficie_total_m2: int | None = None
+    superficie_cubierta_m2: int | None = None
+    estado: str = "Usado"
+    anios_de_antiguedad: int | None = None
+    piso: int | None = None
+    orientacion: str | None = None
+    disposicion: str | None = None
+    cochera: bool = False
+    balcon: bool = False
+    terraza: bool = False
+    patio: bool = False
+    pileta: bool = False
+    parrilla: bool = False
+    seguridad_24hs: bool = False
+    ascensor: bool = False
+    expensas_ars: int = 0
+    baulera: bool = False
+    sum: bool = False
+    seguridad_tipo: str = "Ninguno"
+    camara: bool = False
+    gym: bool = False
+    lounge: bool = False
+    laundry: bool = False
     latitud: float | None = None
     longitud: float | None = None
+
 
 @app.get("/")
 def health():
@@ -293,18 +287,13 @@ def health():
 @app.get("/propiedad/{id_propiedad}")
 def obtener_propiedad(id_propiedad: str, x_api_key: str | None = Header(default=None)):
     _verificar_api_key(x_api_key)
-
     conn = db_pool.getconn()
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT * FROM propiedades WHERE id_propiedad = %s",
-                (id_propiedad,),
-            )
+            cur.execute("SELECT * FROM propiedades WHERE id_propiedad = %s", (id_propiedad,))
             fila = cur.fetchone()
             if not fila:
                 raise HTTPException(status_code=404, detail="Propiedad no encontrada")
-
             columnas = [desc[0] for desc in cur.description]
             return dict(zip(columnas, fila))
     finally:
@@ -318,12 +307,12 @@ def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(def
     longitud = propiedad.longitud if propiedad.longitud is not None else COORDENADAS_DEFAULT["lng"]
 
     if modelo_v4 is None:
-        return {
-            "status": "warning",
-            "coordenadas": {"lat": latitud, "lng": longitud},
-            "precio_estimado_usd": 450.0,
-            "message": "Modelo en fase de acumulación de datos inicial.",
-        }
+        # No devolver un precio ficticio de USD 450: el scraper lo guardaba como
+        # si fuera una tasación válida y contaminaba los resultados.
+        raise HTTPException(
+            status_code=503,
+            detail="Modelo sin datos de entrenamiento suficientes; no se generó una estimación.",
+        )
 
     datos_entrada = {
         "tipo_propiedad": [propiedad.tipo_propiedad],
@@ -332,13 +321,13 @@ def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(def
         "orientacion": [propiedad.orientacion or "No especificada"],
         "disposicion": [propiedad.disposicion or "No especificada"],
         "seguridad_tipo": [propiedad.seguridad_tipo or "Ninguno"],
-        "ambientes": [propiedad.ambientes or 1],
-        "dormitorios": [propiedad.dormitorios or 1],
-        "banos": [propiedad.banos or 1],
-        "superficie_total_m2": [propiedad.superficie_total_m2 or 45],
-        "superficie_cubierta_m2": [propiedad.superficie_cubierta_m2 or 40],
-        "anios_de_antiguedad": [propiedad.anios_de_antiguedad or 10],
-        "piso": [propiedad.piso or 1],
+        "ambientes": [propiedad.ambientes if propiedad.ambientes is not None else 0],
+        "dormitorios": [propiedad.dormitorios if propiedad.dormitorios is not None else 0],
+        "banos": [propiedad.banos if propiedad.banos is not None else 0],
+        "superficie_total_m2": [propiedad.superficie_total_m2 or 0],
+        "superficie_cubierta_m2": [propiedad.superficie_cubierta_m2 or 0],
+        "anios_de_antiguedad": [propiedad.anios_de_antiguedad or 0],
+        "piso": [propiedad.piso or 0],
         "cochera": [int(propiedad.cochera)],
         "balcon": [int(propiedad.balcon)],
         "terraza": [int(propiedad.terraza)],
@@ -347,7 +336,7 @@ def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(def
         "parrilla": [int(propiedad.parrilla)],
         "seguridad_24hs": [int(propiedad.seguridad_24hs)],
         "ascensor": [int(propiedad.ascensor)],
-        "expensas_ars": [propiedad.expensas_ars],
+        "expensas_ars": [propiedad.expensas_ars or 0],
         "baulera": [int(propiedad.baulera)],
         "sum": [int(propiedad.sum)],
         "camara": [int(propiedad.camara)],
@@ -360,13 +349,12 @@ def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(def
 
     df_input = pd.DataFrame(datos_entrada)
     df_input = df_input[COLUMNAS_TEXTO + COLUMNAS_NUMERICAS]
-
-    precio_predicho = modelo_v4.predict(df_input)[0]
+    precio_predicho = float(modelo_v4.predict(df_input)[0])
 
     return {
         "status": "success",
         "coordenadas": {"lat": latitud, "lng": longitud},
-        "precio_estimado_usd": float(precio_predicho),
+        "precio_estimado_usd": precio_predicho,
     }
 
 
@@ -375,9 +363,16 @@ def reentrenar_api(x_api_key: str | None = Header(default=None)):
     _verificar_api_key(x_api_key)
     try:
         entrenar_modelo()
-        return {"status": "success", "message": "Modelo re-entrenado exitosamente."}
+        return {
+            "status": "success" if modelo_v4 is not None else "warning",
+            "message": (
+                "Modelo reentrenado exitosamente."
+                if modelo_v4 is not None
+                else "No hay datos válidos suficientes para entrenar el modelo."
+            ),
+        }
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        raise HTTPException(status_code=500, detail=f"Error al reentrenar: {e}") from e
 
 
 if __name__ == "__main__":
