@@ -71,40 +71,44 @@ function generarTestigosLocativos(valorArs: number, superficie: number, tipo: st
   });
 }
 
-async function convertirLogoAPng(): Promise<{ dataUrl: string; ratio: number } | null> {
+type LogoPng = { dataUrl: string; ratio: number };
+
+async function cargarLogoPng(ruta: string): Promise<LogoPng | null> {
   try {
-    const res = await fetch('/logo.svg');
+    const res = await fetch(ruta);
     if (!res.ok) return null;
-    const svgText = await res.text();
-    const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve();
-      img.onerror = () => reject(new Error('No se pudo cargar el logo'));
-      img.src = url;
+    const blob = await res.blob();
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.onerror = () => reject(new Error('No se pudo leer el logo'));
+      fr.readAsDataURL(blob);
     });
-    URL.revokeObjectURL(url);
-    const w = img.naturalWidth || 349;
-    const h = img.naturalHeight || 256;
-    const scale = 2;
-    const canvas = document.createElement('canvas');
-    canvas.width = w * scale;
-    canvas.height = h * scale;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return { dataUrl: canvas.toDataURL('image/png'), ratio: w / h };
+    const ratio = await new Promise<number>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve((img.naturalWidth || 537) / (img.naturalHeight || 156));
+      img.onerror = () => reject(new Error('No se pudo cargar el logo'));
+      img.src = dataUrl;
+    });
+    return { dataUrl, ratio };
   } catch {
     return null;
   }
+}
+
+async function cargarLogos(): Promise<{ claro: LogoPng | null; oscuro: LogoPng | null }> {
+  const [claro, oscuro] = await Promise.all([
+    cargarLogoPng('/logo-spatialvalue-claro.png'),
+    cargarLogoPng('/logo-spatialvalue-oscuro.png'),
+  ]);
+  return { claro, oscuro };
 }
 
 class PdfInforme {
   private doc: jsPDF;
   private data: DatosInforme;
   private cliente: string;
-  private logo: { dataUrl: string; ratio: number } | null;
+  private logos: { claro: LogoPng | null; oscuro: LogoPng | null };
   private y = HEADER_CONTENT_Y;
   private fechaCorta: string;
   private fechaLarga: string;
@@ -113,12 +117,12 @@ class PdfInforme {
   constructor(
     data: DatosInforme,
     cliente: string,
-    logo: { dataUrl: string; ratio: number } | null,
+    logos: { claro: LogoPng | null; oscuro: LogoPng | null },
     guardarHook: ((doc: jsPDF, nombreArchivo: string) => void) | null = null
   ) {
     this.data = data;
     this.cliente = cliente;
-    this.logo = logo;
+    this.logos = logos;
     this.guardarHook = guardarHook;
     this.fechaCorta = new Date().toLocaleDateString('es-AR');
     this.fechaLarga = new Date().toLocaleDateString('es-AR', {
@@ -139,14 +143,15 @@ class PdfInforme {
 
   private dibujarEncabezado() {
     const d = this.doc;
-    if (this.logo) {
+    if (this.logos.claro) {
       const h = 6.2;
-      d.addImage(this.logo.dataUrl, 'PNG', MARGEN, 7.2, h * this.logo.ratio, h);
+      d.addImage(this.logos.claro.dataUrl, 'PNG', MARGEN, 7.2, h * this.logos.claro.ratio, h);
+    } else {
+      d.setFont('helvetica', 'bold');
+      d.setFontSize(10);
+      d.setTextColor(...AZUL_OSCURO);
+      d.text('SpatialValue', MARGEN, 13.5);
     }
-    d.setFont('helvetica', 'bold');
-    d.setFontSize(10);
-    d.setTextColor(...AZUL_OSCURO);
-    d.text('SpatialValue', MARGEN + 11, 13.5);
     d.setFont('helvetica', 'normal');
     d.setFontSize(7.5);
     d.setTextColor(...GRIS);
@@ -170,7 +175,15 @@ class PdfInforme {
     d.setFont('helvetica', 'normal');
     d.setFontSize(7);
     d.setTextColor(...GRIS);
-    d.text(`SpatialValue · Informe N° ${this.data.id ?? '—'} · ${this.fechaCorta}`, MARGEN, FOOTER_TEXT_Y);
+    let xPie = MARGEN;
+    if (this.logos.claro) {
+      const h = 3;
+      const w = h * this.logos.claro.ratio;
+      d.addImage(this.logos.claro.dataUrl, 'PNG', MARGEN, FOOTER_TEXT_Y - 2.4, w, h);
+      xPie = MARGEN + w + 2;
+    }
+    const marcaPie = this.logos.claro ? '' : 'SpatialValue · ';
+    d.text(`${marcaPie}Informe N° ${this.data.id ?? '—'} · ${this.fechaCorta}`, xPie, FOOTER_TEXT_Y);
     d.text(`Página ${pagina} de ${total}`, W - MARGEN, FOOTER_TEXT_Y, { align: 'right' });
   }
 
@@ -274,10 +287,15 @@ class PdfInforme {
     d.rect(0, 0, W, 36, 'F');
     d.setFillColor(...AZUL_PRIMARIO);
     d.rect(0, 36, W, 1.5, 'F');
-    d.setFont('helvetica', 'bold');
-    d.setFontSize(13);
-    d.setTextColor(...BLANCO);
-    d.text('SPATIAL VALUE', MARGEN, 15);
+    if (this.logos.oscuro) {
+      const h = 7.5;
+      d.addImage(this.logos.oscuro.dataUrl, 'PNG', MARGEN, 10, h * this.logos.oscuro.ratio, h);
+    } else {
+      d.setFont('helvetica', 'bold');
+      d.setFontSize(13);
+      d.setTextColor(...BLANCO);
+      d.text('SPATIAL VALUE', MARGEN, 15);
+    }
     d.setFont('helvetica', 'normal');
     d.setFontSize(8);
     d.setTextColor(203, 213, 225);
@@ -287,10 +305,10 @@ class PdfInforme {
     d.setTextColor(...BLANCO);
     d.text(`Informe N° ${this.data.id ?? '—'}`, W - MARGEN, 23, { align: 'right' });
 
-    if (this.logo) {
+    if (this.logos.claro) {
       const h = 30;
-      const w = h * this.logo.ratio;
-      d.addImage(this.logo.dataUrl, 'PNG', (W - w) / 2, 62, w, h);
+      const w = h * this.logos.claro.ratio;
+      d.addImage(this.logos.claro.dataUrl, 'PNG', (W - w) / 2, 62, w, h);
     }
 
     d.setFont('helvetica', 'normal');
@@ -691,10 +709,15 @@ class PdfInforme {
     d.setFontSize(8);
     d.setTextColor(...GRIS);
     d.text('Firma', MARGEN + 6, boxY + 7);
-    d.setFont('helvetica', 'bold');
-    d.setFontSize(10);
-    d.setTextColor(...NEGRO);
-    d.text('Spatial Value', MARGEN + 6, boxY + boxH - 10);
+    if (this.logos.claro) {
+      const h = 5;
+      d.addImage(this.logos.claro.dataUrl, 'PNG', MARGEN + 6, boxY + boxH - 13.5, h * this.logos.claro.ratio, h);
+    } else {
+      d.setFont('helvetica', 'bold');
+      d.setFontSize(10);
+      d.setTextColor(...NEGRO);
+      d.text('Spatial Value', MARGEN + 6, boxY + boxH - 10);
+    }
     d.setFont('helvetica', 'normal');
     d.setFontSize(8);
     d.setTextColor(...GRIS);
@@ -802,7 +825,12 @@ class PdfInforme {
         d.setFontSize(8);
         d.setTextColor(203, 213, 225);
         d.text(`Página 1 de ${total}`, W - MARGEN, 288, { align: 'right' });
-        d.text(`© ${new Date().getFullYear()} Spatial Value`, MARGEN, 288);
+        if (this.logos.oscuro) {
+          const h = 3;
+          d.addImage(this.logos.oscuro.dataUrl, 'PNG', MARGEN, 285.4, h * this.logos.oscuro.ratio, h);
+        } else {
+          d.text(`© ${new Date().getFullYear()} Spatial Value`, MARGEN, 288);
+        }
       } else {
         this.pie(i, total);
       }
@@ -819,7 +847,7 @@ export async function generarInformePdf(
   opciones: OpcionesInforme = {}
 ): Promise<void> {
   const datos = normalizeData(data) ?? data;
-  const logo = await convertirLogoAPng();
-  const informe = new PdfInforme(datos, clienteNombre ?? '—', logo, opciones.guardar ?? null);
+  const logos = await cargarLogos();
+  const informe = new PdfInforme(datos, clienteNombre ?? '—', logos, opciones.guardar ?? null);
   await informe.generar();
 }

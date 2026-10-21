@@ -1,7 +1,7 @@
 /* ============ Sección "Tres pasos" ============ */
 
 .steps {
-  background: #ffffff;
+  background: linear-gradient(180deg, #ffffff 0%, #eaf8ff 32%, #cdeefe 68%, #b7e5fd 100%);
   padding: clamp(3.5rem, 7vw, 6rem) 1.5rem;
 }
 
@@ -105,30 +105,18 @@
 
 .tasaciones {
   position: relative;
-  background: radial-gradient(125% 130% at 12% 0%, #1c4066 0%, #0e2f4d 52%, #09233a 100%);
+  background: linear-gradient(
+    180deg,
+    #b7e5fd 0%,
+    #7ed3f7 7%,
+    #3dbeff 14%,
+    #2aa6e0 25%,
+    #1d7ba8 38%,
+    #11557a 53%,
+    #083e5a 70%,
+    #01273a 100%
+  );
   padding: clamp(3.5rem, 7vw, 6rem) 1.5rem;
-}
-
-/* Fundidos suaves: sección blanca → azul (arriba) y azul → gris claro (abajo) */
-.tasaciones::before,
-.tasaciones::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  pointer-events: none;
-}
-
-.tasaciones::before {
-  top: 0;
-  height: clamp(48px, 6vw, 84px);
-  background: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0) 100%);
-}
-
-.tasaciones::after {
-  bottom: 0;
-  height: clamp(56px, 7vw, 96px);
-  background: linear-gradient(180deg, rgba(248, 250, 252, 0) 0%, var(--color-bg) 100%);
 }
 
 .tasaciones-inner {
@@ -206,24 +194,10 @@
 
 /* ============ Secciones a pantalla completa (desktop) ============ */
 
-@media (min-width: 901px) {
-  .steps,
-  .tasaciones,
-  .team-section {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    min-height: 100svh;
-  }
-}
-
 /* ============ Quiénes somos ============ */
 
 .team-section {
-  background:
-    radial-gradient(1100px 480px at 12% 0%, rgba(0, 152, 231, 0.09), transparent 62%),
-    radial-gradient(900px 460px at 92% 100%, rgba(98, 197, 241, 0.16), transparent 62%),
-    var(--color-bg);
+  background: #ffffff;
   padding: 5rem 1.5rem 6rem;
 }
 
@@ -233,7 +207,7 @@
 }
 
 .features-title {
-  text-align: center;
+  text-align: left;
   font-family: var(--font-display, var(--font-sans));
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 700;
@@ -249,7 +223,7 @@
 }
 
 .team-member {
-  text-align: center;
+  text-align: left;
   background: #ffffff;
   border: 1px solid #e6ebf1;
   border-radius: 18px;
@@ -269,7 +243,7 @@
   aspect-ratio: 0.8;
   margin: 0 auto 1.1rem;
   border-radius: 14px;
-  background: var(--color-graphite);
+  background: #e6ebf0;
   object-fit: cover;
 }
 
@@ -285,8 +259,8 @@
 .team-member p {
   margin: 0;
   font-size: 0.92rem;
-  font-weight: 600;
-  color: #0098e7;
+  font-weight: 500;
+  color: #64748b;
 }
 
 @media (max-width: 900px) {
@@ -317,18 +291,17 @@
   min-height: min(78vh, 720px);
   padding: clamp(2.5rem, 6vw, 5rem) 1.5rem;
   overflow: hidden;
-  background:
-    radial-gradient(58% 52% at 50% 46%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 72%),
-    linear-gradient(180deg, #e9f2f8 0%, #f3f8fc 52%, #ffffff 100%);
-}
-
-.showcase-photo {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
+  background: linear-gradient(
+    180deg,
+    #01273a 0%,
+    #053c5d 12%,
+    #0d6093 30%,
+    #1e8ec4 46%,
+    #55b0de 60%,
+    #93cbe8 73%,
+    #cfe6f3 85%,
+    #ffffff 100%
+  );
 }
 
 .laptop {

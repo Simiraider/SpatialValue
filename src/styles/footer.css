@@ -1,6 +1,6 @@
 .footer {
-  background: var(--color-bg-muted);
-  border-top: 1px solid var(--color-border);
+  background: var(--color-graphite);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   padding: 2.5rem 1.5rem 1.5rem;
   margin-top: auto;
 }
@@ -11,16 +11,19 @@
 }
 
 .footer-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem 3rem;
   margin-bottom: 2rem;
 }
 
-@media (min-width: 640px) {
-  .footer-grid {
-    grid-template-columns: 1.2fr 1fr 1fr;
-  }
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 2rem;
+  padding-top: 0.35rem;
 }
 
 .footer-brand {
@@ -42,45 +45,37 @@
   margin: 0 0.15rem;
 }
 
+/* El estilo scoped del componente Logo usa display:block; acá va inline en la línea del copyright */
+.footer-bottom .footer-logo-inline {
+  display: inline-block;
+  width: auto;
+  height: 17px;
+  vertical-align: -3px;
+}
+
 .footer-brand p {
   font-size: 0.9rem;
-  color: var(--color-text-muted);
+  color: rgba(255, 255, 255, 0.6);
   margin: 0;
   line-height: 1.5;
   max-width: 280px;
 }
 
-.footer h4 {
-  font-size: 0.9rem;
-  font-weight: 600;
-  margin: 0 0 0.75rem;
-  color: var(--color-text);
-}
-
-.footer ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.footer li {
-  margin-bottom: 0.45rem;
-}
-
 .footer a:not(.logo) {
-  color: var(--color-text-muted);
+  color: rgba(255, 255, 255, 0.75);
   text-decoration: none;
   font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .footer a:not(.logo):hover {
-  color: var(--color-green-dark);
+  color: #63c8f2;
 }
 
 .footer-bottom {
   padding-top: 1.5rem;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 0.8rem;
-  color: var(--color-text-muted);
-  text-align: center;
+  color: #45b3f0;
+  text-align: right;
 }
