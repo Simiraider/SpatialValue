@@ -1,0 +1,51 @@
+---
+const ICONOS = {
+  formulario: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 3.5h6.5L19 8v12.5H8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 3.5V8h5" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10.5 12.5h5M10.5 15.5h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
+  camara: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="6.5" width="17" height="12.5" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M8.5 6.5l1.2-2.2h4.6l1.2 2.2" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12.7" r="3.1" stroke="currentColor" stroke-width="1.7"/></svg>`,
+  grafico: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M7.5 15.2l3.2-3.6 2.6 2.2 3.6-4.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+};
+
+const pasos = [
+  {
+    numero: "01",
+    titulo: "Completá la información",
+    texto: "Ingresá datos básicos: ubicación, metros cuadrados, ambientes, antigüedad y estado general.",
+    icono: ICONOS.formulario,
+  },
+  {
+    numero: "02",
+    titulo: "Subí fotos y detalles",
+    texto: "Añadí imágenes del interior y exterior. Nuestra IA detecta calidades y terminaciones automáticamente.",
+    icono: ICONOS.camara,
+  },
+  {
+    numero: "03",
+    titulo: "Recibí tu tasación",
+    texto: "En menos de 90 segundos obtenés valor estimado, rango de negociación y reporte descargable.",
+    icono: ICONOS.grafico,
+  },
+];
+---
+
+<section id="tres-pasos" class="steps">
+  <div class="steps-inner">
+    <header class="steps-header" data-reveal>
+      <h2 class="steps-title">Tres pasos, un valor<br />real de mercado.</h2>
+      <p class="steps-sub">
+        Nuestro modelo analiza ubicación, superficie, amenities y comparables
+        recientes para entregarte un rango preciso.
+      </p>
+    </header>
+
+    <div class="steps-grid">
+      {pasos.map((paso, i) => (
+        <article class="step-card" data-reveal style={`--reveal-delay: ${i * 0.12}s`}>
+          <span class="step-num">{paso.numero}</span>
+          <span class="step-icon" set:html={paso.icono} />
+          <h3 class="step-card-title">{paso.titulo}</h3>
+          <p class="step-card-text">{paso.texto}</p>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>

@@ -1,6 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import { PropertyForm } from "../components/PropertyForm";
+import Logo from "../components/Logo.astro";
 import "../styles/tasacion.css";
 ---
 
@@ -21,7 +22,9 @@ import "../styles/tasacion.css";
 
   <header class="TasacionPage-header">
     <div class="TasacionPage-headerInner">
-      <a href="/dashboard" class="TasacionPage-brand">SpatialValue</a>
+      <a href="/dashboard" class="TasacionPage-brand">
+        <Logo variant="claro" />
+      </a>
       <span class="TasacionPage-subtitle">Nueva tasación</span>
     </div>
   </header>

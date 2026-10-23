@@ -2,6 +2,7 @@
 import Layout from "../layouts/Layout.astro";
 import Navbar from "../components/Navbar.astro";
 import Hero from "../components/Hero.astro";
+import Steps from "../components/Steps.astro";
 import Features from "../components/Features.astro";
 import Footer from "../components/Footer.astro";
 import "../styles/variables.css";
@@ -14,12 +15,39 @@ import "../styles/landing-page.css";
 ---
 
 <Layout title="Inicio">
+  <script is:inline>
+    document.documentElement.classList.add('js-reveal');
+  </script>
   <div class="landing-page">
     <Navbar />
     <main>
       <Hero />
+      <Steps />
       <Features />
     </main>
     <Footer />
   </div>
 </Layout>
+
+<script>
+  const items = document.querySelectorAll<HTMLElement>('[data-reveal]');
+
+  const mostrarTodo = () => items.forEach((el) => el.classList.add('is-visible'));
+
+  if ('IntersectionObserver' in window) {
+    const observer = new IntersectionObserver(
+      (entradas) => {
+        for (const entrada of entradas) {
+          if (entrada.isIntersecting) {
+            entrada.target.classList.add('is-visible');
+            observer.unobserve(entrada.target);
+          }
+        }
+      },
+      { threshold: 0.12, rootMargin: '0px 0px -6% 0px' }
+    );
+    items.forEach((el) => observer.observe(el));
+  } else {
+    mostrarTodo();
+  }
+</script>

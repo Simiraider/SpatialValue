@@ -1,19 +1,23 @@
 ---
-const features = [
+import Showcase from "./Showcase.astro";
+
+const FLECHA = `<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3.5 10h12m0 0-4.5-4.5M15.5 10 11 14.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+const puntos = [
   {
-    iconSrc: "/icons/inspeccion.svg",
-    description:
-      "Nuestro cuestionario está diseñado para recolectar las variables clave de tu inmueble, como superficie, ubicación y amenities, acorde a las exigencias del mercado actual.",
+    numero: 1,
+    titulo: "Datos clave del inmueble",
+    texto: "Recopilamos información esencial como ubicación, superficie y amenities para conocer las características de tu propiedad.",
   },
   {
-    iconSrc: "/icons/macro.svg",
-    description:
-      "Las imágenes son procesadas por nuestra Inteligencia Artificial para analizar automáticamente el estado de conservación de la propiedad, evaluando pisos, techos y paredes.",
+    numero: 2,
+    titulo: "Análisis inteligente de imágenes",
+    texto: "Nuestra IA analiza pisos, techos y paredes para evaluar el estado de conservación del inmueble.",
   },
   {
-    iconSrc: "/icons/gemelo.svg",
-    description:
-      "Cruzamos tu información con valores históricos y propiedades en tu zona para calcular una tasación precisa, transparente y en tiempo real.",
+    numero: 3,
+    titulo: "Tasación basada en datos",
+    texto: "Cruzamos datos históricos y propiedades similares de la zona para estimar un valor de mercado actualizado.",
   },
 ];
 
@@ -41,28 +45,37 @@ const team = [
 ];
 ---
 
-<section id="sobre-tasaciones" class="features">
-  <div class="features-inner">
-    <h2 class="features-title">Sobre Las Tasaciones</h2>
-    <div class="features-grid">
-      {features.map((feature) => (
-        <article class="feature-card">
-          <div class="feature-icon">
-            <img src={feature.iconSrc} alt="" width="28" height="28" />
-          </div>
-          <p>{feature.description}</p>
+<section id="sobre-tasaciones" class="tasaciones">
+  <div class="tasaciones-inner">
+    <h2 class="tasaciones-title" data-reveal>
+      Sobre las tasaciones<br /><em>inteligentes</em>
+    </h2>
+
+    <div class="tasaciones-grid">
+      {puntos.map((punto, i) => (
+        <article class="tasaciones-item" data-reveal style={`--reveal-delay: ${i * 0.12}s`}>
+          <h3>{punto.numero}. {punto.titulo}</h3>
+          <p>{punto.texto}</p>
         </article>
       ))}
+    </div>
+
+    <div class="tasaciones-cta" data-reveal style="--reveal-delay: 0.36s">
+      <a href="/tasacion" class="tasaciones-cta-button" data-requiere-login>
+        Comenzá a tasar <span set:html={FLECHA} />
+      </a>
     </div>
   </div>
 </section>
 
+<Showcase />
+
 <section id="quienes-somos" class="team-section">
   <div class="features-inner">
-    <h2 class="features-title">¿Quienes Somos?</h2>
+    <h2 class="features-title">Quienes Somos</h2>
     <div class="team-grid">
-      {team.map((person) => (
-        <article class="team-member">
+      {team.map((person, i) => (
+        <article class="team-member" data-reveal style={`--reveal-delay: ${i * 0.1}s`}>
           <img class="team-photo" src={person.imageSrc} alt={person.name} />
           <h3>{person.name}</h3>
           <p>{person.role}</p>

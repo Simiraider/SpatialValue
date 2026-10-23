@@ -75,16 +75,17 @@ async function main() {
     if (await page.locator('.navbar').count()) ok('Navbar visible');
     else fail('Falta la navbar');
 
-    const iconos = await page.locator('.hero-step img').evaluateAll((imgs) =>
-      imgs.map((img) => ({ src: img.getAttribute('src'), ok: img.naturalWidth > 0 }))
-    );
-    if (iconos.length === 3 && iconos.every((i) => i.ok)) ok(`3 íconos del hero cargan (${iconos.map((i) => i.src).join(', ')})`);
-    else fail(`Íconos del hero rotos o incompletos: ${JSON.stringify(iconos)}`);
+    const iconos = await page.locator('.step-icon svg').count();
+    if (iconos === 3) ok('3 íconos de la sección "Tres pasos" presentes');
+    else fail(`Íconos de "Tres pasos" incompletos: ${iconos}`);
+
+    if (await page.locator('.hero-media').count()) ok('Panel de imagen del hero presente');
+    else fail('Falta el panel de imagen del hero');
 
     console.log('▶ Flujo sin sesión');
     await page.evaluate(() => localStorage.clear());
     await page.goto(BASE, { waitUntil: 'networkidle' });
-    await page.click('.button-primary-large');
+    await page.click('.hero-cta');
     await page.waitForURL('**/login', { timeout: 5000 }).then(
       () => ok('CTA "Comenzá a tasar" sin sesión → /login'),
       () => fail(`CTA no redirigió a /login (quedó en ${page.url()})`)

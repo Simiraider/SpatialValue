@@ -1,9 +1,23 @@
 ---
 interface Props {
+  variant?: "oscuro" | "claro";
   class?: string;
 }
 
-const { class: className = "" } = Astro.props;
+// "oscuro" = variante para fondos oscuros (texto "SPATIAL" en blanco).
+// "claro"  = variante para fondos claros (texto "SPATIAL" en navy).
+const { variant = "oscuro", class: className = "" } = Astro.props;
+const src =
+  variant === "claro"
+    ? "/logo-spatialvalue-claro.png"
+    : "/logo-spatialvalue-oscuro.png";
 ---
 
-<img src="/logo.svg" alt="SpatialValue" class:list={["logo-img", className]} />
+<img src={src} alt="SpatialValue" class:list={["logo-img", className]} />
+
+<style>
+  img {
+    display: block;
+    object-fit: contain;
+  }
+</style>

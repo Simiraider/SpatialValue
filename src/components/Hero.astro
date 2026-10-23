@@ -1,15 +1,32 @@
 ---
+const FLECHA = `<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3.5 10h12m0 0-4.5-4.5M15.5 10 11 14.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 ---
 
 <section id="tasa-tu-propiedad" class="hero">
-  <div class="hero-inner">
-    <h1 class="hero-title">Tasá tu propiedad</h1>
-    <div class="hero-steps" aria-label="Cómo funciona SpatialValue">
-      <article class="hero-step"><img src="/icons/inspeccion.svg" alt="" /><h2>Respondé simples preguntas</h2></article>
-      <article class="hero-step"><img src="/icons/macro.svg" alt="" /><h2>Usá tus imágenes</h2></article>
-      <article class="hero-step"><img src="/icons/gemelo.svg" alt="" /><h2>Gozá de rapidez y precisión</h2></article>
-    </div>
-    <p class="hero-lead">Prepará tus imágenes y conseguí tu análisis detallado.</p>
-    <a href="/tasacion" class="button-primary button-primary-large" data-requiere-login>Comenzá a tasar</a>
+  <div class="hero-copy">
+    <h1 class="hero-title" data-reveal>
+      <span>Tasá tu propiedad</span>
+      <span>en minutos,</span>
+      <span class="hero-title-highlight">no en semanas.</span>
+    </h1>
+    <p class="hero-lead" data-reveal style="--reveal-delay: 0.12s">
+      Respondé unas simples preguntas, subí las imágenes de tu propiedad y
+      obtené un análisis detallado de su valor.
+    </p>
+    <a
+      href="/tasacion"
+      class="hero-cta"
+      data-requiere-login
+      data-reveal
+      style="--reveal-delay: 0.24s"
+    >
+      Comenzá a tasar <span class="hero-cta-icon" set:html={FLECHA} />
+    </a>
+  </div>
+  <div
+    class="hero-media"
+    role="img"
+    aria-label="Edificio de departamentos moderno"
+  >
   </div>
 </section>
