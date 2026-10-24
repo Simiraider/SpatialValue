@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Search, Loader2, RefreshCw, Trash2, Download, CheckCircle2, Undo2, SlidersHorizontal, PanelLeftClose, PanelLeftOpen, Settings, Home, Building2, ChevronDown, LogOut, UserRound, FolderOpen, ChartColumn, Users, Plus } from 'lucide-react';
+import { Search, Loader2, RefreshCw, Trash2, Download, CheckCircle2, Undo2, SlidersHorizontal, PanelLeftClose, PanelLeftOpen, Settings, Home, Building2, ChevronDown, LogOut, UserRound, FolderOpen, ChartColumn, Users, Plus, TrendingUp, ArrowUpRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { type TasacionItem } from '../data/mock';
 import { Button } from './ui/Button';
@@ -13,6 +13,8 @@ import { normalizeData } from '../lib/normalizar-tasacion';
 import { ConfigPanel } from './ConfigPanel';
 import { BuscarUsuarios } from './BuscarUsuarios';
 import { IndicadoresMercado } from './IndicadoresMercado';
+import { GraficoValor } from './GraficoValor';
+import { ActividadReciente } from './ActividadReciente';
 import { NotificationsBell } from './NotificationsBell';
 import { esConfigUsuario, formatValor, type Moneda } from '../lib/usuario-config';
 import '../styles/dashboard.css';
@@ -39,6 +41,12 @@ const opcionesOrden: { id: Orden; label: string }[] = [
 const statusLabel: Record<TasacionItem['status'], string> = {
   completada: 'Lista para tasar',
   borrador: 'Borrador',
+};
+
+const formatoCompacto = (usd: number): string => {
+  if (usd >= 1_000_000) return `$${(usd / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+  if (usd >= 1_000) return `$${Math.round(usd / 1000)}k`;
+  return `$${usd.toLocaleString('es-AR')}`;
 };
 
 const getInitials = (nombre: string) =>
@@ -409,6 +417,20 @@ export const DashboardApp = () => {
     return formatValor(usd, moneda);
   };
 
+  const nombre = user?.nombre?.split(/\s+/)[0] ?? '';
+  const completadas = tasacionesApi.filter((t) => t.status === 'completada');
+  const borradores = tasacionesApi.filter((t) => t.status === 'borrador');
+  const conValor = completadas.filter((t) => t.valorUsd != null && t.valorUsd > 0);
+  const valorTotal = conValor.reduce((acc, t) => acc + (t.valorUsd as number), 0);
+  const mayorValor = conValor.reduce((max, t) => Math.max(max, t.valorUsd as number), 0);
+
+  const kpis = [
+    { etiqueta: 'Completadas', valor: String(completadas.length), icono: CheckCircle2 },
+    { etiqueta: 'Borradores', valor: String(borradores.length), icono: FolderOpen },
+    { etiqueta: 'Valor total tasado', valor: valorTotal > 0 ? formatoCompacto(valorTotal) : '—', icono: TrendingUp },
+    { etiqueta: 'Mayor tasación', valor: mayorValor > 0 ? formatoCompacto(mayorValor) : '—', icono: ArrowUpRight },
+  ];
+
   return (
     <div className={cn("dashboard", !sidebarVisible && "dashboard--sidebar-oculto")}>
       <header className="dashboard__cabecera">
@@ -610,6 +632,63 @@ export const DashboardApp = () => {
 
           {(section === 'tasaciones' || section === 'borradores') && (
             <div className="dashboard__panel">
+              {(status === 'ready' || (status === 'error' && user?.demo)) && (
+                <>
+                  <section className="dashboard__bienvenida">
+                    <div className="dashboard__bienvenida-textos">
+                      <h1 className="dashboard__bienvenida-titulo">Hola, {nombre}</h1>
+                      <p className="dashboard__bienvenida-sub">Tu historial de tasaciones en un vistazo.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => (window.location.href = '/tasacion')}
+                      className="dashboard__bienvenida-cta"
+                    >
+                      <Plus className="dashboard__bienvenida-cta-icono" aria-hidden />
+                      Nueva tasación
+                    </button>
+                  </section>
+
+                  <section className="dashboard__kpis" aria-label="Resumen de tu historial">
+                    {kpis.map((kpi) => {
+                      const Icono = kpi.icono;
+                      return (
+                        <article key={kpi.etiqueta} className="dashboard__kpi">
+                          <div className="dashboard__kpi-superior">
+                            <span className="dashboard__kpi-etiqueta">{kpi.etiqueta}</span>
+                            <Icono className="dashboard__kpi-icono" aria-hidden />
+                          </div>
+                          <p className="dashboard__kpi-valor">{kpi.valor}</p>
+                        </article>
+                      );
+                    })}
+                  </section>
+
+                  <section className="dashboard__zona-media">
+                    <article className="dashboard__tarjeta-bloque">
+                      <div className="dashboard__bloque-cabecera">
+                        <h2 className="dashboard__bloque-titulo">Evolución del valor tasado</h2>
+                      </div>
+                      <GraficoValor
+                        tasaciones={completadas}
+                        moneda={moneda}
+                        formatearValor={formatear}
+                      />
+                    </article>
+
+                    <article className="dashboard__tarjeta-bloque">
+                      <div className="dashboard__bloque-cabecera">
+                        <h2 className="dashboard__bloque-titulo">Actividad reciente</h2>
+                      </div>
+                      <ActividadReciente
+                        tasaciones={tasacionesApi}
+                        onIr={(id) => (window.location.href = `/reporte?id=${id}`)}
+                      />
+                    </article>
+                  </section>
+                </>
+              )}
+
               {status === 'loading' && (
                 <div className="dashboard__cargando">
                   <Loader2 className="dashboard__spinner" />
@@ -642,82 +721,104 @@ export const DashboardApp = () => {
                   </p>
                 </div>
               ) : (
-                <div className="dashboard__grilla">
+                <>
+                <div className="dashboard__lista-cabecera">
+                  <h2 className="dashboard__lista-titulo">Tus tasaciones</h2>
+                  <div className="dashboard__pestanas" role="tablist" aria-label="Tipo de tasación">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={section === 'tasaciones'}
+                      className={cn("dashboard__pestana", section === 'tasaciones' && "dashboard__pestana--activa")}
+                      onClick={() => setSection('tasaciones')}
+                    >
+                      Completadas
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={section === 'borradores'}
+                      className={cn("dashboard__pestana", section === 'borradores' && "dashboard__pestana--activa")}
+                      onClick={() => setSection('borradores')}
+                    >
+                      Borradores
+                    </button>
+                  </div>
+                </div>
+
+                <div className="dashboard__lista">
                   {lista.map((t) => (
-                    <div key={t.id} className="dashboard__item">
-                      <a href={`/reporte?id=${t.id}`} className="dashboard__tarjeta-enlace">
-                        <article className="dashboard__tarjeta">
-                          <div className="dashboard__tarjeta-principal">
-                            <div className="dashboard__tarjeta-identidad">
-                              {t.tipo === 'Casa' ? (
-                                <Home className="dashboard__tarjeta-icono" aria-hidden />
-                              ) : (
-                                <Building2 className="dashboard__tarjeta-icono" aria-hidden />
-                              )}
-                              <h3 className="dashboard__tarjeta-direccion">{t.address}</h3>
-                            </div>
-                            <div className="dashboard__tarjeta-acciones">
-                              {t.status === 'completada' && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDownloadPdf(t); }}
-                                  disabled={downloadingId === t.id}
-                                  className="dashboard__tarjeta-accion"
-                                  aria-label="Descargar informe PDF"
-                                  title="Descargar PDF"
-                                >
-                                  {downloadingId === t.id ? (
-                                    <Loader2 className="dashboard__tarjeta-accion-icono dashboard__tarjeta-accion-icono--cargando" />
-                                  ) : (
-                                    <Download className="dashboard__tarjeta-accion-icono" />
-                                  )}
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); startConfirm(t.id); }}
-                                className="dashboard__tarjeta-accion dashboard__tarjeta-accion--peligro"
-                                aria-label={`Eliminar tasación de ${t.address}`}
-                                title="Eliminar tasación"
-                              >
-                                <Trash2 className="dashboard__tarjeta-accion-icono" aria-hidden />
-                              </button>
-                            </div>
-                          </div>
-                          <div className="dashboard__tarjeta-pie">
-                            <span className="dashboard__tarjeta-fecha">
-                              {formatUltimaVez(t.ultimaVez) ?? (t.valorUsd != null ? formatear(t.valorUsd, t.esAlquiler) : t.value)}
-                            </span>
-                            <span className={cn(
-                              "dashboard__tarjeta-estado",
-                              t.status === 'completada'
-                                ? "dashboard__tarjeta-estado--lista"
-                                : "dashboard__tarjeta-estado--borrador"
-                            )}>
-                              {statusLabel[t.status]}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleToggleEstado(t); }}
-                              disabled={togglingId === t.id}
-                              className={cn(
-                                "dashboard__tarjeta-estado-accion",
-                                t.status !== 'borrador' && "dashboard__tarjeta-estado-accion--lista"
-                              )}
-                              aria-label={t.status === 'borrador' ? 'Marcar como completada' : 'Mover a borradores'}
-                              title={t.status === 'borrador' ? 'Marcar como completada' : 'Mover a borradores'}
-                            >
-                              {togglingId === t.id ? (
-                                <Loader2 className="dashboard__tarjeta-estado-accion-icono dashboard__tarjeta-estado-accion-icono--cargando" />
-                              ) : t.status === 'borrador' ? (
-                                <CheckCircle2 className="dashboard__tarjeta-estado-accion-icono" />
-                              ) : (
-                                <Undo2 className="dashboard__tarjeta-estado-accion-icono" />
-                              )}
-                            </button>
-                          </div>
-                        </article>
+                    <div key={t.id} className="dashboard__fila">
+                      <a href={`/reporte?id=${t.id}`} className="dashboard__fila-enlace">
+                        {t.tipo === 'Casa' ? (
+                          <Home className="dashboard__fila-icono" aria-hidden />
+                        ) : (
+                          <Building2 className="dashboard__fila-icono" aria-hidden />
+                        )}
+                        <span className="dashboard__fila-identidad">
+                          <h3 className="dashboard__fila-direccion">{t.address}</h3>
+                          <p className="dashboard__fila-barrio">{t.tipo}</p>
+                        </span>
+                        <span className={cn(
+                          "dashboard__fila-estado",
+                          t.status === 'completada'
+                            ? "dashboard__fila-estado--lista"
+                            : "dashboard__fila-estado--borrador"
+                        )}>
+                          {statusLabel[t.status]}
+                        </span>
+                        <span className={cn(
+                          "dashboard__fila-valor",
+                          t.valorUsd == null && "dashboard__fila-valor--vacio"
+                        )}>
+                          {t.valorUsd != null ? formatear(t.valorUsd, t.esAlquiler) : t.value}
+                        </span>
+                        <span className="dashboard__fila-fecha">{formatUltimaVez(t.ultimaVez) ?? ''}</span>
                       </a>
+
+                      <div className="dashboard__fila-acciones">
+                        {t.status === 'completada' && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDownloadPdf(t); }}
+                            disabled={downloadingId === t.id}
+                            className="dashboard__tarjeta-accion"
+                            aria-label="Descargar informe PDF"
+                            title="Descargar PDF"
+                          >
+                            {downloadingId === t.id ? (
+                              <Loader2 className="dashboard__tarjeta-accion-icono dashboard__tarjeta-accion-icono--cargando" />
+                            ) : (
+                              <Download className="dashboard__tarjeta-accion-icono" />
+                            )}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleToggleEstado(t); }}
+                          disabled={togglingId === t.id}
+                          className="dashboard__fila-estado-accion"
+                          aria-label={t.status === 'borrador' ? 'Marcar como completada' : 'Mover a borradores'}
+                          title={t.status === 'borrador' ? 'Marcar como completada' : 'Mover a borradores'}
+                        >
+                          {togglingId === t.id ? (
+                            <Loader2 className="dashboard__fila-estado-accion-icono dashboard__fila-estado-accion-icono--cargando" />
+                          ) : t.status === 'borrador' ? (
+                            <CheckCircle2 className="dashboard__fila-estado-accion-icono" />
+                          ) : (
+                            <Undo2 className="dashboard__fila-estado-accion-icono" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); startConfirm(t.id); }}
+                          className="dashboard__tarjeta-accion dashboard__tarjeta-accion--peligro"
+                          aria-label={`Eliminar tasación de ${t.address}`}
+                          title="Eliminar tasación"
+                        >
+                          <Trash2 className="dashboard__tarjeta-accion-icono" aria-hidden />
+                        </button>
+                      </div>
 
                       {confirmingId === t.id && (
                         <div
@@ -752,6 +853,7 @@ export const DashboardApp = () => {
                     </div>
                   ))}
                 </div>
+                </>
               ))}
             </div>
           )}
