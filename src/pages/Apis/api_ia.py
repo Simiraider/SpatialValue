@@ -29,8 +29,6 @@ if not DATABASE_URL:
         "o la variable de entorno en el host (Render/Vercel)."
     )
 
-COORDENADAS_DEFAULT = {"lat": -34.6037, "lng": -58.3816}
-
 COLUMNAS_TEXTO = [
     "tipo_propiedad",
     "barrio_zona",
@@ -303,8 +301,10 @@ def obtener_propiedad(id_propiedad: str, x_api_key: str | None = Header(default=
 @app.post("/estimar-precio")
 def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(default=None)):
     _verificar_api_key(x_api_key)
-    latitud = propiedad.latitud if propiedad.latitud is not None else COORDENADAS_DEFAULT["lat"]
-    longitud = propiedad.longitud if propiedad.longitud is not None else COORDENADAS_DEFAULT["lng"]
+    coordenadas_validas = propiedad.latitud is not None and propiedad.longitud is not None and propiedad.latitud != 0 and propiedad.longitud != 0
+    # Para entrenar/predecir, ubicación desconocida se codifica como 0,0; no como el Obelisco.
+    latitud = float(propiedad.latitud) if coordenadas_validas else 0.0
+    longitud = float(propiedad.longitud) if coordenadas_validas else 0.0
 
     if modelo_v4 is None:
         # No devolver un precio ficticio de USD 450: el scraper lo guardaba como
@@ -353,7 +353,7 @@ def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(def
 
     return {
         "status": "success",
-        "coordenadas": {"lat": latitud, "lng": longitud},
+        "coordenadas": {"lat": latitud, "lng": longitud} if coordenadas_validas else None,
         "precio_estimado_usd": precio_predicho,
     }
 
