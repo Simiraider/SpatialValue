@@ -381,13 +381,21 @@ export const ReportPage = () => {
             </>
           ) : (
             <div className="ReportePage-noComparables">
-              <p style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔍</p>
-              <p style={{ fontWeight: 500, color: '#475569' }}>
-                No tienes propiedades comparables en este barrio
+              <svg className="ReportePage-noComparablesIcono" viewBox="0 0 64 64" fill="none" aria-hidden>
+                <circle cx="27" cy="27" r="16" stroke="currentColor" strokeWidth="3" />
+                <path d="m39 39 12 12" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                <path d="M19 30h16M19 24h16M19 36h9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+              </svg>
+              <p className="ReportePage-noComparablesTitulo">
+                Todavía no hay comparables en {data.barrio || 'este barrio'}
               </p>
-              <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>
-                Para ver comparables, necesitás tener otras tasaciones en el mismo barrio ({data.barrio || 'desconocido'}) con superficie similar.
+              <p className="ReportePage-noComparablesTexto">
+                Para mostrar propiedades similares necesitás tener otras tasaciones en el mismo barrio con superficie parecida.
+                El valor de este reporte no se ve afectado: se calculó con los datos de mercado del barrio.
               </p>
+              <Button type="button" variant="outline" onClick={() => (window.location.href = '/tasacion')}>
+                Tasar otra propiedad
+              </Button>
             </div>
           )}
         </section>

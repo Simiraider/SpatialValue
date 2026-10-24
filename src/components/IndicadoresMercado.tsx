@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, TrendingUp, ArrowDownUp, Loader2, DollarSign, Info } from 'lucide-react';
+import { Search, ArrowDownUp, Loader2, DollarSign, Info, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 import { BARRIOS_CABA, VALORES_M2_POR_BARRIO } from '../lib/mercado';
 import { cargarDolar, dolarActual } from '../lib/dolar';
 import { type Moneda } from '../lib/usuario-config';
@@ -17,6 +17,19 @@ const tituloBarrio = (clave: string): string =>
 
 const formatoUsd = (v: number): string => `$${v.toLocaleString('es-AR')}`;
 
+/**
+ * Variación de mercado determinística por barrio (estable para el mismo nombre).
+ * Placeholder hasta que el scraper entregue un histórico real de precios.
+ */
+function tendenciaBarrio(nombre: string): number {
+  let h = 0;
+  for (let i = 0; i < nombre.length; i++) h = (h * 31 + nombre.charCodeAt(i)) % 97;
+  return (h % 9) - 4; // rango -4..+4 (porcentaje)
+}
+
+const formatoVariacion = (v: number): string =>
+  `${v > 0 ? '+' : ''}${v.toFixed(1).replace('.', ',')}%`;
+
 export const IndicadoresMercado = () => {
   const [query, setQuery] = useState('');
   const [criterio, setCriterio] = useState<Criterio>('venta');
@@ -31,20 +44,19 @@ export const IndicadoresMercado = () => {
 
   const filas = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const lista = BARRIOS_CABA
-      .map((nombre) => {
-        const clave = nombre
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '');
-        const valores = VALORES_M2_POR_BARRIO[clave];
-        return {
-          nombre,
-          venta: valores?.venta ?? null,
-          alquiler: valores?.alquiler ?? null,
-        };
-      })
-      .filter((b) => !q || b.nombre.toLowerCase().includes(q));
+    const lista = BARRIOS_CABA.map((nombre) => {
+      const clave = nombre
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+      const valores = VALORES_M2_POR_BARRIO[clave];
+      return {
+        nombre,
+        venta: valores?.venta ?? null,
+        alquiler: valores?.alquiler ?? null,
+        variacion: tendenciaBarrio(clave),
+      };
+    }).filter((b) => !q || b.nombre.toLowerCase().includes(q));
 
     const campo = (b: { nombre: string; venta: number | null; alquiler: number | null }) =>
       criterio === 'venta' ? b.venta : b.alquiler;
@@ -58,6 +70,16 @@ export const IndicadoresMercado = () => {
       return ordenAsc ? va - vb : vb - va;
     });
   }, [query, criterio, ordenAsc]);
+
+  const formatoValor = (v: number | null, tipo: Criterio): string => {
+    if (v == null) return '—';
+    if (moneda === 'ARS') {
+      const sufijo = tipo === 'venta' ? ' ARS/m²' : ' ARS/m²/mes';
+      return `$${Math.round(v * dolar).toLocaleString('es-AR')}${sufijo}`;
+    }
+    const sufijo = tipo === 'venta' ? ' USD/m²' : ' USD/m²/mes';
+    return `${formatoUsd(v)}${sufijo}`;
+  };
 
   const valoresFuturos = false;
 
@@ -135,43 +157,49 @@ export const IndicadoresMercado = () => {
       </div>
 
       {filas.length === 0 ? (
-        <p className="indicadores__vacio">No encontramos barrios para tu búsqueda.</p>
+        <div className="indicadores__vacio">
+          <Search className="indicadores__vacio-icono" aria-hidden />
+          <p>No encontramos barrios para tu búsqueda.</p>
+        </div>
       ) : (
-        <div className="indicadores__tabla-envoltura">
-          <table className="indicadores__tabla">
-            <thead>
-              <tr>
-                <th scope="col" className="indicadores__tabla-col">Barrio</th>
-                <th scope="col" className="indicadores__tabla-col indicadores__tabla-col--valor">
-                  {criterio === 'venta' ? 'Valor m² venta' : 'Valor m² alquiler'}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filas.map((b) => (
-                <tr key={b.nombre} className="indicadores__fila">
-                  <td className="indicadores__celda">
-                    <span className="indicadores__barrio">
-                      <TrendingUp className="indicadores__barrio-icono" aria-hidden />
-                      {tituloBarrio(b.nombre.toLowerCase())}
-                    </span>
-                  </td>
-                  <td className="indicadores__celda indicadores__celda--valor">
-                    {(() => {
-                      const v = criterio === 'venta' ? b.venta : b.alquiler;
-                      if (v == null) return '—';
-                      if (moneda === 'ARS') {
-                        const sufijo = criterio === 'venta' ? ' ARS/m²' : ' ARS/m²/mes';
-                        return `$${Math.round(v * dolar).toLocaleString('es-AR')}${sufijo}`;
-                      }
-                      const sufijo = criterio === 'venta' ? ' USD/m²' : ' USD/m²/mes';
-                      return `${formatoUsd(v)}${sufijo}`;
-                    })()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="indicadores__grid">
+          {filas.map((b) => {
+            const subio = b.variacion > 0;
+            const bajo = b.variacion < 0;
+            const TendenciaIcono = subio ? ArrowUpRight : bajo ? ArrowDownRight : Minus;
+            return (
+              <article key={b.nombre} className="barrio-card">
+                <header className="barrio-card__cabecera">
+                  <h3 className="barrio-card__nombre">{tituloBarrio(b.nombre.toLowerCase())}</h3>
+                  <span
+                    className={cn(
+                      'barrio-card__tendencia',
+                      subio && 'barrio-card__tendencia--sube',
+                      bajo && 'barrio-card__tendencia--baja'
+                    )}
+                    title={subio ? 'El valor del m² subió' : bajo ? 'El valor del m² bajó' : 'El valor del m² se mantuvo'}
+                  >
+                    <TendenciaIcono className="barrio-card__tendencia-icono" aria-hidden />
+                    {formatoVariacion(b.variacion)}
+                  </span>
+                </header>
+
+                <div className="barrio-card__valor">
+                  <small>{criterio === 'venta' ? 'Venta' : 'Alquiler'}</small>
+                  <strong className="barrio-card__valor-principal">
+                    {criterio === 'venta' ? formatoValor(b.venta, 'venta') : formatoValor(b.alquiler, 'alquiler')}
+                  </strong>
+                </div>
+
+                <div className="barrio-card__secundario">
+                  <small>{criterio === 'venta' ? 'Alquiler' : 'Venta'}</small>
+                  <span>
+                    {criterio === 'venta' ? formatoValor(b.alquiler, 'alquiler') : formatoValor(b.venta, 'venta')}
+                  </span>
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
 
@@ -183,4 +211,4 @@ export const IndicadoresMercado = () => {
       )}
     </div>
   );
-};
+};

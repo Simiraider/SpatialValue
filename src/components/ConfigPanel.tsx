@@ -416,7 +416,8 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
 
         <div className="configuracion__contenido">
           {pestaña === 'datos' && (
-            <section className="datos-personales" aria-labelledby="datos-personales-titulo">
+            <>
+              <section className="datos-personales" aria-labelledby="datos-personales-titulo">
               <h2 className="datos-personales__titulo" id="datos-personales-titulo">Mis Datos Personales</h2>
 
               <div className="datos-personales__cuerpo">
@@ -667,6 +668,13 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
                 </div>
               </div>
 
+              <div className="configuracion__pie">
+                <Button type="button" onClick={guardarGeneral} disabled={!puedeGuardar} isLoading={guardando}>
+                  Guardar Cambios
+                </Button>
+              </div>
+              </section>
+
               <div className="tarjeta-perfil-zona">
                 <p className="tarjeta-perfil-zona__titulo">Así te ve un visitante</p>
                 <div className="tarjeta-perfil">
@@ -758,13 +766,7 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
                   </div>
                 </div>
               </div>
-
-              <div className="configuracion__pie">
-                <Button type="button" onClick={guardarGeneral} disabled={!puedeGuardar} isLoading={guardando}>
-                  Guardar Cambios
-                </Button>
-              </div>
-            </section>
+            </>
           )}
 
           {pestaña === 'redes' && (
@@ -999,7 +1001,8 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
           )}
 
           {pestaña === 'seguridad' && (
-            <section className="seguridad" aria-labelledby="seguridad-titulo">
+            <>
+              <section className="seguridad configuracion__tarjeta" aria-labelledby="seguridad-titulo">
               <h2 className="seguridad__titulo" id="seguridad-titulo">Cambio de contraseña</h2>
 
               <div className="seguridad__lista">
@@ -1079,6 +1082,7 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
                   Cambiar contraseña
                 </Button>
               </div>
+              </section>
 
               <div className="configuracion__zona-peligro">
                 <p className="configuracion__peligro-titulo">Zona de peligro</p>
@@ -1102,7 +1106,7 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
                   </button>
                 </div>
               </div>
-            </section>
+            </>
           )}
         </div>
       </div>

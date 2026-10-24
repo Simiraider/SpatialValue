@@ -706,7 +706,36 @@
 .grafico--vacio {
   display: grid;
   place-items: center;
-  height: 200px;
+  align-content: center;
+  gap: 0.75rem;
+  min-height: 220px;
+  height: 100%;
+}
+
+/* Ícono grande en baja opacidad: el espacio vacío se ve diseñado, no roto */
+.grafico__vacio-icono {
+  width: 3.25rem;
+  height: 3.25rem;
+  color: var(--dash-acento, #0087c0);
+  opacity: 0.25;
+}
+
+.grafico__vacio-cta {
+  border: none;
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 0.6rem 1.4rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  background: var(--dash-acento, #0087c0);
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(0, 135, 192, 0.28);
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.grafico__vacio-cta:hover {
+  background: #006b99;
+  transform: translateY(-1px);
 }
 
 .grafico__vacio-texto {
@@ -763,10 +792,24 @@
   padding: 0;
   display: flex;
   flex-direction: column;
+  /* Eje vertical del timeline */
+  position: relative;
 }
 
+.actividad__lista::before {
+  content: '';
+  position: absolute;
+  left: 0.9rem;
+  top: 0.9rem;
+  bottom: 0.9rem;
+  width: 2px;
+  background: linear-gradient(180deg, #bae6fd, #e2e8f0);
+  border-radius: 999px;
+}
+
+/* Timeline: el punto azul tapa el eje, sin bordes horizontales */
 .actividad__item + .actividad__item {
-  border-top: 1px solid #f1f5f9;
+  border-top: none;
 }
 
 .actividad__boton {
@@ -791,16 +834,20 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 1.15rem;
+  height: 1.15rem;
   border-radius: 999px;
+  margin-top: 0.3rem;
   flex-shrink: 0;
-  margin-top: 0.1rem;
+  /* Punto del timeline */
+  box-shadow: 0 0 0 3px #ffffff;
+  position: relative;
+  z-index: 1;
 }
 
 .actividad__icono svg {
-  width: 1rem;
-  height: 1rem;
+  width: 0.65rem;
+  height: 0.65rem;
 }
 
 .actividad__icono--completada {

@@ -222,9 +222,18 @@ export const ComposicionPieChart = ({ valorUsd, supCub, barrio }: ComposicionPie
             paddingAngle={3}
             dataKey="value"
             nameKey="name"
-            label={({ name, percent }) =>
-              `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-            }
+            label={({ cx, cy, midAngle, outerRadius, name, percent }) => {
+              const R = (outerRadius ?? 0) + 14;
+              const RAD = Math.PI / 180;
+              const x = (cx ?? 0) + R * Math.cos(-midAngle * RAD);
+              const y = (cy ?? 0) + R * Math.sin(-midAngle * RAD);
+              const anchor = x > (cx ?? 0) ? 'start' : 'end';
+              return (
+                <text x={x} y={y} fill="#1e293b" fontSize={12} fontWeight={600} textAnchor={anchor} dominantBaseline="central">
+                  {`${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                </text>
+              );
+            }}
             labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}
           >
             {data.map((_, idx) => (

@@ -57,12 +57,14 @@
 .tasacion__estado-botones { display: flex; gap: .75rem; width: 100%; }
 .tasacion__estado-btn { min-height: 3.2rem; padding: .65rem 1.25rem; border: 2px solid #e2e8f0; border-radius: .9rem; font-weight: 700; transition: .2s ease; cursor: pointer; }
 .tasacion__estado-btn:hover { transform: translateY(-1px); }
+/* Estado percibido: fondo semántico suave siempre; al seleccionarse
+   gana borde grueso de color fuerte y fondo más opaco (no relleno plano) */
 .tasacion__estado-btn--optimo { color: #15803d; background: #f0fdf4; border-color: #bbf7d0; }
-.tasacion__estado-btn--optimo:hover, .tasacion__estado-btn--optimo.tasacion__estado-btn--seleccionado { color: white; background: #16a34a; border-color: #16a34a; box-shadow: 0 4px 14px rgba(22,163,74,.25); }
+.tasacion__estado-btn--optimo.tasacion__estado-btn--seleccionado { color: #14532d; background: #dcfce7; border: 3px solid #16a34a; box-shadow: 0 4px 14px rgba(22,163,74,.2); }
 .tasacion__estado-btn--regular { color: #92400e; background: #fffbeb; border-color: #fde68a; }
-.tasacion__estado-btn--regular:hover, .tasacion__estado-btn--regular.tasacion__estado-btn--seleccionado { color: white; background: #d97706; border-color: #d97706; box-shadow: 0 4px 14px rgba(217,119,6,.25); }
+.tasacion__estado-btn--regular.tasacion__estado-btn--seleccionado { color: #78350f; background: #fef3c7; border: 3px solid #d97706; box-shadow: 0 4px 14px rgba(217,119,6,.2); }
 .tasacion__estado-btn--critico { color: #991b1b; background: #fef2f2; border-color: #fecaca; }
-.tasacion__estado-btn--critico:hover, .tasacion__estado-btn--critico.tasacion__estado-btn--seleccionado { color: white; background: #dc2626; border-color: #dc2626; box-shadow: 0 4px 14px rgba(220,38,38,.25); }
+.tasacion__estado-btn--critico.tasacion__estado-btn--seleccionado { color: #7f1d1d; background: #fee2e2; border: 3px solid #dc2626; box-shadow: 0 4px 14px rgba(220,38,38,.2); }
 .tasacion__estado-toggle { margin-top: .5rem; padding: .35rem .75rem; border: 0; border-radius: .5rem; color: var(--color-brand); background: transparent; font-size: .85rem; font-weight: 600; cursor: pointer; transition: .15s ease; text-decoration: underline; text-underline-offset: 2px; }
 .tasacion__estado-toggle:hover { color: var(--color-brand-dark); background: #eefaff; }
 
@@ -78,7 +80,8 @@
 .tasacion__amenity:hover { border-color: var(--color-brand); color: var(--color-brand-dark); background: #eefaff; }
 .tasacion__amenity--seleccionado { color: white; border-color: var(--color-brand); background: var(--color-brand); box-shadow: 0 5px 14px rgba(0,135,192,.24); }
 .tasacion__amenity--seleccionado:hover { background: var(--color-brand-dark); color: white; }
-.tasacion__amenity-check { width: 1.1rem; height: 1.1rem; flex: 0 0 auto; }
+.tasacion__amenity-check { width: 1.1rem; height: 1.1rem; flex: 0 0 auto; animation: tasacion-check-entra .22s cubic-bezier(.34,1.56,.64,1) both; }
+@keyframes tasacion-check-entra { from { transform: scale(.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
 .tasacion__subida { min-height: 240px; display: grid; place-content: center; gap: .5rem; padding: 2rem; border: 2px dashed #94a3b8; border-radius: 1.5rem; text-align: center; color: #475569; background: #f8fafc; cursor: pointer; transition: .2s ease; }
 .tasacion__subida:hover { border-color: var(--color-brand); background: #eefaff; }
@@ -89,6 +92,46 @@
 .tasacion__borrador { display: flex; align-items: center; gap: .6rem; margin-top: 1.5rem; padding: .9rem 1.1rem; border: 1px dashed #cbd5e1; border-radius: .9rem; background: #f8fafc; color: #475569; font-size: .9rem; font-weight: 600; cursor: pointer; }
 .tasacion__borrador:hover { border-color: var(--color-brand); background: #eefaff; }
 .tasacion__borrador input { width: 1.1rem; height: 1.1rem; accent-color: var(--color-brand); cursor: pointer; }
+
+/* Toggle pill ancho (tipo operación, paso 1) */
+.tasacion__toggle-pill { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .35rem; max-width: 560px; margin: 0 0 1.75rem; padding: .35rem; border: 1px solid #e2e8f0; border-radius: 999px; background: #f1f5f9; }
+.tasacion__toggle-pill-opcion { display: flex; align-items: center; justify-content: center; gap: .5rem; min-height: 3rem; border: 0; border-radius: 999px; background: transparent; color: #64748b; font-weight: 700; font-size: .95rem; cursor: pointer; transition: .18s ease; }
+.tasacion__toggle-pill-opcion:hover { color: var(--color-brand-dark); }
+.tasacion__toggle-pill-opcion--activa { background: var(--color-brand); color: #ffffff; box-shadow: 0 4px 12px rgba(0,135,192,.28); }
+.tasacion__toggle-pill-opcion--activa:hover { background: var(--color-brand-dark); color: #ffffff; }
+.tasacion__toggle-pill-icono { width: 1.15rem; height: 1.15rem; }
+
+/* Dropdown personalizado (reemplaza los select nativos) */
+.tasacion__selector { position: relative; width: 100%; height: 3rem; display: flex; align-items: center; justify-content: space-between; gap: .5rem; border: 1px solid #e2e8f0; border-radius: 1rem; padding: .5rem 1rem; background: #ffffff; color: var(--color-text); font-size: .95rem; text-align: left; cursor: pointer; box-shadow: 0 1px 2px rgba(15,23,42,.06); transition: border-color .18s ease, box-shadow .18s ease; }
+.tasacion__selector:hover { border-color: #cbd5e1; }
+.tasacion__selector:focus-visible { outline: none; border-color: var(--color-brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand) 22%, transparent); }
+.tasacion__selector--invalido { border-color: #f87171; }
+.tasacion__selector-valor { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tasacion__selector-valor--placeholder { color: #94a3b8; }
+.tasacion__selector-flecha { width: 1rem; height: 1rem; flex: 0 0 auto; color: #64748b; transition: transform .18s ease; }
+.tasacion__selector-flecha--arriba { transform: rotate(180deg); }
+.tasacion__selector-opciones { position: absolute; z-index: 30; top: calc(100% + .4rem); left: 0; right: 0; max-height: 16rem; overflow-y: auto; margin: 0; padding: .4rem; list-style: none; border: 1px solid #e2e8f0; border-radius: 1rem; background: #ffffff; box-shadow: 0 12px 28px -10px rgba(15,23,42,.22); }
+.tasacion__selector-opcion { display: flex; align-items: center; justify-content: space-between; gap: .5rem; width: 100%; border: 0; border-radius: .7rem; padding: .6rem .8rem; background: transparent; color: #334155; font-size: .9rem; font-weight: 500; text-align: left; cursor: pointer; transition: background-color .12s ease, color .12s ease; }
+.tasacion__selector-opcion:hover { background: #eefaff; color: var(--color-brand-dark); }
+.tasacion__selector-opcion--placeholder { color: #94a3b8; font-style: italic; }
+.tasacion__selector-opcion--activa { background: var(--color-brand); color: #ffffff; font-weight: 700; }
+.tasacion__selector-opcion--activa:hover { background: var(--color-brand-dark); color: #ffffff; }
+.tasacion__selector-check { width: 1rem; height: 1rem; flex: 0 0 auto; }
+
+/* Drag & drop activo (paso 4) */
+.tasacion__subida--activa { border-color: var(--color-brand); background: #eff6ff; border-style: solid; }
+.tasacion__foto { position: relative; }
+.tasacion__foto-quitar { position: absolute; top: .4rem; right: .4rem; width: 1.6rem; height: 1.6rem; display: grid; place-items: center; border: 0; border-radius: 999px; background: rgba(15, 23, 42, 0.72); color: #ffffff; cursor: pointer; transition: background-color .15s ease, transform .15s ease; }
+.tasacion__foto-quitar:hover { background: #dc2626; transform: scale(1.08); }
+.tasacion__foto-quitar svg { width: .85rem; height: .85rem; }
+
+/* Bloqueo de pantalla mientras calcula (evita dobles envíos) */
+.tasacion__bloqueo { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; background: rgba(248, 250, 252, 0.86); backdrop-filter: blur(4px); text-align: center; padding: 2rem; }
+.tasacion__bloqueo-icono { width: 3rem; height: 3rem; color: var(--color-brand); animation: tasacion-girar 1s linear infinite; }
+.tasacion__bloqueo p { margin: 0; color: #334155; font-weight: 600; }
+@keyframes tasacion-girar { to { transform: rotate(360deg); } }
+
+.tasacion__nota-validacion { margin: .75rem 0 0; text-align: right; font-size: .85rem; color: #94a3b8; }
 
 .tasacion__acciones { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid #cbd5e1; }
 .tasacion__acciones button { min-width: 140px; border-radius: 1rem; }

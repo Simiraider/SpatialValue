@@ -5,8 +5,22 @@
 
 .ReportePage-header {
   padding: 1rem 1rem;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
   border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+/* Al quedar sticky, el header compacta un poco para no robar espacio */
+.ReportePage-header .ReportePage-title {
+  font-size: clamp(1.15rem, 2.6vw, 1.6rem);
+}
+
+.ReportePage-downloadGroup {
+  position: sticky;
+  top: 0.5rem;
 }
 
 @media (min-width: 640px) {
@@ -280,9 +294,35 @@
 }
 
 .ReportePage-noComparables {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
   text-align: center;
-  padding: 2rem;
+  padding: 2.5rem 2rem;
   background: #f8fafc;
   border: 1px dashed #cbd5e1;
-  border-radius: 0.75rem;
+  border-radius: 1rem;
+}
+
+.ReportePage-noComparablesIcono {
+  width: 3.5rem;
+  height: 3.5rem;
+  color: #0891b2;
+  opacity: 0.35;
+  margin-bottom: 0.25rem;
+}
+
+.ReportePage-noComparablesTitulo {
+  font-weight: 700;
+  color: #334155;
+  margin: 0;
+}
+
+.ReportePage-noComparablesTexto {
+  font-size: 0.85rem;
+  color: #64748b;
+  max-width: 32rem;
+  margin: 0 0 0.75rem;
+  line-height: 1.5;
 }

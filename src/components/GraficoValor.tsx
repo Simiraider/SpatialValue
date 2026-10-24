@@ -8,6 +8,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
+import { ChartLine } from 'lucide-react';
 import { type TasacionItem } from '../data/mock';
 import { type Moneda } from '../lib/usuario-config';
 
@@ -64,9 +65,17 @@ export const GraficoValor = ({ tasaciones, moneda, formatearValor }: Props) => {
   if (puntos.length < 2) {
     return (
       <div className="grafico grafico--vacio">
+        <ChartLine className="grafico__vacio-icono" aria-hidden />
         <p className="grafico__vacio-texto">
           Completá al menos 2 tasaciones para ver la evolución de tu historial.
         </p>
+        <button
+          type="button"
+          className="grafico__vacio-cta"
+          onClick={() => (window.location.href = '/tasacion')}
+        >
+          Realizar mi primera tasación
+        </button>
       </div>
     );
   }
