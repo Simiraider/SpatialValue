@@ -475,11 +475,6 @@ export const TarjetaBarrio = ({
             {formatear(criterio === 'venta' ? venta : alquiler, criterio)}
           </strong>
         </div>
-
-        <div className="barrio-card__secundario">
-          <small>{criterio === 'venta' ? 'Alquiler' : 'Venta'}</small>
-          <span>{formatear(criterio === 'venta' ? alquiler : venta, criterio === 'venta' ? 'alquiler' : 'venta')}</span>
-        </div>
       </footer>
     </article>
   );
