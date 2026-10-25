@@ -1,12 +1,31 @@
 .ReportePage {
   min-height: 100vh;
-  background: #f8fafc;
+  /* Fondo azul de marca translúcido; las tarjetas de resultado siguen blancas */
+  background:
+    radial-gradient(1100px 560px at 8% -8%, rgba(0, 135, 192, 0.2), transparent 62%),
+    radial-gradient(900px 480px at 95% 2%, rgba(56, 189, 248, 0.18), transparent 58%),
+    radial-gradient(760px 460px at 50% 108%, rgba(0, 84, 119, 0.12), transparent 60%),
+    linear-gradient(180deg, #e9f4fc 0%, #f2f8fd 42%, #ecf6fc 100%);
 }
 
 .ReportePage-header {
   padding: 1rem 1rem;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
   border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+/* Al quedar sticky, el header compacta un poco para no robar espacio */
+.ReportePage-header .ReportePage-title {
+  font-size: clamp(1.15rem, 2.6vw, 1.6rem);
+}
+
+.ReportePage-downloadGroup {
+  position: sticky;
+  top: 0.5rem;
 }
 
 @media (min-width: 640px) {
@@ -100,6 +119,74 @@
   font-size: 0.95rem;
   font-weight: 600;
   color: #64748b;
+}
+
+/* Toggle de dos columnas: Datos de la propiedad / Gráficos */
+.ReportePage-vista {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: -0.75rem 0 2rem;
+  padding: 0.4rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.ReportePage-vista-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.ReportePage-vista-btn svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.ReportePage-vista-btn:hover {
+  color: #006b99;
+  background: #eefaff;
+}
+
+.ReportePage-vista-btn--activa {
+  background: #0087c0;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 135, 192, 0.28);
+}
+
+.ReportePage-vista-btn--activa:hover {
+  background: #006b99;
+  color: #ffffff;
+}
+
+/* Dos gráficos lado a lado (historial + variación) */
+.ReportePage-duo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+@media (max-width: 900px) {
+  .ReportePage-duo {
+    grid-template-columns: 1fr;
+  }
+  .ReportePage-vista-btn {
+    font-size: 0.875rem;
+    padding-inline: 0.5rem;
+  }
 }
 
 .ReportePage-section {
@@ -280,9 +367,35 @@
 }
 
 .ReportePage-noComparables {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
   text-align: center;
-  padding: 2rem;
+  padding: 2.5rem 2rem;
   background: #f8fafc;
   border: 1px dashed #cbd5e1;
-  border-radius: 0.75rem;
+  border-radius: 1rem;
+}
+
+.ReportePage-noComparablesIcono {
+  width: 3.5rem;
+  height: 3.5rem;
+  color: #0891b2;
+  opacity: 0.35;
+  margin-bottom: 0.25rem;
+}
+
+.ReportePage-noComparablesTitulo {
+  font-weight: 700;
+  color: #334155;
+  margin: 0;
+}
+
+.ReportePage-noComparablesTexto {
+  font-size: 0.85rem;
+  color: #64748b;
+  max-width: 32rem;
+  margin: 0 0 0.75rem;
+  line-height: 1.5;
 }

@@ -8,77 +8,76 @@ import "../styles/auth.css";
 
 <Layout title="Iniciar Sesión">
   <div class="auth-page">
-    <div class="auth-card">
-      <header class="mb-8 text-center flex flex-col items-center">
-        <a href="/" class="text-white mb-4 block scale-125">
-          <Logo />
-        </a>
-        <h1 class="auth-title">Iniciar sesión</h1>
-        <p class="auth-status" id="mensaje-estado" role="note">
-          Ingresá tus credenciales para conectar a la base de datos
-        </p>
-      </header>
-
-      <form class="flex flex-col gap-5" id="loginForm" novalidate>
-        <div class="text-slate-300">
-          <Input
-            id="emailInput"
-            label="Usuario / Mail"
-            type="email"
-            placeholder="usuario@gmail.com"
-            autoComplete="email"
-            required
-            client:load
-            className="text-slate-900"
-          />
-        </div>
-        <div class="text-slate-300">
-          <Input
-            id="passwordInput"
-            label="Contraseña"
-            type="password"
-            placeholder="••••••••"
-            autoComplete="current-password"
-            required
-            client:load
-            className="text-slate-900"
-          />
-        </div>
-
-        <div class="mt-2">
-          <Button type="submit" fullWidth variant="secondary" client:load id="login-submit">Ingresar</Button>
-        </div>
-      </form>
-
-      <div id="demo-fallback" class="hidden mt-6">
-        <div class="border border-amber-500/40 bg-amber-500/10 rounded-2xl p-4 text-left">
-          <p class="text-sm text-amber-300 font-medium mb-1">No se pudo conectar con el servidor</p>
-          <p class="text-xs text-slate-300 mb-3">
-            Podés explorar la app en <strong>modo demo</strong> con datos de ejemplo. Tu cuenta real no se verá afectada.
+    <div class="auth-layout">
+      <section class="auth-form">
+        <header class="auth-form__cabecera">
+          <a href="/" class="auth-logo">
+            <Logo variant="claro" />
+          </a>
+          <h1 class="auth-title">Iniciar sesión</h1>
+          <p class="auth-status" id="mensaje-estado" role="note">
+            Ingresá tus credenciales para continuar.
           </p>
-          <Button variant="outline" fullWidth type="button" client:load id="btn-modo-demo" className="text-white border-slate-700 bg-slate-800/50 hover:bg-slate-800 hover:text-white">
-            Continuar en modo demo
-          </Button>
+        </header>
+
+        <button type="button" class="auth-btn-social" disabled aria-disabled="true">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.35 11.1H12v2.98h5.35c-.23 1.4-1.66 4.1-5.35 4.1-3.22 0-5.85-2.67-5.85-5.95s2.63-5.95 5.85-5.95c1.83 0 3.06.78 3.76 1.45l2.56-2.47C16.66 3.9 14.6 3 12 3 6.98 3 3 6.98 3 12s3.98 9 9 9c5.2 0 8.64-3.65 8.64-8.79 0-.59-.06-1.04-.29-1.11Z"/></svg>
+          Continuar con Google (próximamente)
+        </button>
+
+        <div class="auth-divider"><span>o</span></div>
+
+        <form id="loginForm" novalidate>
+          <div>
+            <Input
+              id="emailInput"
+              label="Email"
+              type="email"
+              placeholder="usuario@gmail.com"
+              autoComplete="email"
+              required
+              client:load
+            />
+            <p class="auth-error" id="error-email" role="alert"></p>
+          </div>
+          <div>
+            <Input
+              id="passwordInput"
+              label="Contraseña"
+              type="password"
+              placeholder="••••••••"
+              autoComplete="current-password"
+              required
+              client:load
+            />
+            <p class="auth-error" id="error-password" role="alert"></p>
+          </div>
+
+          <div>
+            <Button type="submit" fullWidth variant="secondary" client:load id="login-submit">Ingresar</Button>
+          </div>
+        </form>
+
+        <div id="demo-fallback" class="hidden">
+          <div class="auth-demo">
+            <p class="auth-demo-titulo">No se pudo conectar con el servidor</p>
+            <p class="auth-demo-texto">
+              Podés explorar la app en <strong>modo demo</strong> con datos de ejemplo. Tu cuenta real no se verá afectada.
+            </p>
+            <Button variant="outline" fullWidth type="button" client:load id="btn-modo-demo">
+              Continuar en modo demo
+            </Button>
+          </div>
         </div>
-      </div>
 
-      <p class="mt-8 text-center text-slate-400 text-sm">
-        ¿No tenés cuenta?{" "}
-        <a href="/registro" class="text-cyan-400 font-medium hover:text-cyan-300 transition-colors">Registrate</a>
-      </p>
+        <p class="auth-switch">
+          ¿No tenés cuenta? <a href="/registro">Registrate</a>
+        </p>
+      </section>
 
-      <div class="mt-6 pt-6 border-t border-slate-300">
-        <Button
-          variant="outline"
-          fullWidth
-          type="button"
-          disabled
-          client:load
-          className="text-white border-slate-700 bg-slate-800/50 hover:bg-slate-800 hover:text-white"
-        >
-          Acceso con Google (próximamente)
-        </Button>
-      </div>
+      <aside class="auth-marca">
+        <p class="auth-marca-esquina">Tasá tu propiedad en minutos, no en semanas.</p>
+      </aside>
     </div>
   </div>
 
@@ -101,16 +100,37 @@ import "../styles/auth.css";
       setTimeout(() => { window.location.href = '/dashboard'; }, 800);
     };
 
+    const errorEmail = document.getElementById('error-email') as HTMLParagraphElement;
+    const errorPassword = document.getElementById('error-password') as HTMLParagraphElement;
+
+    const marcarError = (campo: HTMLInputElement, nodo: HTMLParagraphElement | null, mensaje: string) => {
+      campo.setAttribute('aria-invalid', 'true');
+      campo.classList.add('auth-input--invalido');
+      if (nodo) nodo.textContent = mensaje;
+    };
+    const limpiarError = (campo: HTMLInputElement, nodo: HTMLParagraphElement | null) => {
+      campo.removeAttribute('aria-invalid');
+      campo.classList.remove('auth-input--invalido');
+      if (nodo) nodo.textContent = '';
+    };
+
+    const emailElementInit = document.getElementById('emailInput') as HTMLInputElement;
+    const passwordElementInit = document.getElementById('passwordInput') as HTMLInputElement;
+    emailElementInit.addEventListener('input', () => limpiarError(emailElementInit, errorEmail));
+    passwordElementInit.addEventListener('input', () => limpiarError(passwordElementInit, errorPassword));
+
     const validar = (): boolean => {
-      const email = (document.getElementById('emailInput') as HTMLInputElement).value.trim();
-      const password = (document.getElementById('passwordInput') as HTMLInputElement).value;
+      const email = emailElementInit.value.trim();
+      const password = passwordElementInit.value;
+      limpiarError(emailElementInit, errorEmail);
+      limpiarError(passwordElementInit, errorPassword);
 
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        setMensaje("Ingresá un email válido.", "#ef4444");
+        marcarError(emailElementInit, errorEmail, 'Ingresá un email válido.');
         return false;
       }
       if (password.length < 8) {
-        setMensaje("La contraseña debe tener al menos 8 caracteres.", "#ef4444");
+        marcarError(passwordElementInit, errorPassword, 'La contraseña debe tener al menos 8 caracteres.');
         return false;
       }
       return true;
@@ -165,11 +185,13 @@ import "../styles/auth.css";
           window.location.href = '/dashboard';
         } else {
           setMensaje(`${data?.error || 'Error al iniciar sesión'}`, "#ef4444");
+          marcarError(passwordElement, errorPassword, data?.error || 'No pudimos iniciar sesión. Revisá tus datos.');
           if (demoFallback) demoFallback.classList.remove('hidden');
         }
       } catch (error) {
         console.error("Error en la petición:", error);
         setMensaje("No se pudo conectar con el servidor.", "#ef4444");
+        marcarError(passwordElement, errorPassword, 'No se pudo conectar con el servidor.');
         if (demoFallback) demoFallback.classList.remove('hidden');
       } finally {
         if (submitBtn) {

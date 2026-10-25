@@ -7,7 +7,7 @@ const OK = '\x1b[32m✔\x1b[0m';
 const WARN = '\x1b[33m⚠\x1b[0m';
 const MAL = '\x1b[31m✖\x1b[0m';
 
-const PUERTOS = ['4321', '4322', '4599'];
+const PUERTOS = ['4321', '4322', '4599', '4600'];
 const PUERTO_EFIMERO = '4599';
 const IA_URL = process.env.IA_URL || 'http://127.0.0.1:8000';
 const USUARIO_QA = { usuario: 'QA Bot SP', email: 'qa-bot@spatialvalue.test', contraseña: 'QaBot-1234!' };
@@ -404,7 +404,6 @@ async function capaServidor() {
   return { base, efimero: servidor };
 }
 
-await limpiarDaemonAstro();
 const { base, efimero } = await capaServidor();
 if (base) {
   await capaBaseDeDatos();

@@ -45,7 +45,7 @@ export async function POST({ request }) {
     }
 
     const existente = await sql`
-      SELECT id_publicacion, tipo_operacion
+      SELECT id_publicacion, tipo_operacion, ciudad, latitud, longitud
       FROM publicaciones
       WHERE id_publicacion = ${id}::uuid AND id_usuario = ${idUsuarioFinal}
     `;
@@ -99,6 +99,62 @@ export async function POST({ request }) {
       barrio || existente[0].ciudad || 'Buenos Aires'
     );
 
+    const IA_URL = import.meta.env.IA_URL || process.env.IA_URL || 'http://127.0.0.1:8000';
+    const IA_API_KEY = import.meta.env.INTERNAL_API_KEY || process.env.INTERNAL_API_KEY || '';
+    let precioIA = null;
+    try {
+      const resIA = await fetch(`${IA_URL}/estimar-precio`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-KEY': IA_API_KEY },
+        body: JSON.stringify({
+          tipo_propiedad: tipo_propiedad.toLowerCase(),
+          barrio_zona: barrio || existente[0].ciudad || 'Buenos Aires',
+          ambientes,
+          dormitorios,
+          banos,
+          superficie_total_m2: superficieTotal,
+          superficie_cubierta_m2: superficieCubierta,
+          estado: estadoGeneral >= 8 ? 'A estrenar' : 'Usado',
+          anios_de_antiguedad: antiguedad,
+          piso,
+          orientacion,
+          disposicion,
+          cochera: comodidades.some((c) => /cochera/i.test(String(c))),
+          balcon: comodidades.some((c) => /balc/i.test(String(c))),
+          terraza: comodidades.some((c) => /terraza/i.test(String(c))),
+          patio: comodidades.some((c) => /patio/i.test(String(c))),
+          pileta: comodidades.some((c) => /pileta/i.test(String(c))),
+          parrilla: comodidades.some((c) => /parrilla/i.test(String(c))),
+          seguridad_24hs: comodidades.some((c) => /seguridad/i.test(String(c))),
+          ascensor: comodidades.some((c) => /ascensor/i.test(String(c))),
+          expensas_ars: expensas,
+          baulera: comodidades.some((c) => /baulera/i.test(String(c))),
+          sum: comodidades.some((c) => /sum/i.test(String(c))),
+          seguridad_tipo: comodidades.some((c) => /seguridad/i.test(String(c))) ? '24hs' : 'Ninguno',
+          camara: comodidades.some((c) => /c[aá]mara/i.test(String(c))),
+          gym: comodidades.some((c) => /gimnasio|gym/i.test(String(c))),
+          lounge: comodidades.some((c) => /lounge/i.test(String(c))),
+          laundry: comodidades.some((c) => /laundry/i.test(String(c))),
+          latitud: existente[0].latitud ? Number(existente[0].latitud) : null,
+          longitud: existente[0].longitud ? Number(existente[0].longitud) : null,
+        }),
+        signal: AbortSignal.timeout(6000),
+      });
+      if (resIA.ok) {
+        const dataIA = await resIA.json();
+        if (dataIA?.status === 'success' && Number.isFinite(dataIA.precio_estimado_usd)) {
+          precioIA = Math.round(dataIA.precio_estimado_usd);
+        }
+      }
+    } catch {}
+
+    let precioFinal = referenciaLocal;
+    let fuentePrecio = 'modelo-local';
+    if (precioIA && precioIA >= referenciaLocal * 0.6 && precioIA <= referenciaLocal * 1.5) {
+      precioFinal = precioIA;
+      fuentePrecio = 'ia';
+    }
+
     const actualizar = await sql`
       UPDATE publicaciones SET
         titulo = ${`${tipo_propiedad} en ${direccion}`.slice(0, 200)},
@@ -112,8 +168,8 @@ export async function POST({ request }) {
         banos = ${banos},
         piso = ${piso},
         expensas = ${expensas},
-        precio = ${referenciaLocal},
-        precio_estimado_ia = NULL,
+        precio = ${precioFinal},
+        precio_estimado_ia = ${precioIA},
         fecha_actualizacion = NOW()
       WHERE id_publicacion = ${id}::uuid
       RETURNING id_publicacion;
@@ -144,8 +200,9 @@ export async function POST({ request }) {
         comodidades,
         fotos,
         piso: raw.piso ? String(raw.piso) : null,
-        fuente_precio: 'modelo-local',
+        fuente_precio: fuentePrecio,
         referencia_local_usd: referenciaLocal,
+        precio_estimado_ia: precioIA,
       });
       await sql`
         INSERT INTO tasacion_detalles (id_publicacion, datos)
@@ -166,7 +223,9 @@ export async function POST({ request }) {
           superficie_cubierta: superficieCubierta,
           superficie_total: superficieTotal,
           superficie_descubierta: Math.max(superficieTotal - superficieCubierta, 0),
-          precio_estimado_usd: referenciaLocal,
+          precio_estimado_usd: precioFinal,
+          precio_estimado_ia: precioIA,
+          fuente_precio: fuentePrecio,
           tipo_operacion,
         },
       }),

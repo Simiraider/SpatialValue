@@ -1,6 +1,6 @@
 import { useEffect, useState, Component, type ReactNode } from 'react';
-import { Pencil } from 'lucide-react';
-import { DispercionChart, ComparativaBarChart, ComposicionPieChart } from './ReportCharts';
+import { Pencil, Database, BarChart3 } from 'lucide-react';
+import { DispercionChart, ComparativaBarChart, ComposicionPieChart, HistorialBarrioChart, VariacionMensualChart } from './ReportCharts';
 import { ReportActions, ReportDownloadButton } from './ReportActions';
 import { Button } from './ui/Button';
 import { getUser, getUsuarioId } from '../lib/session';
@@ -25,6 +25,7 @@ export const ReportPage = () => {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<ErrorEstado>(null);
   const [comparables, setComparables] = useState<any[]>([]);
+  const [vista, setVista] = useState<'datos' | 'graficos'>('datos');
 
   const cargar = async () => {
     setData(null);
@@ -262,6 +263,27 @@ export const ReportPage = () => {
           )}
         </section>
 
+        <nav className="ReportePage-vista" aria-label="Vista del informe">
+          <button
+            type="button"
+            className={`ReportePage-vista-btn${vista === 'datos' ? ' ReportePage-vista-btn--activa' : ''}`}
+            aria-pressed={vista === 'datos'}
+            onClick={() => setVista('datos')}
+          >
+            <Database aria-hidden />
+            Datos de la propiedad
+          </button>
+          <button
+            type="button"
+            className={`ReportePage-vista-btn${vista === 'graficos' ? ' ReportePage-vista-btn--activa' : ''}`}
+            aria-pressed={vista === 'graficos'}
+            onClick={() => setVista('graficos')}
+          >
+            <BarChart3 aria-hidden />
+            Gráficos del mercado
+          </button>
+        </nav>
+
         {esBorradorTasacion && (
           <div className="ReportePage-editarWrap">
             <Button type="button" variant="outline" className="ReportePage-editarBtn" onClick={modificar}>
@@ -271,6 +293,7 @@ export const ReportPage = () => {
           </div>
         )}
 
+        {vista === 'datos' && (<>
         <section className="ReportePage-section">
           <h2 className="ReportePage-sectionTitle">Datos de la propiedad</h2>
           <div className="ReportePage-facts">
@@ -301,6 +324,19 @@ export const ReportPage = () => {
             </p>
           </section>
         )}
+        </>)}
+
+        {vista === 'graficos' && (<>
+        <section className="ReportePage-section">
+          <h2 className="ReportePage-sectionTitle">Historial de precios del barrio</h2>
+          <p className="ReportePage-sectionSubtitle">
+            Evolución del valor por m² en {data.barrio || 'la zona'} en los últimos 12 meses y su variación mes a mes.
+          </p>
+          <div className="ReportePage-duo">
+            <HistorialBarrioChart barrio={data.barrio} valorM2={v.valorM2} />
+            <VariacionMensualChart barrio={data.barrio} valorM2={v.valorM2} />
+          </div>
+        </section>
 
         <section className="ReportePage-section">
           <h2 className="ReportePage-sectionTitle">Análisis de dispersión de mercado</h2>
@@ -337,6 +373,9 @@ export const ReportPage = () => {
             <ComposicionPieChart valorUsd={v.valorUsd} supCub={v.supCub} barrio={data.barrio} />
           </section>
         )}
+        </>)}
+
+        {vista === 'datos' && (<>
 
         <section className="ReportePage-section">
           <h2 className="ReportePage-sectionTitle">
@@ -381,13 +420,21 @@ export const ReportPage = () => {
             </>
           ) : (
             <div className="ReportePage-noComparables">
-              <p style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔍</p>
-              <p style={{ fontWeight: 500, color: '#475569' }}>
-                No tienes propiedades comparables en este barrio
+              <svg className="ReportePage-noComparablesIcono" viewBox="0 0 64 64" fill="none" aria-hidden>
+                <circle cx="27" cy="27" r="16" stroke="currentColor" strokeWidth="3" />
+                <path d="m39 39 12 12" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                <path d="M19 30h16M19 24h16M19 36h9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+              </svg>
+              <p className="ReportePage-noComparablesTitulo">
+                Todavía no hay comparables en {data.barrio || 'este barrio'}
               </p>
-              <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>
-                Para ver comparables, necesitás tener otras tasaciones en el mismo barrio ({data.barrio || 'desconocido'}) con superficie similar.
+              <p className="ReportePage-noComparablesTexto">
+                Para mostrar propiedades similares necesitás tener otras tasaciones en el mismo barrio con superficie parecida.
+                El valor de este reporte no se ve afectado: se calculó con los datos de mercado del barrio.
               </p>
+              <Button type="button" variant="outline" onClick={() => (window.location.href = '/tasacion')}>
+                Tasar otra propiedad
+              </Button>
             </div>
           )}
         </section>
@@ -402,6 +449,7 @@ export const ReportPage = () => {
             direccion={data.direccion}
           />
         </section>
+        </>)}
 
         <ReportActions />
       </main>

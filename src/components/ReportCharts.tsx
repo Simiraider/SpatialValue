@@ -1,19 +1,25 @@
+import { useMemo } from 'react';
+import { serieHistorialM2 as construirSerie, type PuntoHistorial } from '../lib/historial';
 import {
   ScatterChart,
   Scatter,
   BarChart,
   Bar,
+  AreaChart,
+  Area,
   PieChart,
   Pie,
   Cell,
   XAxis,
   YAxis,
+  ZAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   Legend,
   ReferenceLine,
   Label,
+  LabelList,
 } from 'recharts';
 import '../styles/report-charts.css';
 
@@ -52,9 +58,22 @@ export const DispercionChart = ({ valorM2Propiedad, supTotal, comparables, direc
     ? Math.round(data.reduce((a, d) => a + d.precioM2, 0) / data.length)
     : valorM2Propiedad;
 
+  const avgSup = data.length > 0
+    ? Math.round(data.reduce((a, d) => a + d.superficie, 0) / data.length)
+    : supTotal;
+
+  const m2Vals = data.map((d) => d.precioM2);
+  const supVals = data.map((d) => d.superficie);
+  const xMin = Math.floor(Math.min(...m2Vals) * 0.96);
+  const xMax = Math.ceil(Math.max(...m2Vals) * 1.04);
+  const yMin = Math.max(0, Math.floor(Math.min(...supVals) - 8));
+  const yMax = Math.ceil(Math.max(...supVals) + 8);
+
   return (
     <div className="ReportChart">
-      <p className="ReportChart-subtitle">USD/m² vs. Superficie total</p>
+      <p className="ReportChart-subtitle">
+        USD/m² vs. Superficie total · promedio {avgM2.toLocaleString('es-AR')} USD/m² · superficie media {avgSup.toLocaleString('es-AR')} m²
+      </p>
       <ResponsiveContainer width="100%" height="100%">
         <ScatterChart margin={{ top: 10, right: 20, bottom: 10, left: 10 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -62,16 +81,17 @@ export const DispercionChart = ({ valorM2Propiedad, supTotal, comparables, direc
             dataKey="precioM2"
             type="number"
             name="USD/m²"
+            domain={[xMin, xMax]}
             axisLine={false}
             tickLine={false}
             tick={{ fontSize: 11, fill: '#64748b' }}
           >
-            <Label value="USD/m²" position="bottom" offset={-2} style={{ fontSize: 11, fill: '#64748b' }} />
           </XAxis>
           <YAxis
             dataKey="superficie"
             type="number"
             name="m²"
+            domain={[yMin, yMax]}
             axisLine={false}
             tickLine={false}
             tick={{ fontSize: 11, fill: '#64748b' }}
@@ -86,6 +106,9 @@ export const DispercionChart = ({ valorM2Propiedad, supTotal, comparables, direc
                 <div className="ReportChart-tooltip">
                   <p className="ReportChart-tooltipTitle">{d.nombre}</p>
                   <p>{d.precioM2.toLocaleString('es-AR')} USD/m² · {d.superficie} m²</p>
+                  <p className="ReportChart-tooltipExtra">
+                    {d.esLaTasada ? 'Propiedad tasada' : `Valor aprox. $${Math.round((d.precioM2 * d.superficie) / 1000)}k USD`}
+                  </p>
                 </div>
               );
             }}
@@ -94,18 +117,23 @@ export const DispercionChart = ({ valorM2Propiedad, supTotal, comparables, direc
             x={avgM2}
             stroke={COLORS.muted}
             strokeDasharray="4 4"
-            label={{ value: `Promedio ${avgM2.toLocaleString('es-AR')}`, position: 'top', fontSize: 10, fill: COLORS.muted }}
           />
+          <ReferenceLine
+            y={avgSup}
+            stroke="#38bdf8"
+            strokeDasharray="4 4"
+          />
+          <ZAxis dataKey="superficie" range={[50, 260]} name="Superficie" />
           <Scatter
             data={data.filter((d) => !d.esLaTasada)}
-            fill={COLORS.muted}
-            fillOpacity={0.7}
+            fill="#38bdf8"
+            fillOpacity={0.65}
             name="Comparables"
           />
           <Scatter
             data={data.filter((d) => d.esLaTasada)}
-            fill={COLORS.primary}
-            stroke={COLORS.primary}
+            fill="#005477"
+            stroke="#0087c0"
             strokeWidth={2}
             name="Propiedad tasada"
           />
@@ -137,6 +165,9 @@ export const ComparativaBarChart = ({ valorM2Propiedad, direccion, testigos }: C
     ...testigos.map((t) => ({ ...t, esLaTasada: false })),
   ];
 
+  const promedio = Math.round(data.reduce((a, d) => a + d.precioM2, 0) / Math.max(data.length, 1));
+  const maxM2 = Math.max(...data.map((d) => d.precioM2), 1);
+
   return (
     <div className="ReportChart">
       <p className="ReportChart-subtitle">Comparativa directa de valores por m²</p>
@@ -154,6 +185,7 @@ export const ComparativaBarChart = ({ valorM2Propiedad, direccion, testigos }: C
           <YAxis
             axisLine={false}
             tickLine={false}
+            domain={[0, Math.ceil(maxM2 * 1.18)]}
             tick={{ fontSize: 11, fill: '#64748b' }}
             tickFormatter={(v) => `$${v}`}
           />
@@ -169,14 +201,26 @@ export const ComparativaBarChart = ({ valorM2Propiedad, direccion, testigos }: C
               );
             }}
           />
-          <Bar dataKey="precioM2" name="USD/m²" radius={[6, 6, 0, 0]}>
+          <ReferenceLine
+            y={promedio}
+            stroke="#10b981"
+            strokeDasharray="5 4"
+            label={{ value: `Promedio ${promedio.toLocaleString('es-AR')}`, position: 'insideTopRight', fontSize: 10, fill: '#059669' }}
+          />
+          <Bar dataKey="precioM2" name="USD/m²" radius={[6, 6, 0, 0]} maxBarSize={72}>
             {data.map((entry, idx) => (
               <Cell
                 key={idx}
-                fill={entry.esLaTasada ? COLORS.primary : COLORS.muted}
-                fillOpacity={entry.esLaTasada ? 1 : 0.55}
+                fill={entry.esLaTasada ? '#0087c0' : '#7dd3fc'}
+                fillOpacity={entry.esLaTasada ? 1 : 0.75}
               />
             ))}
+            <LabelList
+              dataKey="precioM2"
+              position="top"
+              formatter={(v) => Number(v ?? 0).toLocaleString('es-AR')}
+              style={{ fontSize: 11, fontWeight: 700, fill: '#0f172a' }}
+            />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
@@ -222,9 +266,19 @@ export const ComposicionPieChart = ({ valorUsd, supCub, barrio }: ComposicionPie
             paddingAngle={3}
             dataKey="value"
             nameKey="name"
-            label={({ name, percent }) =>
-              `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-            }
+            label={({ cx, cy, midAngle, outerRadius, name, percent }) => {
+              const R = (outerRadius ?? 0) + 14;
+              const RAD = Math.PI / 180;
+              const ang = (midAngle ?? 0) * RAD;
+              const x = (cx ?? 0) + R * Math.cos(-ang);
+              const y = (cy ?? 0) + R * Math.sin(-ang);
+              const anchor = x > (cx ?? 0) ? 'start' : 'end';
+              return (
+                <text x={x} y={y} fill="#1e293b" fontSize={12} fontWeight={600} textAnchor={anchor} dominantBaseline="central">
+                  {`${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                </text>
+              );
+            }}
             labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}
           >
             {data.map((_, idx) => (
@@ -246,6 +300,124 @@ export const ComposicionPieChart = ({ valorUsd, supCub, barrio }: ComposicionPie
             }}
           />
         </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
+
+/* ============================================================
+   Historial de precios del barrio (12 meses)
+   La serie vive en src/lib/historial.ts y se comparte con Indicadores.
+   ============================================================ */
+
+export const HistorialBarrioChart = ({ barrio, valorM2 }: { barrio?: string; valorM2: number }) => {
+  const datos = useMemo(() => construirSerie(barrio, valorM2), [barrio, valorM2]);
+  const min = Math.min(...datos.map((d) => d.valor));
+  const max = Math.max(...datos.map((d) => d.valor));
+  const primero = datos[0]?.valor || 1;
+  const ultimo = datos[datos.length - 1]?.valor || primero;
+  const acumulada = ((ultimo - primero) / primero) * 100;
+
+  return (
+    <div className="ReportChart">
+      <p className="ReportChart-subtitle">
+        USD/m² · {barrio || 'CABA'} · últimos 12 meses ({acumulada >= 0 ? '+' : ''}{acumulada.toFixed(1)}%)
+      </p>
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={datos} margin={{ top: 10, right: 16, bottom: 0, left: 0 }}>
+          <defs>
+            <linearGradient id="gradHistorialM2" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#0087c0" stopOpacity={0.34} />
+              <stop offset="100%" stopColor="#0087c0" stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+          <XAxis dataKey="mes" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
+          <YAxis
+            domain={[Math.floor(min * 0.985), Math.ceil(max * 1.02)]}
+            axisLine={false}
+            tickLine={false}
+            width={52}
+            tick={{ fontSize: 11, fill: '#64748b' }}
+          />
+          <Tooltip
+            content={({ active, payload, label }) => {
+              if (!active || !payload?.length) return null;
+              const d = payload[0].payload as PuntoHistorial;
+              return (
+                <div className="ReportChart-tooltip">
+                  <p className="ReportChart-tooltipTitle">{label}</p>
+                  <p>{d.valor.toLocaleString('es-AR')} USD/m²</p>
+                  <p className="ReportChart-tooltipExtra">
+                    {d.variacion >= 0 ? '+' : ''}{d.variacion.toFixed(1)}% vs. mes anterior
+                  </p>
+                </div>
+              );
+            }}
+          />
+          <Area
+            type="monotone"
+            dataKey="valor"
+            stroke="#0087c0"
+            strokeWidth={2.5}
+            fill="url(#gradHistorialM2)"
+            dot={false}
+            activeDot={{ r: 5, fill: '#0087c0', stroke: '#ffffff', strokeWidth: 2 }}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
+
+export const VariacionMensualChart = ({ barrio, valorM2 }: { barrio?: string; valorM2: number }) => {
+  const serie = useMemo(() => construirSerie(barrio, valorM2), [barrio, valorM2]);
+  const datos = serie.map((p) => ({ mes: p.mes, variacion: Number(p.variacion.toFixed(2)) }));
+  const conDatos = datos.slice(1);
+  const maxAbs = Math.max(...conDatos.map((d) => Math.abs(d.variacion)), 1);
+  const promedio = conDatos.length > 0
+    ? conDatos.reduce((a, d) => a + d.variacion, 0) / conDatos.length
+    : 0;
+
+  return (
+    <div className="ReportChart">
+      <p className="ReportChart-subtitle">
+        Variación mensual · promedio {promedio >= 0 ? '+' : ''}{promedio.toFixed(2)}% por mes
+      </p>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={conDatos} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+          <XAxis dataKey="mes" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
+          <YAxis
+            domain={[Math.floor(maxAbs * -1.3), Math.ceil(maxAbs * 1.3)]}
+            axisLine={false}
+            tickLine={false}
+            width={46}
+            tick={{ fontSize: 11, fill: '#64748b' }}
+            tickFormatter={(v) => `${v}%`}
+          />
+          <ReferenceLine y={0} stroke="#94a3b8" />
+          <Tooltip
+            cursor={{ fill: 'rgba(0, 135, 192, 0.06)' }}
+            content={({ active, payload, label }) => {
+              if (!active || !payload?.length) return null;
+              const valor = Number(payload[0].value) || 0;
+              return (
+                <div className="ReportChart-tooltip">
+                  <p className="ReportChart-tooltipTitle">{label}</p>
+                  <p className={valor >= 0 ? 'ReportChart-tooltipUp' : 'ReportChart-tooltipDown'}>
+                    {valor >= 0 ? '+' : ''}{valor.toFixed(2)}% respecto al mes anterior
+                  </p>
+                </div>
+              );
+            }}
+          />
+          <Bar dataKey="variacion" radius={[4, 4, 0, 0]} maxBarSize={38}>
+            {conDatos.map((d, idx) => (
+              <Cell key={idx} fill={d.variacion >= 0 ? '#10b981' : '#ef4444'} fillOpacity={0.85} />
+            ))}
+          </Bar>
+        </BarChart>
       </ResponsiveContainer>
     </div>
   );

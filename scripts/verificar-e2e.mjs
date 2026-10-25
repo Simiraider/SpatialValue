@@ -4,7 +4,7 @@ import { setTimeout as wait } from 'node:timers/promises';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 const HOST = 'localhost';
-const PUERTOS_CANDIDATOS = [process.env.E2E_PORT, '4321', '4322', '4599'].filter(Boolean);
+const PUERTOS_CANDIDATOS = [process.env.E2E_PORT, '4321', '4322', '4599', '4600'].filter(Boolean);
 
 async function estaArriba(base) {
   try {
@@ -126,6 +126,32 @@ async function main() {
     await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle' });
     if (page.url().includes('/dashboard')) ok('/dashboard accesible con sesión');
     else fail(`/dashboard redirigió a ${page.url()}`);
+
+    await page.getByRole('button', { name: 'Indicadores de mercado' }).click();
+    const tarjetasBarrio = page.locator('.barrio-card');
+    if (await tarjetasBarrio.count()) {
+      await tarjetasBarrio.first().click({ position: { x: 12, y: 12 } });
+      const tarjetaExpandida = page.locator('.barrio-card--expandida');
+      if (await tarjetaExpandida.count()) {
+        ok('Una tarjeta de barrio se expande al hacer clic');
+        await page.setViewportSize({ width: 390, height: 844 });
+        const desborda = await tarjetaExpandida.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
+        if (!desborda) ok('Tarjeta expandida sin desborde horizontal en móvil');
+        else {
+          const desbordes = await tarjetaExpandida.evaluate((element) =>
+            [...element.querySelectorAll('*')]
+              .filter((child) => child.clientWidth > 0 && child.scrollWidth > child.clientWidth + 1)
+              .slice(0, 3)
+              .map((child) => `${child.className || child.tagName}: ${child.scrollWidth}/${child.clientWidth}`)
+          );
+          fail(`La tarjeta expandida desborda horizontalmente en móvil (${desbordes.join(', ')})`);
+        }
+      } else {
+        fail('La tarjeta de barrio no se expandió');
+      }
+    } else {
+      fail('No se renderizaron tarjetas de barrio');
+    }
 
     await page.evaluate(() => document.cookie = 'usuario_id=; Max-Age=0; path=/');
     await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle' });

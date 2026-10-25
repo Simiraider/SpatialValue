@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Building2, Check, Home, KeyRound, TrendingUp } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { Building2, Check, Home, KeyRound, Loader2, TrendingUp, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
@@ -111,10 +111,54 @@ function precargarDesdeEdicion(draft: TasacionDraft): FormData {
   };
 }
 
-function Selector({ label, value, onChange, children, error }: { label: string; value: string; onChange: (value: string) => void; children: React.ReactNode; error?: string }) {
-  return <div className="tasacion__campo">
-    <label className="tasacion__etiqueta">{label}</label>
-    <select className={cn('tasacion__control', error && 'tasacion__control--invalido')} value={value} onChange={(e) => onChange(e.target.value)}>{children}</select>
+function Selector({ label, value, onChange, placeholder, opciones, error }: { label: string; value: string; onChange: (value: string) => void; placeholder: string; opciones: string[]; error?: string }) {
+  const [abierto, setAbierto] = useState(false);
+  const cajaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!abierto) return;
+    const cerrarFuera = (evento: MouseEvent) => {
+      if (cajaRef.current && !cajaRef.current.contains(evento.target as Node)) setAbierto(false);
+    };
+    document.addEventListener('mousedown', cerrarFuera);
+    return () => document.removeEventListener('mousedown', cerrarFuera);
+  }, [abierto]);
+
+  return <div className="tasacion__campo" ref={cajaRef}>
+    <span className="tasacion__etiqueta">{label}</span>
+    <button
+      type="button"
+      aria-haspopup="listbox"
+      aria-expanded={abierto}
+      onClick={() => setAbierto(prev => !prev)}
+      className={cn('tasacion__selector', error && 'tasacion__selector--invalido')}
+    >
+      <span className={cn('tasacion__selector-valor', !value && 'tasacion__selector-valor--placeholder')}>{value || placeholder}</span>
+      <svg className={cn('tasacion__selector-flecha', abierto && 'tasacion__selector-flecha--arriba')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m6 9 6 6 6-6" /></svg>
+    </button>
+    {abierto && (
+      <ul className="tasacion__selector-opciones" role="listbox" aria-label={label}>
+        <li>
+          <button type="button" className="tasacion__selector-opcion tasacion__selector-opcion--placeholder" onClick={() => { onChange(''); setAbierto(false); }}>
+            {placeholder}
+          </button>
+        </li>
+        {opciones.map(op => (
+          <li key={op}>
+            <button
+              type="button"
+              role="option"
+              aria-selected={value === op}
+              className={cn('tasacion__selector-opcion', value === op && 'tasacion__selector-opcion--activa')}
+              onClick={() => { onChange(op); setAbierto(false); }}
+            >
+              {op}
+              {value === op && <Check className="tasacion__selector-check" aria-hidden />}
+            </button>
+          </li>
+        ))}
+      </ul>
+    )}
     {error && <p className="tasacion__error">{error}</p>}
   </div>;
 }
@@ -143,7 +187,36 @@ export const PropertyForm = () => {
   const [showSlider, setShowSlider] = useState(false);
   const [guardarComoBorrador, setGuardarComoBorrador] = useState(false);
   const [verifDir, setVerifDir] = useState<VerificacionDireccion>({ estado: 'idle' });
+  const [arrastrando, setArrastrando] = useState(false);
   const esEdicion = Boolean(edicion);
+
+  // Validación en tiempo real de superficies (paso 2)
+  const validarSuperficie = (campo: 'superficieTotal' | 'superficieCubierta', valor: string) => {
+    const n = Number(valor);
+    setErrors(prev => {
+      const next = { ...prev };
+      if (valor !== '' && (!Number.isFinite(n) || n <= 0)) next[campo] = 'La superficie debe ser mayor a 0 m²';
+      else delete next[campo];
+      const total = campo === 'superficieTotal' ? n : Number(data.superficieTotal);
+      const cub = campo === 'superficieCubierta' ? n : Number(data.superficieCubierta);
+      if (Number.isFinite(total) && Number.isFinite(cub) && cub > 0 && total > 0 && cub > total) next.superficieCubierta = 'No puede superar la superficie total';
+      else if (next.superficieCubierta === 'No puede superar la superficie total') delete next.superficieCubierta;
+      return next;
+    });
+  };
+
+  // Paso 1: el botón "Siguiente" queda inactivo hasta que la dirección esté verificada
+  const direccionValida =
+    data.direccion.trim().length > 0 &&
+    (verifDir.estado === 'ok' || verifDir.estado === 'sin-servicio');
+  const puedeAvanzar = step !== 1 || direccionValida;
+
+  const agregarFotos = (archivos: FileList | null) => {
+    if (!archivos) return;
+    const imagenes = Array.from(archivos).filter(f => f.type.startsWith('image/'));
+    setPhotos(prev => [...prev, ...imagenes].slice(0, 12));
+  };
+  const quitarFoto = (index: number) => setPhotos(prev => prev.filter((_, i) => i !== index));
 
   useEffect(() => {
     if (esEdicion) setGuardarComoBorrador(true);
@@ -301,9 +374,13 @@ export const PropertyForm = () => {
       {step === 1 && <section>
         <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">{kicker}</p><h1 className="tasacion__encabezado-titulo">Ubicación</h1><span className="tasacion__encabezado-sub">Contanos dónde está la propiedad y verificamos la dirección al instante.</span></div>
         {esEdicion && <div className="tasacion__aviso-edicion">Estás modificando una tasación en borrador. Al finalizar se actualizan los datos y se recalcula el precio.</div>}
-        <div className="tasacion__eleccion">
-          <TarjetaEleccion icono={TrendingUp} titulo="Venta" activo={data.tipoTasacion === 'venta'} onClick={() => update('tipoTasacion', 'venta')} />
-          <TarjetaEleccion icono={KeyRound} titulo="Alquiler" activo={data.tipoTasacion === 'alquiler'} onClick={() => update('tipoTasacion', 'alquiler')} />
+        <div className="tasacion__toggle-pill" role="radiogroup" aria-label="Tipo de operación">
+          <button type="button" role="radio" aria-checked={data.tipoTasacion === 'venta'} className={cn('tasacion__toggle-pill-opcion', data.tipoTasacion === 'venta' && 'tasacion__toggle-pill-opcion--activa')} onClick={() => update('tipoTasacion', 'venta')}>
+            <TrendingUp className="tasacion__toggle-pill-icono" aria-hidden /> Venta
+          </button>
+          <button type="button" role="radio" aria-checked={data.tipoTasacion === 'alquiler'} className={cn('tasacion__toggle-pill-opcion', data.tipoTasacion === 'alquiler' && 'tasacion__toggle-pill-opcion--activa')} onClick={() => update('tipoTasacion', 'alquiler')}>
+            <KeyRound className="tasacion__toggle-pill-icono" aria-hidden /> Alquiler
+          </button>
         </div>
         <div className="tasacion__grilla tasacion__grilla--ubicacion">
           <div className="tasacion__campo">
@@ -321,7 +398,7 @@ export const PropertyForm = () => {
               </p>
             )}
           </div>
-          <Selector label="Barrio (opcional — lo detectamos de la dirección)" value={data.barrio} onChange={value => update('barrio', value)}><option value="">Detectar automáticamente…</option>{BARRIOS_CABA.map(barrio => <option key={barrio} value={barrio}>{barrio}</option>)}</Selector>
+          <Selector label="Barrio (opcional — lo detectamos de la dirección)" value={data.barrio} onChange={value => update('barrio', value)} placeholder="Detectar automáticamente…" opciones={BARRIOS_CABA} />
         </div>
       </section>}
       {step === 2 && <section>
@@ -333,9 +410,9 @@ export const PropertyForm = () => {
         <div className="tasacion__grilla">
           <Input label="Número de ambientes" type="number" min="0" max="50" value={data.ambientes} onChange={e => update('ambientes', e.target.value)} />
           <Input label="Antigüedad (años)" type="number" min="0" max="200" placeholder="Ej. 8" value={data.antiguedad} onChange={e => update('antiguedad', e.target.value)} />
-          <Input label="Superficie total (m²)" type="number" min="1" value={data.superficieTotal} onChange={e => update('superficieTotal', e.target.value)} error={errors.superficieTotal} />
+          <Input label="Superficie total (m²)" type="number" min="1" value={data.superficieTotal} onChange={e => { update('superficieTotal', e.target.value); validarSuperficie('superficieTotal', e.target.value); }} error={errors.superficieTotal} />
           <div className="tasacion__campo">
-            <Input label="Superficie cubierta (m²)" type="number" min="1" value={data.superficieCubierta} onChange={e => update('superficieCubierta', e.target.value)} error={errors.superficieCubierta} />
+            <Input label="Superficie cubierta (m²)" type="number" min="1" value={data.superficieCubierta} onChange={e => { update('superficieCubierta', e.target.value); validarSuperficie('superficieCubierta', e.target.value); }} error={errors.superficieCubierta} />
             {descubiertos !== null && <p className="tasacion__hint">Descubiertos: {descubiertos} m²</p>}
           </div>
           <Input label="Baños" type="number" min="0" max="30" value={data.banos} onChange={e => update('banos', e.target.value)} />
@@ -345,9 +422,9 @@ export const PropertyForm = () => {
           ) : (
             <Input label="Cantidad de pisos" type="number" min="1" max="10" placeholder="Ej. 2" value={data.piso} onChange={e => update('piso', e.target.value)} />
           )}
-          <Selector label="Orientación" value={data.orientacion} onChange={value => update('orientacion', value)}><option value="">Seleccioná la orientación…</option>{['Norte', 'Sur', 'Este', 'Oeste', 'Noreste', 'Noroeste', 'Sureste', 'Suroeste'].map(option => <option key={option}>{option}</option>)}</Selector>
-          <Selector label="Disposición" value={data.disposicion} onChange={value => update('disposicion', value)}><option value="">Seleccioná la disposición…</option>{['Frente', 'Contrafrente', 'Interno', 'Lateral'].map(option => <option key={option}>{option}</option>)}</Selector>
-          <Selector label="Luz natural" value={data.luzNatural} onChange={value => update('luzNatural', value)}><option value="">Seleccioná la luminosidad…</option>{OPCIONES_LUZ.map(option => <option key={option}>{option}</option>)}</Selector>
+          <Selector label="Orientación" value={data.orientacion} onChange={value => update('orientacion', value)} placeholder="Seleccioná la orientación…" opciones={['Norte', 'Sur', 'Este', 'Oeste', 'Noreste', 'Noroeste', 'Sureste', 'Suroeste']} />
+          <Selector label="Disposición" value={data.disposicion} onChange={value => update('disposicion', value)} placeholder="Seleccioná la disposición…" opciones={['Frente', 'Contrafrente', 'Interno', 'Lateral']} />
+          <Selector label="Luz natural" value={data.luzNatural} onChange={value => update('luzNatural', value)} placeholder="Seleccioná la luminosidad…" opciones={OPCIONES_LUZ} />
           {data.tipoTasacion === 'alquiler' && <Input label="Expensas mensuales (ARS)" type="number" min="0" placeholder="Ej. 150000" value={data.expensas} onChange={e => update('expensas', e.target.value)} />}
         </div>
         <fieldset className="tasacion__estado"><legend>Estado percibido</legend><div className="tasacion__estado-botones"><button type="button" className={cn('tasacion__estado-btn', 'tasacion__estado-btn--optimo', data.estadoGeneral >= 8 && 'tasacion__estado-btn--seleccionado')} onClick={() => { update('estadoGeneral', 9); setShowSlider(false); }}>Óptimo</button><button type="button" className={cn('tasacion__estado-btn', 'tasacion__estado-btn--regular', data.estadoGeneral >= 5 && data.estadoGeneral < 8 && 'tasacion__estado-btn--seleccionado')} onClick={() => { update('estadoGeneral', 6); setShowSlider(false); }}>Regular</button><button type="button" className={cn('tasacion__estado-btn', 'tasacion__estado-btn--critico', data.estadoGeneral <= 4 && 'tasacion__estado-btn--seleccionado')} onClick={() => { update('estadoGeneral', 3); setShowSlider(false); }}>Crítico</button></div><button type="button" className="tasacion__estado-toggle" onClick={() => setShowSlider(prev => !prev)}>{showSlider ? 'Ocultar detalle' : '¿Más precisión?'}</button>{showSlider && <div className="tasacion__slider"><div className="tasacion__slider-valor" style={{ color: data.estadoGeneral >= 8 ? '#16a34a' : data.estadoGeneral >= 5 ? '#d97706' : '#dc2626' }}>{data.estadoGeneral}</div><input type="range" min="1" max="10" value={data.estadoGeneral} onChange={e => update('estadoGeneral', Number(e.target.value))} className="tasacion__slider-input" /><div className="tasacion__slider-labels"><span>1 — A refaccionar</span><span>10 — A estrenar</span></div></div>}</fieldset>
@@ -366,11 +443,40 @@ export const PropertyForm = () => {
       </section>}
       {step === 4 && <section>
         <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">{kicker}</p><h1 className="tasacion__encabezado-titulo">Fotos de la propiedad</h1><span className="tasacion__encabezado-sub">Podés sumar imágenes para complementar el análisis visual.</span></div>
-        <label className="tasacion__subida"><input type="file" accept="image/*" multiple onChange={e => setPhotos(Array.from(e.target.files || []).slice(0, 12))} /><strong>Subí imágenes</strong><span>JPG, PNG o WEBP · hasta 12 fotos</span></label>
-        {previews.length > 0 && <div className="tasacion__fotos">{previews.map(({ file, url }) => <img key={`${file.name}-${file.lastModified}`} src={url} alt={file.name} />)}</div>}
+        <label
+          className={cn('tasacion__subida', arrastrando && 'tasacion__subida--activa')}
+          onDragOver={e => { e.preventDefault(); setArrastrando(true); }}
+          onDragLeave={() => setArrastrando(false)}
+          onDrop={e => { e.preventDefault(); setArrastrando(false); agregarFotos(e.dataTransfer.files); }}
+        >{''}
+          <input type="file" accept="image/*" multiple onChange={e => { agregarFotos(e.target.files); e.target.value = ''; }} />
+          <strong>Arrastrá las fotos acá o hacé clic para subirlas</strong>
+          <span>JPG, PNG o WEBP · hasta 12 fotos</span>
+        </label>
+        {previews.length > 0 && (
+          <div className="tasacion__fotos">
+            {previews.map(({ file, url }, index) => (
+              <div key={`${file.name}-${file.lastModified}`} className="tasacion__foto">
+                <img src={url} alt={file.name} />
+                <button type="button" className="tasacion__foto-quitar" aria-label={`Eliminar ${file.name}`} onClick={() => quitarFoto(index)}>
+                  <X aria-hidden />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <label className="tasacion__borrador"><input type="checkbox" checked={guardarComoBorrador} disabled={esEdicion} onChange={e => setGuardarComoBorrador(e.target.checked)} /><span>{esEdicion ? 'Esta tasación se actualiza como borrador; podés completarla cuando quieras.' : 'Guardar como borrador (podés completarla después desde el Dashboard)'}</span></label>
       </section>}
-      <div className="tasacion__acciones">{step > 1 ? <Button type="button" variant="outline" disabled={submitting} onClick={() => setStep(current => current - 1)}>Atrás</Button> : <Button type="button" variant="outline" disabled={submitting} onClick={() => salir('/dashboard')}>Cancelar</Button>}<Button type="submit" variant="primary" isLoading={submitting} disabled={submitting}>{step === TOTAL_STEPS ? (esEdicion ? 'Guardar cambios y recalcular' : 'Finalizar y calcular') : 'Siguiente'}</Button></div>
+      <div className="tasacion__acciones">{step > 1 ? <Button type="button" variant="outline" disabled={submitting} onClick={() => setStep(current => current - 1)}>Atrás</Button> : <Button type="button" variant="outline" disabled={submitting} onClick={() => salir('/dashboard')}>Cancelar</Button>}<Button type="submit" variant="primary" isLoading={submitting} disabled={submitting || !puedeAvanzar}>{step === TOTAL_STEPS ? (esEdicion ? 'Guardar cambios y recalcular' : 'Finalizar y calcular') : 'Siguiente'}</Button></div>
+      {step === 1 && !direccionValida && !errors.direccion && (
+        <p className="tasacion__nota-validacion">Ingresá y verificá la dirección para continuar.</p>
+      )}
     </form>
+    {submitting && (
+      <div className="tasacion__bloqueo" role="status" aria-live="polite">
+        <Loader2 className="tasacion__bloqueo-icono" aria-hidden />
+        <p>Calculando tu tasación… esto puede tardar unos segundos.</p>
+      </div>
+    )}
   </div>;
 };

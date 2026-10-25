@@ -17,12 +17,26 @@
   --config-peligro-fondo: #fef2f2;
   --config-exito: #16a34a;
   --config-radio: 1rem;
-  --config-panel: #e2e8f0;
+  --config-panel: #f8fafc;
   --config-panel-radio: 1.5rem;
 
-  background: var(--config-panel);
-  border-radius: var(--config-panel-radio);
-  padding: 2rem;
+  /* Sin caja gris envolvente: las secciones son tarjetas blancas
+     flotando directamente sobre el fondo de la página (#F8FAFC). */
+  background: transparent;
+  padding: 0;
+}
+
+/* Tarjeta blanca modular por temática (auditoría: sin contenedor gigante) */
+.configuracion__tarjeta,
+.datos-personales,
+.redes,
+.privacidad {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.25rem;
+  padding: 1.75rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  margin-bottom: 1.25rem;
 }
 
 /* ---------------- Cabecera ---------------- */
@@ -115,19 +129,19 @@
 }
 
 .configuracion__menu-item:hover {
-  background: rgba(255, 255, 255, 0.65);
+  background: #f1f5f9;
   color: var(--config-texto);
 }
 
 .configuracion__menu-item--activo {
-  background: var(--config-acento);
-  color: #ffffff;
-  box-shadow: var(--config-sombra-acento);
+  background: var(--config-acento-suave);
+  color: var(--config-acento);
+  font-weight: 600;
 }
 
 .configuracion__menu-item--activo:hover {
-  background: var(--config-acento);
-  color: #ffffff;
+  background: var(--config-acento-suave);
+  color: var(--config-acento);
 }
 
 .configuracion__contenido {
@@ -160,6 +174,49 @@
   font-size: 0.9375rem;
   color: var(--config-texto);
   transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+/* Contraseña con ojito (mostrar/ocultar) */
+.configuracion__pwd {
+  position: relative;
+  display: flex;
+  width: 100%;
+}
+
+.configuracion__pwd-entrada {
+  padding-right: 2.75rem;
+}
+
+.configuracion__ojo {
+  position: absolute;
+  right: 0.375rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.configuracion__ojo:hover {
+  color: var(--config-acento);
+  background: var(--config-acento-suave);
+}
+
+.configuracion__ojo:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px var(--config-acento);
+}
+
+.configuracion__ojo svg {
+  width: 1.1rem;
+  height: 1.1rem;
 }
 
 .configuracion__entrada--icono {
@@ -602,7 +659,18 @@
 /* ---------------- Tarjeta de vista previa de perfil ---------------- */
 
 .tarjeta-perfil-zona {
-  margin-top: 1.75rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.25rem;
+  padding: 1.75rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  margin: 1.25rem 0;
+}
+
+/* El preview vive dentro de su propia tarjeta: se distingue con fondo claro */
+.tarjeta-perfil-zona .tarjeta-perfil {
+  background: #f8fafc;
+  box-shadow: none;
 }
 
 .tarjeta-perfil-zona__titulo {
@@ -846,13 +914,14 @@
 
 /* ---------------- Zona de peligro ---------------- */
 
+/* Zona de peligro: tarjeta roja independiente (bg-red-50 / border-red-200) */
 .configuracion__zona-peligro {
-  margin-top: 2rem;
+  margin: 1.25rem 0 0;
   border: 1px solid #fecaca;
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   background: #fef2f2;
-  padding: 1.25rem;
-  max-width: 36rem;
+  padding: 1.5rem 1.75rem;
+  box-shadow: 0 1px 2px rgba(220, 38, 38, 0.04);
 }
 
 .configuracion__peligro-titulo {
@@ -875,19 +944,19 @@
 }
 
 .configuracion__boton-peligro {
-  border: 1px solid #fca5a5;
+  border: none;
   cursor: pointer;
   border-radius: 999px;
-  padding: 0.5rem 1.25rem;
+  padding: 0.55rem 1.35rem;
   font-size: 0.8125rem;
   font-weight: 600;
-  background: #ffffff;
-  color: #dc2626;
+  background: #dc2626;
+  color: #ffffff;
   transition: background-color 0.15s ease;
 }
 
 .configuracion__boton-peligro:hover {
-  background: #fee2e2;
+  background: #b91c1c;
 }
 
 .configuracion__boton-peligro:disabled {

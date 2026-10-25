@@ -8,107 +8,113 @@ import "../styles/auth.css";
 
 <Layout title="Crear cuenta">
   <div class="auth-page">
-    <div class="auth-card my-8">
-      <header class="mb-8 text-center flex flex-col items-center">
-        <a href="/" class="text-white mb-4 block scale-125">
-          <Logo />
-        </a>
-        <h1 class="auth-title">Registrarse</h1>
-        <p class="auth-status" id="mensaje-estado">
-          Empezá a tasar propiedades en segundos
-        </p>
-      </header>
+    <div class="auth-layout">
+      <section class="auth-form">
+        <header class="auth-form__cabecera">
+          <a href="/" class="auth-logo">
+            <Logo variant="claro" />
+          </a>
+          <h1 class="auth-title">Crear cuenta</h1>
+          <p class="auth-status" id="mensaje-estado">
+            Empezá a tasar propiedades en segundos.
+          </p>
+        </header>
 
-      <form class="flex flex-col gap-5" id="register-form" novalidate>
-        <div class="flex gap-4">
-          <div class="text-slate-300 w-1/2">
+        <form id="register-form" novalidate>
+          <div class="auth-form__fila">
+            <div>
+              <Input
+                label="Nombre"
+                type="text"
+                id="register-nombre"
+                name="nombre"
+                placeholder="Juan"
+                autoComplete="given-name"
+                required
+                client:load
+              />
+            </div>
+            <div>
+              <Input
+                label="Apellido"
+                type="text"
+                id="register-apellido"
+                name="apellido"
+                placeholder="García"
+                autoComplete="family-name"
+                required
+                client:load
+              />
+            </div>
+          </div>
+
+          <div>
             <Input
-              label="Nombre"
-              type="text"
-              id="register-nombre"
-              name="nombre"
-              placeholder="Juan"
-              autoComplete="given-name"
+              label="Email"
+              type="email"
+              id="register-email"
+              name="email"
+              placeholder="usuario@gmail.com"
+              autoComplete="email"
               required
               client:load
-              className="text-slate-900"
             />
+            <p class="auth-error" id="error-email" role="alert"></p>
           </div>
-          <div class="text-slate-300 w-1/2">
+
+          <div>
             <Input
-              label="Apellido"
-              type="text"
-              id="register-apellido"
-              name="apellido"
-              placeholder="García"
-              autoComplete="family-name"
+              label="Contraseña"
+              type="password"
+              id="register-password"
+              name="password"
+              placeholder="Mínimo 8 caracteres"
+              autoComplete="new-password"
               required
               client:load
-              className="text-slate-900"
             />
+            <div class="fuerza" id="fuerza-pwd" hidden>
+              <div class="fuerza__barra" aria-hidden>
+                <span class="fuerza__relleno" id="fuerza-relleno"></span>
+              </div>
+              <p class="fuerza__etiqueta" id="fuerza-etiqueta" role="status"></p>
+            </div>
+            <p class="auth-error" id="error-password" role="alert"></p>
           </div>
-        </div>
 
-        <div class="text-slate-300">
-          <Input
-            label="Email"
-            type="email"
-            id="register-email"
-            name="email"
-            placeholder="usuario@gmail.com"
-            autoComplete="email"
-            required
-            client:load
-            className="text-slate-900"
-          />
-        </div>
+          <div>
+            <Input
+              label="Confirmar contraseña"
+              type="password"
+              id="register-password-confirm"
+              name="password_confirm"
+              placeholder="Repetí tu contraseña"
+              autoComplete="new-password"
+              required
+              client:load
+            />
+            <p class="auth-error" id="error-password-confirm" role="alert"></p>
+          </div>
 
-        <div class="text-slate-300">
-          <Input
-            label="Contraseña"
-            type="password"
-            id="register-password"
-            name="password"
-            placeholder="Mínimo 8 caracteres"
-            autoComplete="new-password"
-            required
-            client:load
-            className="text-slate-900"
-          />
-        </div>
+          <p class="auth-legal">
+            Al registrarte aceptás nuestros <a href="#">Términos de uso</a> y <a href="#">Política de privacidad</a>.
+          </p>
 
-        <div class="text-slate-300">
-          <Input
-            label="Confirmar contraseña"
-            type="password"
-            id="register-password-confirm"
-            name="password_confirm"
-            placeholder="Repetí tu contraseña"
-            autoComplete="new-password"
-            required
-            client:load
-            className="text-slate-900"
-          />
-        </div>
+          <div>
+            <Button type="submit" fullWidth variant="secondary" client:load id="register-submit">
+              Crear cuenta
+            </Button>
+          </div>
+        </form>
 
-        <p class="text-slate-400 text-xs text-center mt-2">
-          Al registrarte aceptás nuestros{" "}
-          <a href="#" class="text-cyan-400 hover:text-cyan-300 transition-colors">Términos de uso</a>
-          {" "}y{" "}
-          <a href="#" class="text-cyan-400 hover:text-cyan-300 transition-colors">Política de privacidad</a>.
+        <p class="auth-switch">
+          ¿Ya tenés cuenta? <a href="/login">Iniciá sesión</a>
         </p>
+      </section>
 
-        <div class="mt-2">
-          <Button type="submit" fullWidth variant="secondary" client:load id="register-submit">
-            Crear cuenta
-          </Button>
-        </div>
-      </form>
-
-      <p class="mt-8 text-center text-slate-400 text-sm">
-        ¿Ya tenés cuenta?{" "}
-        <a href="/login" class="text-cyan-400 font-medium hover:text-cyan-300 transition-colors">Iniciá sesión</a>
-      </p>
+      <aside class="auth-marca">
+        <p class="auth-marca-esquina">Tasá tu propiedad en minutos, no en semanas.</p>
+      </aside>
     </div>
   </div>
 </Layout>
@@ -130,24 +136,82 @@ import "../styles/auth.css";
     mensajeEstado.style.color = color;
   };
 
+  const errorEmail = document.getElementById('error-email');
+  const errorPassword = document.getElementById('error-password');
+  const errorPasswordConfirm = document.getElementById('error-password-confirm');
+
+  const marcarError = (campo: HTMLInputElement | null, nodo: HTMLElement | null, mensaje: string) => {
+    campo?.setAttribute('aria-invalid', 'true');
+    campo?.classList.add('auth-input--invalido');
+    if (nodo) nodo.textContent = mensaje;
+  };
+  const limpiarError = (campo: HTMLInputElement | null, nodo: HTMLElement | null) => {
+    campo?.removeAttribute('aria-invalid');
+    campo?.classList.remove('auth-input--invalido');
+    if (nodo) nodo.textContent = '';
+  };
+
+  email?.addEventListener('input', () => limpiarError(email, errorEmail));
+  pwd?.addEventListener('input', () => limpiarError(pwd, errorPassword));
+  pwdConfirm?.addEventListener('input', () => limpiarError(pwdConfirm, errorPasswordConfirm));
+
+  // Medidor de fuerza de contraseña
+  const zonaFuerza = document.getElementById('fuerza-pwd');
+  const rellenoFuerza = document.getElementById('fuerza-relleno');
+  const etiquetaFuerza = document.getElementById('fuerza-etiqueta');
+
+  const evaluarFuerza = (v: string): { puntos: number; etiqueta: string } => {
+    let puntos = 0;
+    if (v.length >= 8) puntos++;
+    if (/[A-Z]/.test(v)) puntos++;
+    if (/\d/.test(v)) puntos++;
+    if (/[^A-Za-z0-9]/.test(v)) puntos++;
+    // Misma regla que el backend: hace falta cumplir las 4 para aceptar
+    const etiquetas = ['Muy débil', 'Débil', 'Aceptable', 'Casi lista', 'Fuerte'];
+    return { puntos, etiqueta: etiquetas[puntos] };
+  };
+
+  pwd?.addEventListener('input', () => {
+    const v = pwd.value;
+    if (!zonaFuerza || !rellenoFuerza || !etiquetaFuerza) return;
+    if (!v) { zonaFuerza.hidden = true; return; }
+    zonaFuerza.hidden = false;
+    const { puntos, etiqueta } = evaluarFuerza(v);
+    rellenoFuerza.style.width = `${(puntos / 4) * 100}%`;
+    rellenoFuerza.dataset.nivel = String(puntos);
+    etiquetaFuerza.textContent = `Fuerza: ${etiqueta}`;
+  });
+
+  const MSG_PASSWORD =
+    'La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un símbolo.';
+
+  const passwordValida = (v: string) =>
+    v.length >= 8 &&
+    /[A-Z]/.test(v) &&
+    /[0-9]/.test(v) &&
+    /[^A-Za-z0-9]/.test(v);
+
   const validar = (): boolean => {
     if (!nombre || !apellido || !email || !pwd || !pwdConfirm) return false;
+    limpiarError(email, errorEmail);
+    limpiarError(pwd, errorPassword);
+    limpiarError(pwdConfirm, errorPasswordConfirm);
 
     if (!nombre.value.trim() || !apellido.value.trim()) {
       setMensaje("Completá nombre y apellido.", "#ef4444");
       return false;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {
-      setMensaje("Ingresá un email válido.", "#ef4444");
+      marcarError(email, errorEmail, 'Ingresá un email válido.');
       return false;
     }
-    if (pwd.value.length < 8) {
-      setMensaje("La contraseña debe tener al menos 8 caracteres.", "#ef4444");
+    if (!passwordValida(pwd.value)) {
+      marcarError(pwd, errorPassword, MSG_PASSWORD);
       return false;
     }
     if (pwd.value !== pwdConfirm.value) {
       pwdConfirm.setCustomValidity("Las contraseñas no coinciden");
-      setMensaje("Las contraseñas no coinciden.", "#ef4444");
+      marcarError(pwdConfirm, errorPasswordConfirm, 'Las contraseñas no coinciden.');
       return false;
     }
     pwdConfirm.setCustomValidity("");
@@ -195,7 +259,14 @@ import "../styles/auth.css";
           window.location.href = '/dashboard';
         }, 1500);
       } else {
-        setMensaje(`${data?.error || 'Error al crear la cuenta'}`, "#ef4444");
+        const err = data?.error || 'No se pudo crear la cuenta. Revisá los datos.';
+        setMensaje(err, "#ef4444");
+        // Mapear el error del API al campo correcto (antes todo iba al email)
+        if (/contraseña/i.test(err)) {
+          marcarError(pwd, errorPassword, err);
+        } else if (/correo|email/i.test(err)) {
+          marcarError(email, errorEmail, err);
+        }
       }
 
     } catch (error) {
