@@ -1,9 +1,4 @@
-// ARCHIVO GENERADO por scripts/generar-historico.py — no editar a mano.
-// Fuente: Instituto de Estadistica y Censos de la CABA sobre base de datos de Argenprop.
-// Serie: precio de venta USD/m2 de departamentos 3 ambientes usados, por barrio, trimestral.
-
 export type PuntoSerie = { p: string; v: number };
-/** Serie trimestral por barrio, en orden cronologico. `p` = 'AAAA-Tn' */
 export type SerieBarrio = PuntoSerie[];
 
 export const SERIE_VENTA: Record<string, SerieBarrio> = {

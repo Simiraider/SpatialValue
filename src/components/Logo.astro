@@ -3,9 +3,6 @@ interface Props {
   variant?: "oscuro" | "claro";
   class?: string;
 }
-
-// "oscuro" = variante para fondos oscuros (texto "SPATIAL" en blanco).
-// "claro"  = variante para fondos claros (texto "SPATIAL" en navy).
 const { variant = "oscuro", class: className = "" } = Astro.props;
 const src =
   variant === "claro"

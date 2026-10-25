@@ -163,10 +163,11 @@ import "../styles/auth.css";
   const evaluarFuerza = (v: string): { puntos: number; etiqueta: string } => {
     let puntos = 0;
     if (v.length >= 8) puntos++;
-    if (/[A-Z]/.test(v) && /[a-z]/.test(v)) puntos++;
+    if (/[A-Z]/.test(v)) puntos++;
     if (/\d/.test(v)) puntos++;
-    if (/[^\w\s]/.test(v)) puntos++;
-    const etiquetas = ['Muy débil', 'Débil', 'Aceptable', 'Fuerte', 'Muy fuerte'];
+    if (/[^A-Za-z0-9]/.test(v)) puntos++;
+    // Misma regla que el backend: hace falta cumplir las 4 para aceptar
+    const etiquetas = ['Muy débil', 'Débil', 'Aceptable', 'Casi lista', 'Fuerte'];
     return { puntos, etiqueta: etiquetas[puntos] };
   };
 
@@ -180,6 +181,15 @@ import "../styles/auth.css";
     rellenoFuerza.dataset.nivel = String(puntos);
     etiquetaFuerza.textContent = `Fuerza: ${etiqueta}`;
   });
+
+  const MSG_PASSWORD =
+    'La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un símbolo.';
+
+  const passwordValida = (v: string) =>
+    v.length >= 8 &&
+    /[A-Z]/.test(v) &&
+    /[0-9]/.test(v) &&
+    /[^A-Za-z0-9]/.test(v);
 
   const validar = (): boolean => {
     if (!nombre || !apellido || !email || !pwd || !pwdConfirm) return false;
@@ -195,8 +205,8 @@ import "../styles/auth.css";
       marcarError(email, errorEmail, 'Ingresá un email válido.');
       return false;
     }
-    if (pwd.value.length < 8) {
-      marcarError(pwd, errorPassword, 'La contraseña debe tener al menos 8 caracteres.');
+    if (!passwordValida(pwd.value)) {
+      marcarError(pwd, errorPassword, MSG_PASSWORD);
       return false;
     }
     if (pwd.value !== pwdConfirm.value) {
@@ -249,8 +259,14 @@ import "../styles/auth.css";
           window.location.href = '/dashboard';
         }, 1500);
       } else {
-        setMensaje(`${data?.error || 'Error al crear la cuenta'}`, "#ef4444");
-        marcarError(email, errorEmail, data?.error || 'No se pudo crear la cuenta. Revisá los datos.');
+        const err = data?.error || 'No se pudo crear la cuenta. Revisá los datos.';
+        setMensaje(err, "#ef4444");
+        // Mapear el error del API al campo correcto (antes todo iba al email)
+        if (/contraseña/i.test(err)) {
+          marcarError(pwd, errorPassword, err);
+        } else if (/correo|email/i.test(err)) {
+          marcarError(email, errorEmail, err);
+        }
       }
 
     } catch (error) {
