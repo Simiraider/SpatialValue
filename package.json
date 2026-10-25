@@ -10,7 +10,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "verificar": "node scripts/verificar-todo.mjs"
+    "verificar": "node scripts/verificar-todo.mjs",
+    "verificar-todo": "node scripts/verificar-todo.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^6.0.6",

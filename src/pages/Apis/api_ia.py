@@ -192,17 +192,10 @@ def entrenar_modelo():
     superficies = pd.to_numeric(df["superficie_cubierta_m2"], errors="coerce").clip(lower=1)
     df = df.assign(precio_m2=precios / superficies)
 
-    def _filtrar_outliers(g: pd.DataFrame) -> pd.DataFrame:
-        if len(g) < 20:
-            return g
-        q1 = g["precio_m2"].quantile(0.05)
-        q3 = g["precio_m2"].quantile(0.95)
-        return g[(g["precio_m2"] >= q1) & (g["precio_m2"] <= q3)]
-
     antes = len(df)
-    filtrado = df.groupby("barrio_zona", group_keys=False).apply(_filtrar_outliers)
-    if not filtrado.empty:
-        df = filtrado
+    q1 = df.groupby("barrio_zona")["precio_m2"].transform(lambda s: s.quantile(0.05) if len(s) >= 20 else s.min())
+    q3 = df.groupby("barrio_zona")["precio_m2"].transform(lambda s: s.quantile(0.95) if len(s) >= 20 else s.max())
+    df = df[(df["precio_m2"] >= q1) & (df["precio_m2"] <= q3)]
     df = df.drop(columns=["precio_m2"])
     print(f"Filtro de outliers por barrio: {antes - len(df)} filas descartadas de {antes}")
 
@@ -285,12 +278,10 @@ def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(def
     longitud = propiedad.longitud if propiedad.longitud is not None else COORDENADAS_DEFAULT["lng"]
 
     if modelo_v4 is None:
-        return {
-            "status": "warning",
-            "coordenadas": {"lat": latitud, "lng": longitud},
-            "precio_estimado_usd": 450.0,
-            "message": "Modelo en fase de acumulación de datos inicial.",
-        }
+        raise HTTPException(
+            status_code=503,
+            detail="El modelo todavía no cuenta con datos suficientes para estimar un precio.",
+        )
 
     datos_entrada = {
         "tipo_propiedad": [propiedad.tipo_propiedad],

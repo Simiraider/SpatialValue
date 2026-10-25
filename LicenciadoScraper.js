@@ -25,8 +25,8 @@ const parsearPrecioUSD = (texto) => {
     try {
         browser = await chromium.connectOverCDP('http://localhost:9222');
     } catch {
-        console.error(' Error CDP localhost:9222');
-        process.exit(1);
+        console.log("CDP no disponible en localhost:9222, iniciando navegador local headless...");
+        browser = await chromium.launch({ headless: true });
     }
 
     const context = browser.contexts()[0];
@@ -69,7 +69,7 @@ const parsearPrecioUSD = (texto) => {
         const links = [...new Set(linksTotales)];
 
         if (links.length === 0) {
-            await browser.disconnect();
+            await browser.close();
             return;
         }
 

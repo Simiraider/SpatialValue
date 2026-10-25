@@ -1,4 +1,13 @@
-.TasacionPage-header { padding: 1rem 1.5rem; background: var(--color-bg); }
+/* Fondo azul de marca difuminado (solo el fondo; la tarjeta sigue blanca) */
+.tasacion-fondo {
+  background:
+    radial-gradient(1100px 620px at 12% -10%, rgba(0, 135, 192, 0.24), transparent 62%),
+    radial-gradient(900px 520px at 92% 4%, rgba(56, 189, 248, 0.22), transparent 58%),
+    radial-gradient(760px 460px at 50% 110%, rgba(0, 84, 119, 0.14), transparent 60%),
+    linear-gradient(180deg, #e6f3fb 0%, #eff7fd 45%, #e9f4fc 100%);
+}
+
+.TasacionPage-header { padding: 1rem 1.5rem; background: transparent; }
 .TasacionPage-headerInner { display: flex; align-items: center; justify-content: space-between; max-width: 1600px; margin: 0 auto; }
 .TasacionPage-brand { display: inline-flex; align-items: center; text-decoration: none; }
 .TasacionPage-brand .logo-img { width: clamp(150px, 14vw, 185px); height: auto; }
@@ -23,7 +32,6 @@
 .tasacion__encabezado { margin: 0 0 2rem; }
 .tasacion__encabezado-kicker { margin: 0 0 .4rem; color: var(--color-brand); font-size: .85rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .tasacion__encabezado-titulo { margin: 0 0 .4rem; color: var(--color-text); font-size: clamp(2rem, 4vw, 3.25rem); line-height: 1; }
-.tasacion__encabezado-titulo::first-letter { color: var(--color-brand); }
 .tasacion__encabezado-sub { color: #64748b; font-size: 1.05rem; }
 
 .tasacion__eleccion { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; max-width: 560px; margin: 0 0 1.75rem; }
@@ -36,7 +44,9 @@
 .tasacion__grilla { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.3rem; }
 .tasacion__grilla--ubicacion { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 900px; }
 
-.tasacion__campo { display: flex; flex-direction: column; gap: .375rem; width: 100%; }
+/* relative: el listado del dropdown se ancla al campo y ocupa su ancho
+   (como un select tradicional) en vez del ancho de la página */
+.tasacion__campo { position: relative; display: flex; flex-direction: column; gap: .375rem; width: 100%; }
 .tasacion__etiqueta { font-size: .875rem; font-weight: 600; color: #334155; margin-left: .25rem; }
 .tasacion__control { width: 100%; height: 3rem; appearance: none; border: 1px solid #e2e8f0; border-radius: 1rem; padding: .5rem 2.5rem .5rem 1rem; color: var(--color-text); background: #ffffff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 1rem center; box-shadow: 0 1px 2px rgba(15,23,42,.06); outline: none; transition: .2s ease; }
 .tasacion__control:hover { border-color: #cbd5e1; }

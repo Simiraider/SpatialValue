@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, Check, Globe, Loader2, Mail, Phone, Settings, Trash2, X } from 'lucide-react';
+import { Camera, Check, Eye, EyeOff, Globe, Loader2, Mail, Phone, Settings, Trash2, X } from 'lucide-react';
+import { cn } from '../lib/utils';
 import { Button } from './ui/Button';
 import { InstagramIcon, XIcon, LinkedinIcon, FacebookIcon } from './SocialIcons';
 import { apiFetch } from '../lib/api';
@@ -41,6 +42,48 @@ const PESTAÑAS: { id: Pestaña; label: string }[] = [
   { id: 'privacidad', label: 'Privacidad' },
   { id: 'seguridad', label: 'Seguridad' },
 ];
+
+/** Input de contraseña con ojito para mostrar/ocultar el valor. */
+const CampoPassword = ({
+  id,
+  value,
+  onChange,
+  autoComplete,
+  placeholder,
+  className,
+}: {
+  id?: string;
+  value: string;
+  onChange: (valor: string) => void;
+  autoComplete?: string;
+  placeholder?: string;
+  className?: string;
+}) => {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="configuracion__pwd">
+      <input
+        id={id}
+        type={visible ? 'text' : 'password'}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        autoComplete={autoComplete}
+        placeholder={placeholder}
+        className={cn('configuracion__entrada configuracion__pwd-entrada', className)}
+      />
+      <button
+        type="button"
+        className="configuracion__ojo"
+        aria-label={visible ? 'Ocultar contraseña' : 'Ver contraseña'}
+        aria-pressed={visible}
+        title={visible ? 'Ocultar contraseña' : 'Ver contraseña'}
+        onClick={() => setVisible((v) => !v)}
+      >
+        {visible ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
+      </button>
+    </div>
+  );
+};
 
 const SegmentadoVisibilidad = ({
   etiqueta,
@@ -1008,25 +1051,21 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
               <div className="seguridad__lista">
                 <div className="seguridad__campo">
                   <label className="configuracion__etiqueta" htmlFor="config-pwd-actual">Contraseña actual</label>
-                  <input
+                  <CampoPassword
                     id="config-pwd-actual"
-                    type="password"
                     value={pwdActual}
-                    onChange={(e) => setPwdActual(e.target.value)}
+                    onChange={setPwdActual}
                     autoComplete="current-password"
-                    className="configuracion__entrada"
                   />
                 </div>
 
                 <div className="seguridad__campo">
                   <label className="configuracion__etiqueta" htmlFor="config-pwd-nueva">Nueva contraseña</label>
-                  <input
+                  <CampoPassword
                     id="config-pwd-nueva"
-                    type="password"
                     value={pwdNueva}
-                    onChange={(e) => setPwdNueva(e.target.value)}
+                    onChange={setPwdNueva}
                     autoComplete="new-password"
-                    className="configuracion__entrada"
                   />
                   {pwdNueva.length > 0 && (
                     <ul className="configuracion__reglas">
@@ -1050,19 +1089,18 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
 
                 <div className="seguridad__campo">
                   <label className="configuracion__etiqueta" htmlFor="config-pwd-confirm">Confirmar contraseña</label>
-                  <input
+                  <CampoPassword
                     id="config-pwd-confirm"
-                    type="password"
                     value={pwdConfirm}
-                    onChange={(e) => setPwdConfirm(e.target.value)}
+                    onChange={setPwdConfirm}
                     autoComplete="new-password"
-                    className={`configuracion__entrada${
+                    className={
                       confirmaMal
-                        ? ' configuracion__entrada--invalida'
+                        ? 'configuracion__entrada--invalida'
                         : confirmaBien
-                          ? ' configuracion__entrada--valida'
+                          ? 'configuracion__entrada--valida'
                           : ''
-                    }`}
+                    }
                   />
                   {confirmaMal && (
                     <p className="configuracion__ayuda-error">Las contraseñas no coinciden.</p>
@@ -1146,13 +1184,12 @@ export const ConfigPanel = ({ user, onUserActualizado }: Props) => {
               placeholder="Escribí ELIMINAR"
               className="configuracion__entrada"
             />
-            <input
-              type="password"
+            <CampoPassword
               value={pwdPeligro}
-              onChange={(e) => setPwdPeligro(e.target.value)}
+              onChange={setPwdPeligro}
               placeholder="Contraseña actual"
               autoComplete="current-password"
-              className="configuracion__entrada configuracion__modal-espacio"
+              className="configuracion__modal-espacio"
             />
             <div className="configuracion__modal-acciones">
               <button type="button" className="configuracion__modal-cancelar" onClick={() => { setConfirmarEliminar(false); setTextoConfirmacion(''); setPwdPeligro(''); }}>
