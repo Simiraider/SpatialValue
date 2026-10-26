@@ -7,7 +7,7 @@ import { cn } from '../lib/utils';
 import { apiFetch, getCookie } from '../lib/api';
 import { estimarPrecioVenta, valorM2Alquiler } from '../lib/mercado';
 import { cargarDolar, dolarActual } from '../lib/dolar';
-import { getUser, getUsuarioId, cerrarSesion, syncSessionAcrossTabs, actualizarSesion, type SesionUsuario } from '../lib/session';
+import { getUser, getUsuarioId, cerrarSesion, syncSessionAcrossTabs, actualizarSesion, setUser as guardarSesionCliente, type SesionUsuario } from '../lib/session';
 import { generarInformePdf } from '../lib/generar-pdf';
 import { normalizeData } from '../lib/normalizar-tasacion';
 import { ConfigPanel } from './ConfigPanel';
@@ -132,16 +132,33 @@ export const DashboardApp = () => {
   const perfilRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const u = getUser();
-    setUser(u);
-    setMoneda(u?.moneda ?? 'USD');
-    setAvatar(u?.avatar ?? '');
-    if (!getCookie('usuario_id') || !getUser()) {
-      window.location.href = '/login';
-      return;
+  // Si venimos del callback de /Apis/auth/google, la cookie de sesión ya está
+  // puesta por el servidor pero el localStorage (sv_user) todavía no — se
+  // hidrata acá una sola vez con los datos que vienen en la URL y se limpia.
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('bienvenida') === '1') {
+    const nombreParam = params.get('nombre');
+    const uidParam = params.get('uid');
+    if (nombreParam && uidParam) {
+      guardarSesionCliente({ nombre: nombreParam, id: uidParam });
     }
+    const urlLimpia = new URL(window.location.href);
+    urlLimpia.searchParams.delete('bienvenida');
+    urlLimpia.searchParams.delete('nombre');
+    urlLimpia.searchParams.delete('uid');
+    window.history.replaceState({}, '', urlLimpia.toString());
+  }
 
-    setCheckingSession(false);
+  const u = getUser();
+  setUser(u);
+  setMoneda(u?.moneda ?? 'USD');
+  setAvatar(u?.avatar ?? '');
+  if (!getCookie('usuario_id') || !getUser()) {
+    window.location.href = '/login';
+    return;
+  }
+
+  setCheckingSession(false);
 
     apiFetch('/Apis/ObtenerConfigUsuario', {}, 8000).then(({ ok, data }) => {
       if (ok && esConfigUsuario((data as any)?.config)) {

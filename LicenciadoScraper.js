@@ -6,11 +6,10 @@ dotenv.config({ path: '.env.local' });
 dotenv.config();
 
 const CONFIG = {
-    PAGINAS_MAXIMAS: 10,
+    PAGINAS_MAXIMAS: 30,
     URL_BASE: 'https://www.zonaprop.com.ar/casas-venta-capital-federal.html',
     URL_PAGINA: (n) => `https://www.zonaprop.com.ar/casas-venta-capital-federal-pagina-${n}.html`,
 
-    // El scraper SIEMPRE se conecta al Chrome que abriste manualmente con --remote-debugging-port=9222
     CDP_URL: process.env.CHROME_CDP_URL || 'http://127.0.0.1:9222',
     DRY_RUN: process.env.SCRAPER_DRY_RUN === 'true',
     MAX_PROPIEDADES: Math.max(0, Number.parseInt(process.env.SCRAPER_MAX_PROPIEDADES || (process.env.SCRAPER_DRY_RUN === 'true' ? '1' : '0'), 10) || 0),
@@ -26,8 +25,6 @@ const CONFIG = {
     NOMINATIM_DELAY_MS: 1100,
 
     FICHAPROP_URL: 'https://fichaprop.ar',
-    // Largo máximo para las columnas VARCHAR de Fichaprop (obras, subte, plazas, escuelas).
-    // Si en tu tabla son más largas, subí este valor.
     FICHAPROP_VARCHAR_MAX: 50,
 
     DELAY_ENTRE_PROPIEDADES: [1000, 2000],
@@ -44,21 +41,12 @@ if (!CONFIG.DB_URL) {
 
 const pool = new Pool({ connectionString: CONFIG.DB_URL });
 
-/**
- * Convierte cualquier valor a entero apto para PostgreSQL INTEGER.
- * Redondea flotantes (ej. 307457.76 -> 307458) y convierte nulos/inválidos a null.
- */
 const toNullableInt = (val) => {
     if (val === null || val === undefined || val === '') return null;
     const num = typeof val === 'number' ? val : parseFloat(String(val).replace(',', '.'));
     if (isNaN(num)) return null;
     return Math.round(num);
 };
-
-/**
- * Detecta si un texto de dirección es en realidad un título de propiedad
- * (ej: "Casa · 500m² · 10 ambientes · 5 dormitorios")
- */
 const esTituloNoDireccion = (texto) => {
     if (!texto) return true;
     const txt = texto.trim();
@@ -78,7 +66,6 @@ const waitForAny = async (page, selectors, timeout = 10000) => {
 
 const parsearPrecioUSD = (texto) => {
     if (!texto) return 0;
-    // Un "$" sin moneda explícita puede representar pesos argentinos.
     const match = String(texto).match(/(?:\bUSD\b|U\$S|US\$)\s*([\d.,]+)/i);
     if (!match) return 0;
 
@@ -124,19 +111,15 @@ const calcularFechaPublicacion = (textoFecha) => {
     return new Date().toISOString().split('T')[0];
 };
 
-/**
- * Normaliza una dirección para generar el slug de Fichaprop.ar
- */
 const normalizarDireccionFichaprop = (direccion) => {
     if (!direccion || esTituloNoDireccion(direccion)) return null;
 
     let dir = direccion.toLowerCase();
-    dir = dir.split(',')[0];                  // descarta ", Barrio, Capital Federal"
-    dir = dir.split(/\bentre\b/i)[0];         // elimina intersecciones
-    dir = dir.replace(/\bal\b/g, ' ');        // "Rivadavia al 4500" -> "Rivadavia 4500"
+    dir = dir.split(',')[0];                  
+    dir = dir.split(/\bentre\b/i)[0];        
+    dir = dir.replace(/\bal\b/g, ' ');        
     dir = dir.replace(/\b(piso|pb|dto|dpto|depto|departamento|uf|torre|esq|esquina)\b.*$/, ' ');
 
-    // Fichaprop trabaja con "calle y altura": se corta en el último número (así "9 de Julio 1000" queda bien).
     const ultimo = [...dir.matchAll(/\b\d{1,5}\b/g)].pop();
     if (!ultimo) return null;
     dir = dir.slice(0, ultimo.index + ultimo[0].length);
@@ -152,8 +135,6 @@ const normalizarDireccionFichaprop = (direccion) => {
     return slug.length > 2 ? slug : null;
 };
 
-// Fichaprop usa los nombres oficiales de calle: "avenida-callao-1369" lleva "avenida" pero
-// "marcelo-t-de-alvear-1600" no. Se prueba con y sin el prefijo.
 const candidatosSlugFichaprop = (direccion) => {
     const base = normalizarDireccionFichaprop(direccion);
     if (!base) return [];
@@ -168,7 +149,6 @@ const esCoordenadaCABA = (lat, lng) => {
     return (lat >= -34.7100 && lat <= -34.5000) && (lng >= -58.5500 && lng <= -58.3200);
 };
 
-// El centro genérico de CABA (-34.6037, -58.3816) es el valor por defecto de algunos servicios: no es una ubicación real.
 const esCentroPorDefecto = (c) => !!c && Math.abs(Number(c.lat) + 34.6037) < 0.0005 && Math.abs(Number(c.lng) + 58.3816) < 0.0005;
 
 const limpiarDireccionGeocode = (direccion) => {
@@ -198,8 +178,6 @@ const normalizarTexto = (v) => String(v ?? '')
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, ' ').toLowerCase().trim();
 
-// En CABA, Nominatim informa el barrio normalmente en address.suburb
-// (a veces neighbourhood/quarter). Solo se acepta un barrio porteño conocido.
 const barrioDesdeOSM = (address) => {
     if (!address) return null;
     const candidatos = [address.suburb, address.neighbourhood, address.quarter, address.city_district, address.borough]
@@ -224,8 +202,6 @@ const consultarNominatim = async (url) => {
         await new Promise(r => setTimeout(r, CONFIG.NOMINATIM_DELAY_MS));
     }
 };
-
-// Devuelve { lat, lng, barrio } (barrio puede ser null) o null si no se encontró en CABA.
 const geocodeDireccion = async (queryTexto) => {
     if (!queryTexto) return null;
     if (geocodeCache.has(queryTexto)) return geocodeCache.get(queryTexto);
@@ -244,7 +220,6 @@ const geocodeDireccion = async (queryTexto) => {
     return resultado;
 };
 
-// Respaldo: datos de OpenStreetMap a partir de coordenadas (barrio y calle + número).
 const reverseNominatim = async (lat, lng) => {
     const clave = `revraw:${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}`;
     if (geocodeCache.has(clave)) return geocodeCache.get(clave);
@@ -281,11 +256,9 @@ const resolverCoordenadas = async (direccionTexto, barrioZona) => {
         if (coordsBarrio) return coordsBarrio;
     }
 
-    return null; // No inventar el centro de CABA si no se pudo geocodificar el inmueble.
+    return null; 
 };
 
-// Se ejecuta dentro de la página de Fichaprop. Lee el resumen de la ficha (los enlaces
-// #ruido, #obras, #entorno y #experiencias), no los textos sueltos de la página.
 const extraerFichaDePagina = () => {
     const limpiar = (t) => (t || '').replace(/\s+/g, ' ').trim();
     const textosAnchor = (hash) => Array.from(document.querySelectorAll(`a[href="${hash}"]`))
@@ -339,9 +312,6 @@ const abrirFichaPorSlug = async (pageFP, slug) => {
     }
     return leerFichaActual(pageFP);
 };
-
-// Último recurso: usar el buscador de la home como lo haría una persona ("calle y altura").
-// Fichaprop normaliza la dirección con USIG, así que resuelve abreviaturas como "Gral." o "Pte.".
 const buscarFichaEnSitio = async (pageFP, direccion) => {
     const consulta = String(direccion).split(/,|\bentre\b/i)[0].replace(/\bal\b/gi, ' ').replace(/\s+/g, ' ').replace(/[.\s]+$/, '').trim();
     if (!consulta) return null;
@@ -399,11 +369,6 @@ const consultarFichaprop = async (context, direccion) => {
     }
 };
 
-/**
- * Detecta la página de desafío de Cloudflare ("Just a moment...") y espera a que se resuelva.
- * En Chrome real el desafío suele resolverse solo; si aparece un checkbox, hay que
- * resolverlo a mano en la ventana de Chrome. Devuelve true si la página quedó libre.
- */
 const esperarDesafioCloudflare = async (page, maxMs = 90000) => {
     const enDesafio = async () => {
         const titulo = await page.title().catch(() => '');
@@ -436,7 +401,6 @@ const obtenerLinksDeListado = async (page) => {
             const response = await page.goto(urlPagina, { waitUntil: 'domcontentloaded', timeout: 60000 });
             console.log(`[Listado] HTTP ${response?.status() ?? 'sin respuesta'} | URL final: ${page.url()}`);
 
-            // El 403 inicial es la página del desafío de Cloudflare: se espera en vez de abandonar.
             if (!(await esperarDesafioCloudflare(page, CONFIG.CLOUDFLARE_ESPERA_LISTADO_MS))) {
                 console.warn('[Listado] Cloudflare no se resolvió a tiempo. Se detiene la paginación.');
                 break;
@@ -444,7 +408,6 @@ const obtenerLinksDeListado = async (page) => {
 
             console.log(`[Listado] Título: ${await page.title().catch(() => '(sin título)')}`);
 
-            // No exigir que aparezca una tarjeta concreta: Zonaprop cambia sus selectores.
             await waitForAny(page, [
                 '[data-qa="posting-card"]', '[data-posting-id]', 'div[class*="posting-card"]',
                 'ol[class*="postings"] li', 'article', 'a[href*="/propiedades/"]'
@@ -472,7 +435,6 @@ const obtenerLinksDeListado = async (page) => {
             console.log(`[Listado] Página ${pagina}: ${linksPagina.length} enlaces de propiedades detectados.`);
             if (linksPagina.length === 0) {
                 console.warn(`[Listado] Sin enlaces. Texto visible inicial: ${resultado.texto || '(vacío)'}`);
-                // Continuamos una página más por si el HTML de esta página fue atípico.
             }
             linksTotales.push(...linksPagina);
             await page.waitForTimeout(900);
@@ -484,8 +446,6 @@ const obtenerLinksDeListado = async (page) => {
     return [...new Set(linksTotales)];
 };
 
-// Mira solo el estado actual de la página: el 403 original del response no sirve
-// porque seguirá siendo 403 aunque el desafío ya se haya superado.
 const esPaginaBloqueada = async (detailPage) => {
     return !(await esperarDesafioCloudflare(detailPage, CONFIG.CLOUDFLARE_ESPERA_DETALLE_MS));
 };
@@ -559,8 +519,6 @@ const extraerDatosDePagina = (textoAdicionalTabs) => {
         const n = Number(numero);
         return Number.isFinite(n) ? Math.round(n) : null;
     };
-
-    // El número debe estar asociado explícitamente a su etiqueta.
     const extraerNumeroCampo = (texto, campo) => {
         const t = normalizarCaracteristica(texto);
         const patrones = {
@@ -577,8 +535,6 @@ const extraerDatosDePagina = (textoAdicionalTabs) => {
         }
         return null;
     };
-
-    // Valores típicos de Zonaprop: "Muy luminoso", "Luminoso", "Poco luminoso".
     const extraerLuminosidad = (texto) => {
         const t = String(texto ?? '').replace(/\s+/g, ' ').trim();
         const capitalizar = (v) => v.charAt(0).toUpperCase() + v.slice(1).toLowerCase();
@@ -638,7 +594,6 @@ const extraerDatosDePagina = (textoAdicionalTabs) => {
                         latitudState = Number(geo.latitude ?? geo.lat) || null;
                         longitudState = Number(geo.longitude ?? geo.lng ?? geo.lon) || null;
 
-                        // En Zonaprop la dirección suele venir como objeto { name, visibility }, no como texto.
                         const textoDireccion = (v) => {
                             if (!v) return null;
                             if (typeof v === 'string') return v;
@@ -670,7 +625,6 @@ const extraerDatosDePagina = (textoAdicionalTabs) => {
                         const priceObj = posting.priceOperationTypes?.[0]?.prices?.[0];
                         if (priceObj) precioState = `${priceObj.currency || ''} ${priceObj.amount || ''}`;
 
-                        // Algunas versiones del estado de ZonaProp anidan sus características.
                         const visitarFeature = (nodo, etiquetaPadre = '') => {
                             if (Array.isArray(nodo)) {
                                 nodo.forEach(item => visitarFeature(item, etiquetaPadre));
@@ -702,7 +656,6 @@ const extraerDatosDePagina = (textoAdicionalTabs) => {
         }
     } catch (e) {
         diagnosticoState.error = String((e && e.message) || e);
-        // Fallback al DOM
     }
 
     const textoCompleto = (document.body ? document.body.innerText : '') + ' ' + (textoAdicionalTabs || '');
@@ -722,7 +675,6 @@ const extraerDatosDePagina = (textoAdicionalTabs) => {
         }
     }
     if (!direccion) {
-        // JSON-LD con streetAddress
         for (const sc of document.querySelectorAll('script[type="application/ld+json"]')) {
             try {
                 const j = JSON.parse(sc.textContent);
@@ -730,12 +682,11 @@ const extraerDatosDePagina = (textoAdicionalTabs) => {
                     const calle = nodo?.address?.streetAddress || nodo?.itemOffered?.address?.streetAddress;
                     if (typeof calle === 'string' && calle.trim() && !esTituloOMedida(calle)) { direccion = calle.trim(); break; }
                 }
-            } catch { /* ignorar */ }
+            } catch {}
             if (direccion) break;
         }
     }
     if (!direccion) {
-        // Último recurso: primera línea con "calle + número" justo después del encabezado "Ubicación"
         const lineas = (document.body?.innerText || '').split(/\n+/).map(l => l.replace(/\s+/g, ' ').trim());
         const idx = lineas.findIndex(l => /^ubicaci[oó]n$/i.test(l));
         if (idx !== -1) {
