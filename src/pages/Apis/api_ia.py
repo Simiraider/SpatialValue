@@ -9,13 +9,10 @@ from psycopg2 import pool
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
-from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.impute import SimpleImputer
-from modelo_ia.limpieza_datos import limpiar_registros, normalizar_texto
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder
+from modelo_ia.modelo import (
+    CONSULTA_ENTRENAMIENTO, COLUMNAS_TEXTO, COLUMNAS_NUMERICAS,
+    limpiar_registros, _preparar_features, crear_modelo, evaluar_modelo,
+)
 
 BASE_PATH = Path(__file__).resolve().parent.parent.parent.parent
 ENV_PATH = BASE_PATH / ".env.local"
@@ -30,42 +27,6 @@ if not DATABASE_URL:
     )
 COORDENADAS_DEFAULT = {"lat": -34.6037, "lng": -58.3816}
 
-COLUMNAS_TEXTO = [
-    "tipo_propiedad",
-    "barrio_zona",
-    "estado",
-    "orientacion",
-    "disposicion",
-    "seguridad_tipo",
-]
-
-COLUMNAS_NUMERICAS = [
-    "ambientes",
-    "dormitorios",
-    "banos",
-    "superficie_total_m2",
-    "superficie_cubierta_m2",
-    "anios_de_antiguedad",
-    "piso",
-    "cochera",
-    "balcon",
-    "terraza",
-    "patio",
-    "pileta",
-    "parrilla",
-    "seguridad_24hs",
-    "ascensor",
-    "expensas_ars",
-    "baulera",
-    "sum",
-    "camara",
-    "gym",
-    "lounge",
-    "laundry",
-    "latitud",
-    "longitud",
-]
-
 app = FastAPI(title="API IA Estimador")
 
 INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
@@ -79,58 +40,14 @@ db_pool = psycopg2.pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
 
 modelo_v4 = None
 
-def _extraer_coordenadas(row):
-    lat, lng = row.get("latitud"), row.get("longitud")
-    lat, lng = pd.to_numeric(lat, errors="coerce"), pd.to_numeric(lng, errors="coerce")
-    if pd.notna(lat) and pd.notna(lng) and -90 <= lat <= 90 and -180 <= lng <= 180 and (lat, lng) != (0, 0):
-        return pd.Series([lat, lng])
-    gps = row.get("coordenadas_gps")
-    try:
-        coords = json.loads(gps) if isinstance(gps, str) else gps
-        lat, lng = float(coords["lat"]), float(coords["lng"])
-        if -90 <= lat <= 90 and -180 <= lng <= 180 and (lat, lng) != (0, 0):
-            return pd.Series([lat, lng])
-    except (KeyError, TypeError, ValueError, OverflowError):
-        pass
-    return pd.Series([float("nan"), float("nan")])
-
-
 def _cargar_datos_entrenamiento():
     conn = db_pool.getconn()
     try:
-        query = """
-            SELECT id_propiedad, url,
-                tipo_propiedad, barrio_zona, estado, orientacion, disposicion, seguridad_tipo,
-                ambientes, dormitorios, banos, superficie_total_m2, superficie_cubierta_m2,
-                anios_de_antiguedad, piso, cochera, balcon, terraza, patio, pileta,
-                parrilla, seguridad_24hs, ascensor, expensas_ars, baulera, sum,
-                camara, gym, lounge, laundry, coordenadas_gps,
-                NULL::numeric AS latitud, NULL::numeric AS longitud,
-                precio_real_usd AS precio_usd
-            FROM propiedades
-        """
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            return pd.read_sql(query, conn)
+            return pd.read_sql(CONSULTA_ENTRENAMIENTO, conn)
     finally:
         db_pool.putconn(conn)
-
-
-def _preparar_features(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    df[["latitud", "longitud"]] = df.apply(_extraer_coordenadas, axis=1)
-
-    for col in COLUMNAS_TEXTO:
-        if col not in df.columns:
-            df[col] = "No especificada"
-        df[col] = df[col].map(normalizar_texto)
-
-    for col in COLUMNAS_NUMERICAS:
-        if col not in df.columns:
-            df[col] = float("nan")
-        df[col] = pd.to_numeric(df[col], errors="coerce").replace([float("inf"), -float("inf")], float("nan"))
-
-    return df
 
 
 def entrenar_modelo():
@@ -138,32 +55,19 @@ def entrenar_modelo():
 
     df = _cargar_datos_entrenamiento()
 
-    registros, informe = limpiar_registros(df.to_dict(orient="records"))
+    filas = sorted(df.to_dict(orient="records"), key=lambda r: str(r.get("id_propiedad") or ""))
+    registros, informe = limpiar_registros(filas)
     print(f"Limpieza de entrenamiento: {informe}")
-    if len(registros) < 5:
-        raise ValueError("Se necesitan al menos 5 registros válidos de venta; se conserva el modelo anterior si existe. Este mínimo no garantiza calidad estadística.")
+    if len(registros) < 20:
+        raise ValueError("Se necesitan al menos 20 registros válidos de venta; se conserva el modelo anterior si existe. Este mínimo no garantiza calidad estadística.")
     df = _preparar_features(pd.DataFrame(registros))
     X = df[COLUMNAS_TEXTO + COLUMNAS_NUMERICAS]
     y = df["precio_usd"]
 
-    preprocesador = ColumnTransformer(
-        transformers=[
-            ("texto", OneHotEncoder(handle_unknown="ignore"), COLUMNAS_TEXTO),
-            ("numeros", SimpleImputer(strategy="median", add_indicator=True, keep_empty_features=True), COLUMNAS_NUMERICAS),
-        ]
-    )
+    nuevo_modelo = crear_modelo()
 
-    nuevo_modelo = Pipeline(
-        steps=[
-            ("preprocesador", preprocesador),
-            ("modelo", RandomForestRegressor(n_estimators=100, random_state=42)),
-        ]
-    )
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
-    nuevo_modelo.fit(X_train, y_train)
+    nuevo_modelo, evaluacion, _ = evaluar_modelo(nuevo_modelo, X, y)
+    print("Evaluación del modelo: " + json.dumps(evaluacion, ensure_ascii=False))
 
     modelo_v4 = nuevo_modelo
     print("Modelo entrenado con éxito con los datos actuales de Neon")

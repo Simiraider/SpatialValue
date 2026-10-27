@@ -1,6 +1,12 @@
+"""Pruebas de limpieza y evaluación; no se conectan a Neon."""
 import unittest
-
-from modelo_ia.limpieza_datos import limpiar_registros, normalizar_texto
+import numpy as np
+import pandas as pd
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LinearRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.model_selection import train_test_split
+from modelo_ia.modelo import limpiar_registros, normalizar_texto, calcular_metricas, evaluar_modelo
 
 
 class LimpiezaTest(unittest.TestCase):
@@ -50,6 +56,36 @@ class LimpiezaTest(unittest.TestCase):
     def test_normaliza_categorias(self):
         self.assertEqual(normalizar_texto("  NÚÑEZ  "), "nunez")
         self.assertEqual(normalizar_texto("Departamento"), normalizar_texto("departamento"))
+
+
+class EvaluacionTest(unittest.TestCase):
+    def test_metricas_con_resultado_conocido(self):
+        m = calcular_metricas([100, 200], [110, 180])
+        self.assertAlmostEqual(m['mae_usd'], 15)
+        self.assertAlmostEqual(m['rmse_usd'], np.sqrt(250))
+        self.assertAlmostEqual(m['mape_porcentaje'], 10)
+        self.assertAlmostEqual(m['r2'], .9)
+        self.assertEqual(m['percentiles_error_absoluto_usd']['p100'], 20)
+
+    def test_rechaza_precios_no_positivos(self):
+        with self.assertRaises(ValueError):
+            calcular_metricas([0, 10], [1, 10])
+
+    def test_r2_indefinido_se_explica_con_null(self):
+        self.assertIsNone(calcular_metricas([10, 10], [11, 12])['r2'])
+
+    def test_holdout_no_influye_en_imputacion_ni_cv(self):
+        X = pd.DataFrame({'valor': np.arange(40, dtype=float)})
+        y = pd.Series(np.arange(40, dtype=float) + 100)
+        train, test = train_test_split(np.arange(40), test_size=.2, random_state=42)
+        X.loc[test, 'valor'] = 1e10
+        modelo, informe, detalle = evaluar_modelo(make_pipeline(SimpleImputer(strategy='median'), LinearRegression()), X, y)
+        self.assertAlmostEqual(modelo.named_steps['simpleimputer'].statistics_[0], np.median(X.iloc[train].valor))
+        self.assertEqual(set(detalle.indice_fila), set(test))
+        y2 = y.copy(); y2.iloc[test] = 1e12
+        _, informe2, _ = evaluar_modelo(make_pipeline(SimpleImputer(strategy='median'), LinearRegression()), X, y2)
+        self.assertEqual(informe['cross_validation'], informe2['cross_validation'])
+        self.assertEqual(len(informe['cross_validation']['folds']), 5)
 
 
 if __name__ == "__main__":
