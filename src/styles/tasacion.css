@@ -148,3 +148,36 @@
 
 @media (max-width: 980px) { .tasacion__grilla { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tasacion__grilla--ubicacion { grid-template-columns: 1fr; } .tasacion__amenities { grid-template-columns: repeat(3, 1fr); } .tasacion__progreso-etiqueta { display: none; } .tasacion__progreso-paso { padding: .35rem; border-width: 0; background: transparent; } .tasacion__progreso-paso--activa { box-shadow: none; } .tasacion__progreso-linea { width: 4vw; } }
 @media (max-width: 620px) { .TasacionPage-header { padding-inline: 1rem; } .TasacionPage-main { padding-inline: 1rem; } .tasacion__tarjeta { border-radius: 1.5rem; } .tasacion__grilla, .tasacion__amenities { grid-template-columns: 1fr; } .tasacion__eleccion { grid-template-columns: 1fr; } .tasacion__fotos { grid-template-columns: repeat(3, 1fr); } .tasacion__acciones { justify-content: stretch; } .tasacion__acciones button { flex: 1; min-width: 0; } }
+
+
+/* ── Gemelo digital 3D (paso 4) ──────────────────────────────────────── */
+.tasacion__gemelo { margin-top: 1.5rem; }
+.tasacion__gemelo-inicio { display: flex; }
+.tasacion__gemelo-activar {
+  display: flex; align-items: center; gap: .9rem; width: 100%;
+  padding: 1rem 1.15rem; text-align: left; cursor: pointer;
+  border: 1px dashed #cbd5e1; border-radius: 1rem; background: #f8fafc;
+  color: #0f172a; transition: border-color .15s, background .15s, transform .15s;
+}
+.tasacion__gemelo-activar:hover { border-color: #0891b2; background: #ecfeff; }
+.tasacion__gemelo-activar svg { width: 1.5rem; height: 1.5rem; color: #0891b2; flex: none; }
+.tasacion__gemelo-activar strong { display: block; font-size: .9375rem; font-weight: 600; }
+.tasacion__gemelo-activar em { display: block; margin-top: .15rem; font-style: normal; font-size: .8125rem; color: #64748b; }
+.tasacion__gemelo-modos { display: grid; gap: 1rem; }
+.tasacion__aviso-gemelo { padding: 1rem 1.25rem; border: 1px solid #fcd34d; border-radius: 1rem; background: #fffbeb; color: #92400e; font-size: .875rem; }
+.tasacion__aviso-gemelo p { margin: 0; }
+.tasacion__acciones-gemelo { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
+.tasacion__gemelo-ambientes { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.tasacion__gemelo-ambientes-label { width: 100%; font-size: .8125rem; font-weight: 600; color: #334155; }
+.tasacion__chip {
+  border: 1px solid #cbd5e1; background: #fff; color: #334155; border-radius: 999px;
+  padding: .4rem .9rem; font-size: .8125rem; cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.tasacion__chip:hover { border-color: #06b6d4; color: #0e7490; }
+.tasacion__chip--activa { background: #0891b2; border-color: #0891b2; color: #fff; }
+.tasacion__guia { border: 1px solid #e2e8f0; border-radius: 1rem; padding: .75rem 1rem; font-size: .875rem; color: #475569; background: #f8fafc; }
+.tasacion__guia summary { cursor: pointer; font-weight: 600; color: #0e7490; }
+.tasacion__guia ol { margin: .6rem 0 .4rem; padding-left: 1.25rem; display: grid; gap: .3rem; }
+.tasacion__guia-nota { margin: .4rem 0 0; font-size: .8125rem; color: #64748b; }
+.tasacion__gemelo-externo { display: grid; gap: .75rem; }
