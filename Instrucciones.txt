@@ -14,3 +14,4 @@ python "src/pages/Apis/api_ia.py"
 node --env-file=.env.local LicenciadoScraper.js
 
 & "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\chrome-debug"
+node gui.js

@@ -1,19 +1,24 @@
 import dotenv from 'dotenv';
 import { chromium } from 'playwright';
 import { Pool } from '@neondatabase/serverless';
-
 dotenv.config({ path: '.env.local' });
 dotenv.config();
 
+const URL_BASE_ENV = process.env.URL_BASE || 'https://www.zonaprop.com.ar/casas-venta-capital-federal.html';
+
 const CONFIG = {
-    PAGINAS_MAXIMAS: 30,
-    URL_BASE: 'https://www.zonaprop.com.ar/casas-venta-capital-federal.html',
-    URL_PAGINA: (n) => `https://www.zonaprop.com.ar/casas-venta-capital-federal-pagina-${n}.html`,
+    PAGINAS_MAXIMAS: Math.max(1, Number.parseInt(process.env.PAGINAS_MAXIMAS || '30', 10) || 30),
+    URL_BASE: URL_BASE_ENV,
+    URL_PAGINA: (n) => {
+        const baseSinHtml = URL_BASE_ENV.replace(/\.html$/i, '');
+        return `${baseSinHtml}-pagina-${n}.html`;
+    },
 
     CDP_URL: process.env.CHROME_CDP_URL || 'http://127.0.0.1:9222',
     DRY_RUN: process.env.SCRAPER_DRY_RUN === 'true',
     MAX_PROPIEDADES: Math.max(0, Number.parseInt(process.env.SCRAPER_MAX_PROPIEDADES || (process.env.SCRAPER_DRY_RUN === 'true' ? '1' : '0'), 10) || 0),
     URL_PRUEBA: process.env.SCRAPER_URL_PRUEBA || '',
+    USAR_FICHAPROP: process.env.USAR_FICHAPROP !== 'false',
 
     IA_URL: process.env.IA_URL || 'http://127.0.0.1:8000',
     IA_API_KEY: process.env.INTERNAL_API_KEY || '',
@@ -34,11 +39,10 @@ const CONFIG = {
     CLOUDFLARE_ESPERA_DETALLE_MS: 45000,
 };
 
-if (!CONFIG.DB_URL) {
+if (!CONFIG.DB_URL && !CONFIG.DRY_RUN) {
     console.error('No se encontró la variable de base de datos en .env ni .env.local');
     process.exit(1);
 }
-
 const pool = new Pool({ connectionString: CONFIG.DB_URL });
 
 const toNullableInt = (val) => {
@@ -1139,12 +1143,18 @@ const procesarPropiedad = async (context, link, id_propiedad, indice, total) => 
             if (direccionFichaprop) console.log(`[${indice}/${total}] ${id_propiedad}: sin dirección en Zonaprop; para Fichaprop se usa la más cercana según OpenStreetMap: ${direccionFichaprop}`);
         }
 
+        // Consulta condicional a Fichaprop según la configuración
         let fp = null;
-        if (direccionFichaprop) {
-            fp = await consultarFichaprop(context, direccionFichaprop);
+        if (CONFIG.USAR_FICHAPROP) {
+            if (direccionFichaprop) {
+                fp = await consultarFichaprop(context, direccionFichaprop);
+            } else {
+                console.warn(`[${indice}/${total}] ${id_propiedad}: sin dirección, no se puede consultar Fichaprop.`);
+            }
         } else {
-            console.warn(`[${indice}/${total}] ${id_propiedad}: sin dirección, no se puede consultar Fichaprop.`);
+            console.log(`[${indice}/${total}] ${id_propiedad}: Fichaprop desactivado en la configuración.`);
         }
+
         if (fp?.barrio && !ubicacion.barrio && !data.barrio_confirmado) {
             propiedadData.barrio_zona = fp.barrio.slice(0, 50); // barrio oficial (USIG) según Fichaprop
         }
@@ -1184,15 +1194,12 @@ const procesarPropiedad = async (context, link, id_propiedad, indice, total) => 
         await detailPage.close().catch(() => {});
     }
 };
-
 (async () => {
     console.log('Iniciando scraper...');
 
     let browser;
     let context;
     try {
-        // Conecta con el Chrome que abriste manualmente en el puerto 9222.
-        // Usa su contexto existente (con sus cookies de Cloudflare); no crea otro navegador.
         browser = await chromium.connectOverCDP(CONFIG.CDP_URL);
         const contexts = browser.contexts();
         if (!contexts.length) {
@@ -1261,7 +1268,6 @@ const procesarPropiedad = async (context, link, id_propiedad, indice, total) => 
             try {
                 await fetch(`${CONFIG.IA_URL}/reentrenar`, { method: 'POST', headers: headersIA() });
             } catch {
-                // opcional
             }
         }
 
@@ -1269,7 +1275,6 @@ const procesarPropiedad = async (context, link, id_propiedad, indice, total) => 
         console.error(`Error general: ${e.message}`);
     } finally {
         await page.close().catch(() => {});
-        // Con CDP, browser.close() solo desconecta Playwright del Chrome externo; no lo cierra.
         if (browser) await browser.close().catch(() => {});
         await pool.end().catch(() => {});
     }
