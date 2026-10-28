@@ -1,8 +1,10 @@
 import os
+import sys
 import json
 import warnings
+from contextlib import asynccontextmanager
 from pathlib import Path
-
+import uvicorn
 import pandas as pd
 import psycopg2
 from psycopg2 import pool
@@ -65,7 +67,6 @@ COLUMNAS_NUMERICAS = [
     "longitud",
 ]
 
-app = FastAPI(title="API IA Estimador")
 INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
 db_pool = psycopg2.pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
 modelo_v4 = None
@@ -96,8 +97,6 @@ def _extraer_coordenadas(row):
     except (json.JSONDecodeError, TypeError, AttributeError, ValueError):
         pass
 
-    # Cero marca ubicación desconocida durante el entrenamiento; no ubicar
-    # silenciosamente cualquier inmueble en el Obelisco.
     return pd.Series([0.0, 0.0])
 
 
@@ -186,8 +185,6 @@ def entrenar_modelo() -> None:
 
     df = _preparar_features(df)
 
-    # El filtro usa el precio por m² solo para descartar valores extremos.
-    # No modifica el precio objetivo ni elimina barrios con pocas muestras.
     superficie = pd.to_numeric(df["superficie_cubierta_m2"], errors="coerce").clip(lower=1)
     precio_m2 = df["precio_usd"] / superficie
     conteo_por_barrio = precio_m2.groupby(df["barrio_zona"]).transform("count")
@@ -227,17 +224,22 @@ def entrenar_modelo() -> None:
         ]
     )
 
-    # Para producción se ajusta con todas las filas válidas. El código anterior
-    # reservaba un 20% como test pero nunca lo evaluaba ni lo reincorporaba.
     nuevo_modelo.fit(X, y)
     modelo_v4 = nuevo_modelo
     print(f"Modelo entrenado con {len(df)} publicaciones con precio observado.")
 
 
-try:
-    entrenar_modelo()
-except Exception as e:
-    print(f"Error al entrenar el modelo inicial: {e}")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Maneja el inicio único del servidor (evita reejecuciones al recargar en Windows)."""
+    try:
+        entrenar_modelo()
+    except Exception as e:
+        print(f"Error al entrenar el modelo inicial: {e}")
+    yield
+
+
+app = FastAPI(title="API IA Estimador", lifespan=lifespan)
 
 
 class PropiedadInput(BaseModel):
@@ -301,14 +303,16 @@ def obtener_propiedad(id_propiedad: str, x_api_key: str | None = Header(default=
 @app.post("/estimar-precio")
 def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(default=None)):
     _verificar_api_key(x_api_key)
-    coordenadas_validas = propiedad.latitud is not None and propiedad.longitud is not None and propiedad.latitud != 0 and propiedad.longitud != 0
-    # Para entrenar/predecir, ubicación desconocida se codifica como 0,0; no como el Obelisco.
+    coordenadas_validas = (
+        propiedad.latitud is not None
+        and propiedad.longitud is not None
+        and propiedad.latitud != 0
+        and propiedad.longitud != 0
+    )
     latitud = float(propiedad.latitud) if coordenadas_validas else 0.0
     longitud = float(propiedad.longitud) if coordenadas_validas else 0.0
 
     if modelo_v4 is None:
-        # No devolver un precio ficticio de USD 450: el scraper lo guardaba como
-        # si fuera una tasación válida y contaminaba los resultados.
         raise HTTPException(
             status_code=503,
             detail="Modelo sin datos de entrenamiento suficientes; no se generó una estimación.",
@@ -376,11 +380,14 @@ def reentrenar_api(x_api_key: str | None = Header(default=None)):
 
 
 if __name__ == "__main__":
-    import uvicorn
+    dir_actual = os.path.dirname(os.path.abspath(__file__))
+    if dir_actual not in sys.path:
+        sys.path.insert(0, dir_actual)
 
     uvicorn.run(
         "api_ia:app",
         host="0.0.0.0",
         port=int(os.environ.get("PORT", 8000)),
         reload=os.environ.get("RENDER") != "true",
+        app_dir=dir_actual,
     )

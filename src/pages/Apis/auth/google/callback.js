@@ -1,12 +1,10 @@
-// src/pages/Apis/auth/google/callback.js
-// Paso 2: Google vuelve acá con ?code=...&state=...
 export const prerender = false;
 
 import crypto from 'node:crypto';
 import argon2 from 'argon2';
-import sql from '../../../Backend/carga.js';
-import sqlConfig, { asegurarEsquemaConfig } from '../../../Backend/carga-config.js';
-import { cookieSesion } from '../../../Backend/sesion.js';
+import sql from '../../../../Backend/carga.js';
+import sqlConfig, { asegurarEsquemaConfig } from '../../../../Backend/carga-config.js';
+import { cookieSesion } from '../../../../Backend/sesion.js';
 
 function leerCookie(request, nombre) {
   const cookies = request.headers.get('cookie') || '';
@@ -33,8 +31,6 @@ export async function GET({ request }) {
     return redirigirALogin('Acceso con Google cancelado.');
   }
 
-  // Doble verificación anti-CSRF: el "state" que mandó Google tiene que coincidir
-  // con el que guardamos en la cookie httpOnly antes de salir a Google.
   const stateCookie = leerCookie(request, 'oauth_state');
   if (!code || !stateRecibido || !stateCookie || stateRecibido !== stateCookie) {
     return redirigirALogin('No pudimos verificar el pedido de acceso con Google. Probá de nuevo.');
@@ -50,8 +46,6 @@ export async function GET({ request }) {
   const redirectUri = `${url.origin}/Apis/auth/google/callback`;
 
   try {
-    // 1) Code -> tokens. Este intercambio pasa client_secret, así que Google
-    // solo entrega el token a nuestro propio servidor, no al navegador del usuario.
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -71,9 +65,6 @@ export async function GET({ request }) {
 
     const tokenData = await tokenRes.json();
 
-    // 2) Access token -> perfil. No hace falta re-verificar el id_token a mano
-    // (firma/issuer/audiencia): llegamos acá con un access_token que Google
-    // recién entregó server-to-server, autenticado con el client_secret.
     const perfilRes = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
     });
@@ -96,10 +87,6 @@ export async function GET({ request }) {
     let user = existentes[0];
 
     if (!user) {
-      // La columna "contraseña" es NOT NULL en tu esquema actual (login.js la usa
-      // sin chequear null), así que a un usuario creado por Google se le genera
-      // un hash aleatorio e inutilizable: nunca va a poder loguearse con
-      // contraseña a menos que pase por un flujo de "olvidé mi contraseña".
       const passwordAleatoria = crypto.randomBytes(32).toString('hex');
       const hashInutilizable = await argon2.hash(passwordAleatoria, {
         type: argon2.argon2id,
@@ -116,7 +103,6 @@ export async function GET({ request }) {
       user = creados[0];
     }
 
-    // 4) Misma verificación de cuenta activa que usa el login con contraseña.
     let cuentaActiva = true;
     try {
       await asegurarEsquemaConfig();
@@ -133,11 +119,6 @@ export async function GET({ request }) {
     if (!cuentaActiva) {
       return redirigirALogin('Tu cuenta está desactivada. Contactá a soporte para reactivarla.');
     }
-
-    // 5) Sesión: la misma cookie firmada que usa el login con contraseña.
-    // Se le pasan nombre/email/id por query para que el cliente pueda
-    // hidratar localStorage (setUser) en la primera carga de /dashboard,
-    // ya que esta es una redirección de servidor y no corre JS en el medio.
     const destino = new URL('/dashboard', url.origin);
     destino.searchParams.set('bienvenida', '1');
     destino.searchParams.set('nombre', nombre);

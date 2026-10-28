@@ -70,7 +70,6 @@
   font-size: 0.875rem;
 }
 
-/* Botón social (Google próximamente): apagado a propósito */
 .auth-btn-social {
   width: 100%;
   display: inline-flex;
@@ -78,20 +77,25 @@
   justify-content: center;
   gap: 0.6rem;
   min-height: 2.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.85rem;
-  background: #f8fafc;
-  color: #334155;
-  font-size: 0.9rem;
+  border: 1px solid #cbd5e1; /* Borde más visible */
+  background-color: #ffffff; /* Fondo blanco sólido */
+  color: #0f172a; /* Texto oscuro visible */
   font-weight: 600;
-  cursor: not-allowed;
-  opacity: 0.55;
-  filter: saturate(0.6);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  opacity: 1;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.auth-btn-social:hover {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
 }
 
 .auth-btn-social svg {
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 18px;
+  height: 18px;
+  color: #ea4335;
 }
 
 /* Divisor "o" */
@@ -359,4 +363,4 @@
     align-items: center;
     text-align: center;
   }
-}
+}
