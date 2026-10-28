@@ -5,6 +5,9 @@ import argon2 from 'argon2';
 import sql from '../../../../Backend/carga.js';
 import sqlConfig, { asegurarEsquemaConfig } from '../../../../Backend/carga-config.js';
 import { cookieSesion } from '../../../../Backend/sesion.js';
+const clientId = (import.meta.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '').trim();
+const clientSecret = (import.meta.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || '').trim();
+const redirectUri = (import.meta.env.GOOGLE_REDIRECT_URI || process.env.GOOGLE_REDIRECT_URI || '').trim();
 
 function leerCookie(request, nombre) {
   const cookies = request.headers.get('cookie') || '';
@@ -36,8 +39,8 @@ export async function GET({ request }) {
     return redirigirALogin('No pudimos verificar el pedido de acceso con Google. Probá de nuevo.');
   }
 
-  const clientId = import.meta.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = import.meta.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
+  const clientId = (import.meta.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '').trim();
+  const clientSecret = (import.meta.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || '').trim();
 
   if (!clientId || !clientSecret) {
     return new Response('Faltan credenciales de Google en el servidor.', { status: 500 });

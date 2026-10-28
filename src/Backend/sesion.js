@@ -1,18 +1,16 @@
 import crypto from 'node:crypto';
 
-const ENV = {
-  ...(typeof process !== 'undefined' && process.env ? process.env : {}),
-  ...(import.meta.env || {}),
-};
+const sessionSecret = import.meta.env.SESSION_SECRET || process.env.SESSION_SECRET;
+const configDbUrl = import.meta.env.CONFIG_DATABASE_URL || process.env.CONFIG_DATABASE_URL;
 
-const esDev = ENV.DEV ?? true;
+const esDev = import.meta.env.DEV ?? (process.env.NODE_ENV !== 'production');
 
 const SECRETO_SESION =
-  ENV.SESSION_SECRET ||
-  ENV.CONFIG_DATABASE_URL ||
+  sessionSecret ||
+  configDbUrl ||
   'spatial-value-secreto-solo-desarrollo';
 
-if (!ENV.SESSION_SECRET) {
+if (!sessionSecret) {
   console.warn(
     '[sesion] SESSION_SECRET no está definida: se usa una clave derivada. Definila en producción.'
   );
