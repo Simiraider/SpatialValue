@@ -346,4 +346,6 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.environ.get("PORT", 8000)),
         reload=os.environ.get("RENDER") != "true",
+        reload_includes=["*.py"],
+        reload_dirs=[os.path.dirname(os.path.abspath(__file__))],
     )

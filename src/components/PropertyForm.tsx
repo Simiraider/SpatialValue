@@ -11,11 +11,10 @@ import { cn } from '../lib/utils';
 import {
   obtenerConfigGemelo,
   probarConexionWorker,
-  subirModeloExterno,
   type ConfigGemelo,
   type EstadoTrabajo,
 } from '../lib/gemelo';
-import { subirModeloGLBSupabase, visorEnSupabase } from '../lib/visor-supabase';
+import { visorEnSupabase } from '../lib/visor-supabase';
 import { SubidaFotos } from './GemeloDigital/SubidaFotos';
 import { BarraProgreso } from './GemeloDigital/BarraProgreso';
 import { Visor3D } from './GemeloDigital/Visor3D';
@@ -24,7 +23,6 @@ const TOTAL_STEPS = 4;
 const PASOS = ['Ubicación', 'Características', 'Extras', 'Fotos'];
 const AMENITIES = ['Seguridad 24h', 'Ascensor', 'Cochera', 'Gimnasio', 'Baulera', 'Cámaras', 'Balcón', 'Lounge', 'Terraza', 'Pileta', 'Patio', 'Parrilla', 'Laundry'];
 const OPCIONES_LUZ = ['Abundante', 'Buena', 'Media', 'Poca'];
-const AMBIENTES_3D = ['Living/comedor', 'Cocina', 'Dormitorio', 'Baño', 'Oficina', 'Exterior/patio', 'Otro'];
 const EDICION_KEY = 'tasacion-edicion';
 const DRAFT_KEY = 'tasacion-draft';
 
@@ -206,11 +204,6 @@ export const PropertyForm = () => {
   const [gemeloConfig, setGemeloConfig] = useState<ConfigGemelo | null>(null);
   const [gemeloJobId, setGemeloJobId] = useState<string | null>(null);
   const [gemeloJob, setGemeloJob] = useState<EstadoTrabajo | null>(null);
-  const [modoSubida, setModoSubida] = useState<'fotos' | 'externo'>('fotos');
-  const [ambienteGemelo, setAmbienteGemelo] = useState('');
-  const [archivoGlb, setArchivoGlb] = useState<File | null>(null);
-  const [subiendoGlb, setSubiendoGlb] = useState(false);
-  const [errorGlb, setErrorGlb] = useState<string | null>(null);
   const esEdicion = Boolean(edicion);
 
   // Validación en tiempo real de superficies (paso 2)
@@ -255,10 +248,6 @@ export const PropertyForm = () => {
   const activarModelo3d = async () => {
     setQuiereModelo3d(true);
     setGemeloFase('conectando');
-    setModoSubida('fotos');
-    setAmbienteGemelo('');
-    setArchivoGlb(null);
-    setErrorGlb(null);
     const config = await obtenerConfigGemelo();
     if (!config) {
       setGemeloConfig(null);
@@ -275,39 +264,11 @@ export const PropertyForm = () => {
     setGemeloFase('sin-usar');
     setGemeloJobId(null);
     setGemeloJob(null);
-    setModoSubida('fotos');
-    setAmbienteGemelo('');
-    setArchivoGlb(null);
-    setErrorGlb(null);
   };
 
   const tituloGemelo = () => {
     const base = `${data.tipoUnidad} en ${data.direccion}`.trim();
-    return ambienteGemelo ? `${base} — ${ambienteGemelo}` : base || 'Gemelo digital';
-  };
-
-  const vincularGlb = async () => {
-    if (!archivoGlb || !gemeloConfig || subiendoGlb) return;
-    setSubiendoGlb(true);
-    setErrorGlb(null);
-    try {
-      const datosGlb = {
-        titulo: tituloGemelo(),
-        idUsuario: getUsuarioId() || null,
-        idPublicacion: esEdicion ? String(edicion!.id!) : null,
-        archivo: archivoGlb,
-      };
-      const job = visorEnSupabase(gemeloConfig)
-        ? await subirModeloGLBSupabase(gemeloConfig, datosGlb)
-        : await subirModeloExterno(gemeloConfig, datosGlb);
-      setGemeloJob(job);
-      setGemeloFase('listo');
-      setArchivoGlb(null);
-    } catch (e) {
-      setErrorGlb(e instanceof Error ? e.message : 'No se pudo subir el modelo.');
-    } finally {
-      setSubiendoGlb(false);
-    }
+    return base || 'Gemelo digital';
   };
 
   const supTotalNum = Number(data.superficieTotal) || 0;
@@ -565,84 +526,15 @@ export const PropertyForm = () => {
               )}
 
               {gemeloFase === 'subir' && gemeloConfig && (
-                <>
-                  <div className="tasacion__eleccion" role="group" aria-label="¿Cómo querés crear el modelo 3D?">
-                    <TarjetaEleccion icono={Camera} titulo="Con fotos o video" activo={modoSubida === 'fotos'} onClick={() => setModoSubida('fotos')} />
-                    <TarjetaEleccion icono={Box} titulo="Ya tengo un modelo 3D" activo={modoSubida === 'externo'} onClick={() => setModoSubida('externo')} />
-                  </div>
-
-                  {modoSubida === 'fotos' ? (
-                    <>
-                      <div className="tasacion__gemelo-ambientes" role="group" aria-label="¿Qué ambiente querés escanear?">
-                        <span className="tasacion__gemelo-ambientes-label">¿Qué escaneás? (un ambiente por modelo)</span>
-                        {AMBIENTES_3D.map(a => (
-                          <button
-                            key={a}
-                            type="button"
-                            className={cn('tasacion__chip', ambienteGemelo === a && 'tasacion__chip--activa')}
-                            aria-pressed={ambienteGemelo === a}
-                            onClick={() => setAmbienteGemelo(ambienteGemelo === a ? '' : a)}
-                          >
-                            {a}
-                          </button>
-                        ))}
-                      </div>
-                      <details className="tasacion__guia">
-                        <summary>Cómo sacar las fotos o el video (guía rápida)</summary>
-                        <ol>
-                          <li>Escanear <strong>un ambiente por vez</strong>: el modelo es por habitación, no de toda la casa.</li>
-                          <li>Parate en una esquina y girá lento barriendo toda la habitación, como si grabaras un video.</li>
-                          <li>Avanzá unos pasos y repetí: cada pared y mueble debe verse en al menos 3 fotos.</li>
-                          <li>Incluí piso y techo en varias fotos: ayudan a anclar la geometría.</li>
-                          <li>Usá luz abundante y evitá apuntar directo a ventanas.</li>
-                        </ol>
-                        <p className="tasacion__guia-nota">15–25 fotos por ambiente dan un buen resultado, o un video de recorrido de hasta 3 minutos.</p>
-                      </details>
-                      <SubidaFotos
-                        config={gemeloConfig}
-                        tituloInicial={tituloGemelo()}
-                        propiedad={esEdicion ? String(edicion!.id!) : null}
-                        onTrabajoCreado={(id) => {
-                          setGemeloJobId(id);
-                          setGemeloFase('progreso');
-                        }}
-                      />
-                    </>
-                  ) : (
-                    <div className="tasacion__gemelo-externo">
-                      <p className="tasacion__hint">
-                        ¿Escaneaste con Scaniverse, Polycam u otra app? Exportá el modelo en formato GLB, subilo acá y queda
-                        vinculado a la tasación sin procesar nada.
-                      </p>
-                      <label className="tasacion__subida">
-                        <input
-                          type="file"
-                          accept=".glb,model/gltf-binary"
-                          onChange={e => {
-                            setArchivoGlb(e.target.files?.[0] || null);
-                            setErrorGlb(null);
-                            e.target.value = '';
-                          }}
-                        />
-                        <strong>Elegir archivo .glb</strong>
-                        <span>Modelo exportado en glTF binario · hasta 120 MB</span>
-                      </label>
-                      {archivoGlb && <p className="tasacion__hint">{archivoGlb.name} · {Math.round(archivoGlb.size / 1024)} KB</p>}
-                      {errorGlb && <p className="tasacion__error">{errorGlb}</p>}
-                      <div className="tasacion__acciones-gemelo">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          disabled={!archivoGlb || subiendoGlb}
-                          isLoading={subiendoGlb}
-                          onClick={vincularGlb}
-                        >
-                          Vincular modelo a la tasación
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </>
+                <SubidaFotos
+                  config={gemeloConfig}
+                  tituloInicial={tituloGemelo()}
+                  propiedad={esEdicion ? String(edicion!.id!) : null}
+                  onTrabajoCreado={(id) => {
+                    setGemeloJobId(id);
+                    setGemeloFase('progreso');
+                  }}
+                />
               )}
 
               {gemeloFase === 'progreso' && gemeloConfig && gemeloJobId && (
