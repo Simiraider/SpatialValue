@@ -5,12 +5,12 @@
   margin-top: auto;
 }
 
-.footer-inner {
+.footer__contenido {
   max-width: var(--max-width);
   margin: 0 auto;
 }
 
-.footer-grid {
+.footer__grilla {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
@@ -19,25 +19,25 @@
   margin-bottom: 2rem;
 }
 
-.footer-links {
+.footer__enlaces {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem 2rem;
   padding-top: 0.35rem;
 }
 
-.footer-brand {
+.footer__marca {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
 
-.footer-brand .logo-img {
+.footer__marca .logo__imagen {
   width: clamp(150px, 14vw, 185px);
   height: auto;
 }
 
-.footer-logo-inline {
+.footer__logo-linea {
   display: inline-block;
   width: auto;
   height: 15px;
@@ -46,14 +46,14 @@
 }
 
 /* El estilo scoped del componente Logo usa display:block; acá va inline en la línea del copyright */
-.footer-bottom .footer-logo-inline {
+.footer__pie .footer__logo-linea {
   display: inline-block;
   width: auto;
   height: 17px;
   vertical-align: -3px;
 }
 
-.footer-brand p {
+.footer__marca p {
   font-size: 0.9rem;
   color: rgba(255, 255, 255, 0.6);
   margin: 0;
@@ -72,7 +72,7 @@
   color: #63c8f2;
 }
 
-.footer-bottom {
+.footer__pie {
   padding-top: 1.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 0.8rem;

@@ -33,3 +33,4 @@ storage/
 ia_server*.log
 /chrome_scraper_data
 /supabase/.temp
+supabase/visor3d.sql

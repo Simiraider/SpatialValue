@@ -8,6 +8,7 @@ interface Props {
   config: ConfigGemelo;
   job: EstadoTrabajo;
   onNuevo: () => void;
+  compacto?: boolean;
 }
 
 declare global {
@@ -26,7 +27,7 @@ declare global {
   }
 }
 
-export const Visor3D = ({ config, job, onNuevo }: Props) => {
+export const Visor3D = ({ config, job, onNuevo, compacto }: Props) => {
   const contenedorRef = useRef<HTMLDivElement>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -104,7 +105,9 @@ export const Visor3D = ({ config, job, onNuevo }: Props) => {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-xl font-bold text-slate-800">Tu gemelo digital</h2>
+        <h2 className="text-xl font-bold text-slate-800">
+          {compacto ? 'Gemelo digital de la propiedad' : 'Tu gemelo digital'}
+        </h2>
         <p className="mt-1 text-sm text-slate-500">
           {job.titulo || 'Modelo de la propiedad'} ·{' '}
           {job.motor === 'simular'
@@ -154,9 +157,11 @@ export const Visor3D = ({ config, job, onNuevo }: Props) => {
           )}
         </div>
         <div className="flex gap-2">
-          <Button type="button" variant="ghost" size="sm" onClick={onNuevo}>
-            <RefreshCw className="mr-1.5 h-4 w-4" /> Generar otro
-          </Button>
+          {!compacto && (
+            <Button type="button" variant="ghost" size="sm" onClick={onNuevo}>
+              <RefreshCw className="mr-1.5 h-4 w-4" /> Generar otro
+            </Button>
+          )}
           <a href="/dashboard">
             <Button type="button" variant="ghost" size="sm">
               <LayoutDashboard className="mr-1.5 h-4 w-4" /> Dashboard

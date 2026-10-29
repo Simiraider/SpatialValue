@@ -53,11 +53,11 @@ async function hashCodigo(codigo) {
 }
 
 async function enviarEmailVerificacion(destino, codigo) {
-  const host = import.meta.env.SMTP_HOST || process.env.SMTP_HOST;
-  const port = Number(import.meta.env.SMTP_PORT || process.env.SMTP_PORT || 587);
-  const user = import.meta.env.SMTP_USER || process.env.SMTP_USER;
-  const pass = import.meta.env.SMTP_PASS || process.env.SMTP_PASS;
-  const from = import.meta.env.SMTP_FROM || process.env.SMTP_FROM || `Spatial Value <${user}>`;
+  const host = process.env.SMTP_HOST;
+  const port = Number(process.env.SMTP_PORT || 587);
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const from = process.env.SMTP_FROM || `Spatial Value <${user}>`;
 
   if (!host || !user || !pass) {
     console.warn('[verificacion] SMTP sin configurar: no se envió el email de verificación.');
@@ -235,7 +235,7 @@ export async function POST({ request }) {
 
       if (!enviado) {
         await sqlConfig`DELETE FROM "verificaciones_contacto" WHERE "id" = ${verificacionId}`;
-        if (import.meta.env.DEV) {
+        if (process.env.NODE_ENV !== 'production') {
           return new Response(
             JSON.stringify({
               success: true,

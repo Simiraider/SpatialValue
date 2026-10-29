@@ -15,6 +15,7 @@ import {
   type ConfigGemelo,
   type EstadoTrabajo,
 } from '../lib/gemelo';
+import { subirModeloGLBSupabase, visorEnSupabase } from '../lib/visor-supabase';
 import { SubidaFotos } from './GemeloDigital/SubidaFotos';
 import { BarraProgreso } from './GemeloDigital/BarraProgreso';
 import { Visor3D } from './GemeloDigital/Visor3D';
@@ -290,12 +291,15 @@ export const PropertyForm = () => {
     setSubiendoGlb(true);
     setErrorGlb(null);
     try {
-      const job = await subirModeloExterno(gemeloConfig, {
+      const datosGlb = {
         titulo: tituloGemelo(),
         idUsuario: getUsuarioId() || null,
         idPublicacion: esEdicion ? String(edicion!.id!) : null,
         archivo: archivoGlb,
-      });
+      };
+      const job = visorEnSupabase(gemeloConfig)
+        ? await subirModeloGLBSupabase(gemeloConfig, datosGlb)
+        : await subirModeloExterno(gemeloConfig, datosGlb);
       setGemeloJob(job);
       setGemeloFase('listo');
       setArchivoGlb(null);

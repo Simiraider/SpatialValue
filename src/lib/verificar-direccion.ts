@@ -58,11 +58,8 @@ export function barriosCoinciden(a: string | null | undefined, b: string | null 
 }
 
 function getEnvKey(): string {
-  const env: any =
-    typeof import.meta !== 'undefined' && (import.meta as any).env ? (import.meta as any).env : {};
   const nodeEnv = (globalThis as any)?.process?.env;
-  const deProcess = nodeEnv?.GOOGLE_MAPS_API_KEY || '';
-  return String(env.GOOGLE_MAPS_API_KEY || env.VITE_GOOGLE_MAPS_API_KEY || deProcess || '').trim();
+  return String(nodeEnv?.GOOGLE_MAPS_API_KEY || '').trim();
 }
 
 interface ComponenteGoogle {

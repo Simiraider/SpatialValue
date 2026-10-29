@@ -11,6 +11,7 @@ import {
   tiempoEstimadoSeg,
   type ConfigGemelo,
 } from '../../lib/gemelo';
+import { subirTrabajoSupabase, visorEnSupabase } from '../../lib/visor-supabase';
 import { AvisoConfianza } from './AvisoConfianza';
 
 interface Props {
@@ -72,13 +73,14 @@ export const SubidaFotos = ({ config, tituloInicial = '', propiedad, denseRemoto
   const agregarArchivos = async (lista: FileList | File[]) => {
     const invalidos: string[] = [];
     const pesados: string[] = [];
+    const maxBytes = config.maxVideoMb * 1024 * 1024;
     const validos = Array.from(lista).filter((f) => {
       if (esImagen(f) || esVideo(f)) return true;
       invalidos.push(f.name);
       return false;
     });
     const conTamaño = validos.filter((f) => {
-      if (f.size > 2 * 1024 * 1024 * 1024) {
+      if (f.size > maxBytes) {
         pesados.push(f.name);
         return false;
       }
@@ -157,14 +159,17 @@ export const SubidaFotos = ({ config, tituloInicial = '', propiedad, denseRemoto
     setSubiendo(0);
     try {
       const usuarioId = getUsuarioId() || undefined;
-      const { id } = await subirTrabajo(config, {
+      const datos = {
         titulo: titulo.trim() || 'Gemelo digital',
         idUsuario: usuarioId,
         idPublicacion: propiedad || undefined,
         archivos,
         calidad,
-        onProgreso: (f) => setSubiendo(f),
-      });
+        onProgreso: (f: number) => setSubiendo(f),
+      };
+      const { id } = visorEnSupabase(config)
+        ? await subirTrabajoSupabase(config, datos)
+        : await subirTrabajo(config, datos);
       onTrabajoCreado(id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo generar el gemelo digital.');
@@ -230,8 +235,7 @@ export const SubidaFotos = ({ config, tituloInicial = '', propiedad, denseRemoto
           Arrastrá fotos o un video acá
         </p>
         <p className="mt-1 text-xs text-slate-500">
-          o hacé clic para elegir archivos · JPG, PNG, HEIC, MP4, MOV ·          archivo pesado: 500 MB (limite de servidor futuro)
-
+          o hacé clic para elegir archivos · JPG, PNG, HEIC, MP4, MOV · hasta {config.maxVideoMb} MB por archivo
         </p>
         <p className="mt-2 text-xs text-slate-400">
           Consejo: recorré cada ambiente y que cada zona aparezca en al menos 3 fotos.

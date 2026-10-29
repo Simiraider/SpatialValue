@@ -26,9 +26,9 @@ export async function POST({ request, url }) {
   const base = { titulo, idUsuario, idPublicacion, nFotos, esVideo };
 
   try {
-    const proveedor = import.meta.env.KIRI_API_KEY || process.env.KIRI_API_KEY
+    const proveedor = process.env.KIRI_API_KEY
       ? 'kiri'
-      : import.meta.env.MAKESPLAT_API_KEY || process.env.MAKESPLAT_API_KEY
+      : process.env.MAKESPLAT_API_KEY
         ? 'makesplat'
         : null;
 

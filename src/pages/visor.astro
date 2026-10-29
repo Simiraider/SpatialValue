@@ -1,0 +1,209 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { leerModelosVisor } from '../lib/modelos-visor.js';
+import '../styles/gemelo.css';
+
+const modelos: Array<{ nombre: string; ruta: string }> = leerModelosVisor();
+const porDefecto = modelos[0]?.ruta ?? '/modelos/departamento-demo.glb';
+---
+
+<Layout title="Visor 3D">
+  <main class="visor-pagina">
+    <header class="visor-pagina__cabecera">
+      <div>
+        <h1>Visor de modelos 3D</h1>
+        <p class="visor-pagina__ayuda">
+          Previsualización de los <code>.glb</code> que están en <code>public/modelos</code>. También
+          podés abrir cualquiera con <code>/visor?src=/modelos/tu-archivo.glb</code>.
+        </p>
+      </div>
+      {
+        modelos.length > 0 && (
+          <nav class="visor-pagina__opciones">
+            {modelos.map((modelo) => (
+              <a
+                href={`/visor?src=${encodeURIComponent(modelo.ruta)}`}
+                class="visor-pagina__opcion"
+                data-opcion={modelo.ruta}
+              >
+                {modelo.nombre}
+              </a>
+            ))}
+          </nav>
+        )
+      }
+    </header>
+
+    <div class="visor-pagina__lienzo" data-por-defecto={porDefecto}>
+      <p class="visor-pagina__estado" data-estado>Cargando modelo…</p>
+    </div>
+
+    <div class="visor-pagina__pie">
+      <p class="visor-pagina__ruta" data-ruta></p>
+      <a class="visor-pagina__opcion" data-descarga download>Descargar</a>
+    </div>
+  </main>
+</Layout>
+
+<style>
+  .visor-pagina {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 3rem;
+    font-family: 'Inclusive Sans', system-ui, sans-serif;
+    color: #0f172a;
+  }
+
+  .visor-pagina__cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+  }
+
+  .visor-pagina h1 {
+    margin: 0 0 0.35rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  .visor-pagina__ayuda {
+    margin: 0;
+    max-width: 46ch;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: #64748b;
+  }
+
+  .visor-pagina__ayuda code {
+    font-size: 0.8rem;
+    background: #f1f5f9;
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.35rem;
+  }
+
+  .visor-pagina__opciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .visor-pagina__opcion {
+    display: inline-block;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #334155;
+    text-decoration: none;
+    text-transform: capitalize;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .visor-pagina__opcion:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+  }
+
+  .visor-pagina__opcion[data-activa] {
+    background: #0e7490;
+    border-color: #0e7490;
+    color: #fff;
+  }
+
+  .visor-pagina__lienzo {
+    position: relative;
+    height: min(70vh, 620px);
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    border-radius: 1.5rem;
+    background: #f1f5f9;
+  }
+
+  .visor-pagina__estado {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 1rem;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #64748b;
+  }
+
+  .visor-pagina__estado[data-oculto] {
+    display: none;
+  }
+
+  .visor-pagina__pie {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 0.75rem;
+  }
+
+  .visor-pagina__ruta {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #94a3b8;
+  }
+</style>
+
+<script>
+  const lienzo = document.querySelector<HTMLDivElement>('.visor-pagina__lienzo');
+  const estado = document.querySelector<HTMLParagraphElement>('[data-estado]');
+  const ruta = document.querySelector<HTMLParagraphElement>('[data-ruta]');
+  const descarga = document.querySelector<HTMLAnchorElement>('[data-descarga]');
+
+  const porDefecto = lienzo?.dataset.porDefecto ?? '/modelos/departamento-demo.glb';
+  const disponibles = new Set(
+    Array.from(document.querySelectorAll<HTMLElement>('[data-opcion]')).map(
+      (opcion) => opcion.dataset.opcion ?? ''
+    )
+  );
+  const pedido = new URLSearchParams(location.search).get('src') ?? '';
+  const fuente = disponibles.has(pedido) ? pedido : porDefecto;
+
+  const mostrar = (mensaje: string | null) => {
+    if (!estado) return;
+    if (mensaje) {
+      estado.textContent = mensaje;
+      estado.removeAttribute('data-oculto');
+    } else {
+      estado.setAttribute('data-oculto', '');
+    }
+  };
+
+  if (ruta) ruta.textContent = fuente;
+  if (descarga) descarga.href = fuente;
+  document.querySelectorAll<HTMLElement>('[data-opcion]').forEach((opcion) => {
+    if (opcion.dataset.opcion === fuente) opcion.setAttribute('data-activa', '');
+  });
+
+  if (lienzo) {
+    try {
+      await import('@google/model-viewer/dist/model-viewer-module.min.js');
+
+      const visor = document.createElement('model-viewer');
+      visor.setAttribute('src', fuente);
+      visor.setAttribute('alt', 'Modelo 3D');
+      visor.setAttribute('camera-controls', '');
+      visor.setAttribute('auto-rotate', '');
+      visor.setAttribute('shadow-intensity', '1');
+      visor.setAttribute('environment-image', 'neutral');
+      visor.setAttribute('tone-mapping', 'neutral');
+      visor.setAttribute('exposure', '1.1');
+      visor.addEventListener('load', () => mostrar(null));
+      visor.addEventListener('error', () => mostrar('No se pudo cargar el modelo.'));
+      lienzo.appendChild(visor);
+    } catch (e) {
+      mostrar(`No se pudo iniciar el visor: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+</script>

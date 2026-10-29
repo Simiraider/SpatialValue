@@ -8,6 +8,7 @@ export interface ConfigGemelo {
   maxVideoMb: number;
   modo: ModoGemelo;
   denseRemoto?: boolean;
+  almacenamiento?: 'supabase' | 'servidor';
 }
 
 export type EtapaTrabajo =
@@ -197,6 +198,7 @@ export async function obtenerConfigGemelo(): Promise<ConfigGemelo | null> {
       maxFotos: Number(data.maxFotos) || 100,
       maxVideoMb: Number(data.maxVideoMb) || 300,
       modo: (data.modo as ModoGemelo) || 'auto',
+      almacenamiento: data.almacenamiento === 'supabase' ? 'supabase' : 'servidor',
     };
   } catch {
     return null;

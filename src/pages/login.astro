@@ -8,24 +8,24 @@ import "../styles/auth.css";
 
 <Layout title="Iniciar Sesión">
   <div class="auth-page">
-    <div class="auth-layout">
+    <div class="auth-page__layout">
       <section class="auth-form">
         <header class="auth-form__cabecera">
-          <a href="/" class="auth-logo">
+          <a href="/" class="auth-form__logo">
             <Logo variant="claro" />
           </a>
-          <h1 class="auth-title">Iniciar sesión</h1>
-          <p class="auth-status" id="mensaje-estado" role="note">
+          <h1 class="auth-form__titulo">Iniciar sesión</h1>
+          <p class="auth-form__estado" id="mensaje-estado" role="note">
             Ingresá tus credenciales para continuar.
           </p>
         </header>
 
-        <button type="button" class="auth-btn-social" disabled aria-disabled="true">
+        <button type="button" class="auth-form__boton-social" disabled aria-disabled="true">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.35 11.1H12v2.98h5.35c-.23 1.4-1.66 4.1-5.35 4.1-3.22 0-5.85-2.67-5.85-5.95s2.63-5.95 5.85-5.95c1.83 0 3.06.78 3.76 1.45l2.56-2.47C16.66 3.9 14.6 3 12 3 6.98 3 3 6.98 3 12s3.98 9 9 9c5.2 0 8.64-3.65 8.64-8.79 0-.59-.06-1.04-.29-1.11Z"/></svg>
           Continuar con Google (próximamente)
         </button>
 
-        <div class="auth-divider"><span>o</span></div>
+        <div class="auth-form__divisor"><span>o</span></div>
 
         <form id="loginForm" novalidate>
           <div>
@@ -38,7 +38,7 @@ import "../styles/auth.css";
               required
               client:load
             />
-            <p class="auth-error" id="error-email" role="alert"></p>
+            <p class="auth-form__error" id="error-email" role="alert"></p>
           </div>
           <div>
             <Input
@@ -50,7 +50,7 @@ import "../styles/auth.css";
               required
               client:load
             />
-            <p class="auth-error" id="error-password" role="alert"></p>
+            <p class="auth-form__error" id="error-password" role="alert"></p>
           </div>
 
           <div>
@@ -59,9 +59,9 @@ import "../styles/auth.css";
         </form>
 
         <div id="demo-fallback" class="hidden">
-          <div class="auth-demo">
-            <p class="auth-demo-titulo">No se pudo conectar con el servidor</p>
-            <p class="auth-demo-texto">
+          <div class="auth-form__demo">
+            <p class="auth-form__demo-titulo">No se pudo conectar con el servidor</p>
+            <p class="auth-form__demo-texto">
               Podés explorar la app en <strong>modo demo</strong> con datos de ejemplo. Tu cuenta real no se verá afectada.
             </p>
             <Button variant="outline" fullWidth type="button" client:load id="btn-modo-demo">
@@ -70,13 +70,13 @@ import "../styles/auth.css";
           </div>
         </div>
 
-        <p class="auth-switch">
+        <p class="auth-form__enlace-registro">
           ¿No tenés cuenta? <a href="/registro">Registrate</a>
         </p>
       </section>
 
-      <aside class="auth-marca">
-        <p class="auth-marca-esquina">Tasá tu propiedad en minutos, no en semanas.</p>
+      <aside class="auth-page__marca">
+        <p class="auth-page__marca-esquina">Tasá tu propiedad en minutos, no en semanas.</p>
       </aside>
     </div>
   </div>
@@ -105,12 +105,12 @@ import "../styles/auth.css";
 
     const marcarError = (campo: HTMLInputElement, nodo: HTMLParagraphElement | null, mensaje: string) => {
       campo.setAttribute('aria-invalid', 'true');
-      campo.classList.add('auth-input--invalido');
+      campo.classList.add('auth-form__entrada', 'auth-form__entrada--invalida');
       if (nodo) nodo.textContent = mensaje;
     };
     const limpiarError = (campo: HTMLInputElement, nodo: HTMLParagraphElement | null) => {
       campo.removeAttribute('aria-invalid');
-      campo.classList.remove('auth-input--invalido');
+      campo.classList.remove('auth-form__entrada', 'auth-form__entrada--invalida');
       if (nodo) nodo.textContent = '';
     };
 

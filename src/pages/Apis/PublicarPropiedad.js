@@ -4,7 +4,7 @@ import { estimarPrecioVenta } from '../../lib/mercado';
 import { verificarDireccion, canonizarBarrio } from '../../lib/verificar-direccion';
 import { resolverUsuarioId, permitirFrecuencia, ipDePeticion } from '../../Backend/sesion.js';
 
-const IA_URL = import.meta.env.IA_URL || process.env.IA_URL || 'http://127.0.0.1:8000';
+const IA_URL = process.env.IA_URL || 'http://127.0.0.1:8000';
 const IA_TIMEOUT_MS = 15000;
 
 const AMENITIES_VALIDOS = new Set([
@@ -34,7 +34,7 @@ const tiene = (comodidades, nombre) =>
   Array.isArray(comodidades) &&
   comodidades.some((a) => normalizar(a) === normalizar(nombre));
 
-const IA_API_KEY = import.meta.env.INTERNAL_API_KEY || process.env.INTERNAL_API_KEY || '';
+const IA_API_KEY = process.env.INTERNAL_API_KEY || '';
 async function llamarAI(payload) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), IA_TIMEOUT_MS);
@@ -98,6 +98,11 @@ export async function POST({ request }) {
       .slice(0, MAX_COMODIDADES)
       .map((c) => String(c ?? '').trim())
       .filter((c) => c && AMENITIES_VALIDOS.has(c));
+
+    const modelo3dJobId =
+      typeof raw.modelo3d_job_id === 'string' && raw.modelo3d_job_id.trim()
+        ? raw.modelo3d_job_id.trim()
+        : null;
 
     const fotos = (Array.isArray(raw.fotos) ? raw.fotos : [])
       .slice(0, MAX_FOTOS)
@@ -276,6 +281,15 @@ export async function POST({ request }) {
         RETURNING *;
       `;
       publicacionGuardada = nuevaPublicacion[0];
+
+      if (modelo3dJobId && publicacionGuardada?.id_publicacion) {
+        try {
+          const { vincularPublicacionTrabajo } = await import('../../Backend/visor-supabase.js');
+          await vincularPublicacionTrabajo(modelo3dJobId, publicacionGuardada.id_publicacion);
+        } catch (visError) {
+          console.warn('No se pudo vincular el gemelo 3D a la publicación:', visError.message);
+        }
+      }
 
       try {
         await sql`

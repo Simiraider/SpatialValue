@@ -7,13 +7,7 @@ const API_MAKESPLAT = 'https://api.makesplat.com';
 const TTL_ESTADO_MS = 30_000;
 const TTL_JOB_MS = 7 * 24 * 3600_000;
 
-const valor = (n) => {
-  try {
-    if (import.meta && import.meta.env && import.meta.env[n]) return import.meta.env[n];
-  } catch {
-  }
-  return process.env[n] || '';
-};
+const valor = (n) => process.env[n] || '';
 
 const CONEXION = valor('SpatialValueStorage_DATABASE_URL');
 let sql = null;

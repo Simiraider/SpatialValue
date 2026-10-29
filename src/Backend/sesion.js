@@ -1,9 +1,6 @@
 import crypto from 'node:crypto';
 
-const ENV = {
-  ...(typeof process !== 'undefined' && process.env ? process.env : {}),
-  ...(import.meta.env || {}),
-};
+const ENV = typeof process !== 'undefined' && process.env ? process.env : {};
 
 const esDev = ENV.DEV ?? true;
 

@@ -3,6 +3,14 @@ import { AlertTriangle, Check, Loader2, XCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { cn } from '../../lib/utils';
 import { cancelarTrabajo, formatearTiempo, obtenerEstadoTrabajo, type ConfigGemelo, type EstadoTrabajo, type EtapaTrabajo } from '../../lib/gemelo';
+import {
+  adjuntarModeloSupabase,
+  cancelarTrabajoSupabase,
+  enviarAKiriSupabase,
+  obtenerEstadoSupabase,
+  subirModeloGLBSupabase,
+  visorEnSupabase,
+} from '../../lib/visor-supabase';
 
 interface Props {
   config: ConfigGemelo;
@@ -36,6 +44,12 @@ export const BarraProgreso = ({ config, jobId, onListo, onCancelar }: Props) => 
   const [fallos, setFallos] = useState(0);
   const [cancelando, setCancelando] = useState(false);
   const [detenido, setDetenido] = useState(false);
+  const [glbUrl, setGlbUrl] = useState('');
+  const [archivoGlb, setArchivoGlb] = useState<File | null>(null);
+  const [vinculando, setVinculando] = useState(false);
+  const [errorVinculo, setErrorVinculo] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
   const ejecutando = useRef(false);
 
   useEffect(() => {
@@ -44,7 +58,9 @@ export const BarraProgreso = ({ config, jobId, onListo, onCancelar }: Props) => 
       if (ejecutando.current) return;
       ejecutando.current = true;
       try {
-        const estado = await obtenerEstadoTrabajo(config, jobId);
+        const estado = visorEnSupabase(config)
+          ? await obtenerEstadoSupabase(config, jobId)
+          : await obtenerEstadoTrabajo(config, jobId);
         if (!activo) return;
         setJob(estado);
         setFallos(0);
@@ -82,9 +98,62 @@ export const BarraProgreso = ({ config, jobId, onListo, onCancelar }: Props) => 
 
   const cancelar = async () => {
     setCancelando(true);
-    await cancelarTrabajo(config, jobId);
+    if (visorEnSupabase(config)) await cancelarTrabajoSupabase(config, jobId);
+    else await cancelarTrabajo(config, jobId);
     onCancelar();
   };
+
+  const vincularUrl = async () => {
+    if (!glbUrl.trim() || vinculando) return;
+    setVinculando(true);
+    setErrorVinculo(null);
+    try {
+      const listo = await adjuntarModeloSupabase(config, jobId, glbUrl.trim());
+      setJob(listo);
+      onListo(listo);
+    } catch (e) {
+      setErrorVinculo(e instanceof Error ? e.message : 'No se pudo vincular el modelo.');
+    } finally {
+      setVinculando(false);
+    }
+  };
+
+  const subirGlb = async () => {
+    if (!archivoGlb || vinculando) return;
+    setVinculando(true);
+    setErrorVinculo(null);
+    try {
+      const listo = await subirModeloGLBSupabase(config, {
+        titulo: job?.titulo || 'Gemelo digital',
+        archivo: archivoGlb,
+      });
+      setJob(listo);
+      setArchivoGlb(null);
+      onListo(listo);
+    } catch (e) {
+      setErrorVinculo(e instanceof Error ? e.message : 'No se pudo subir el modelo.');
+    } finally {
+      setVinculando(false);
+    }
+  };
+
+  const enviarAKiri = async () => {
+    if (enviando) return;
+    setEnviando(true);
+    setErrorEnvio(null);
+    try {
+      const estado = await enviarAKiriSupabase(config, jobId);
+      setJob(estado);
+      if (estado.estado === 'listo') onListo(estado);
+      if (estado.estado === 'error') setDetenido(true);
+    } catch (e) {
+      setErrorEnvio(e instanceof Error ? e.message : 'No se pudo enviar el material a KIRI.');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const esperandoModelo = visorEnSupabase(config) && job?.estado === 'pendiente';
 
   return (
     <div className="space-y-6">
@@ -149,6 +218,71 @@ export const BarraProgreso = ({ config, jobId, onListo, onCancelar }: Props) => 
           </p>
         )}
       </div>
+
+      {esperandoModelo && (
+        <div className="space-y-3 rounded-2xl border border-cyan-200 bg-cyan-50/70 px-4 py-4">
+          <div>
+            <p className="text-sm font-semibold text-cyan-900">El material ya está en Supabase</p>
+            <p className="mt-1 text-xs leading-relaxed text-cyan-800">
+              Falta el modelo final para verlo en 3D. Mandá el material a KIRI o vinculá un
+              .glb ya generado.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              isLoading={enviando}
+              disabled={enviando || vinculando}
+              onClick={enviarAKiri}
+            >
+              Enviar a KIRI
+            </Button>
+            <span className="text-xs text-cyan-800">también podés vincularlo a mano:</span>
+          </div>
+          {errorEnvio && <p className="text-xs font-medium text-red-600">{errorEnvio}</p>}
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              type="url"
+              value={glbUrl}
+              onChange={(e) => setGlbUrl(e.target.value)}
+              placeholder="https://…/modelo.glb"
+              className="h-10 flex-1 rounded-2xl border-0 bg-white px-4 text-sm shadow-sm placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+            />
+            <Button
+              type="button"
+              size="sm"
+              disabled={!glbUrl.trim() || vinculando}
+              isLoading={vinculando}
+              onClick={vincularUrl}
+            >
+              Vincular enlace
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="file"
+              accept=".glb,model/gltf-binary"
+              onChange={(e) => {
+                setArchivoGlb(e.target.files?.[0] || null);
+                setErrorVinculo(null);
+                e.target.value = '';
+              }}
+              className="text-xs text-slate-600"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!archivoGlb || vinculando}
+              onClick={subirGlb}
+            >
+              Subir .glb
+            </Button>
+          </div>
+          {errorVinculo && <p className="text-xs font-medium text-red-600">{errorVinculo}</p>}
+        </div>
+      )}
 
       {detenido && (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

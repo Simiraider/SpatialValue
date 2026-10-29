@@ -1,5 +1,5 @@
 /* Fondo azul de marca difuminado (solo el fondo; la tarjeta sigue blanca) */
-.tasacion-fondo {
+.tasacion-pagina__fondo {
   background:
     radial-gradient(1100px 620px at 12% -10%, rgba(0, 135, 192, 0.24), transparent 62%),
     radial-gradient(900px 520px at 92% 4%, rgba(56, 189, 248, 0.22), transparent 58%),
@@ -7,13 +7,13 @@
     linear-gradient(180deg, #e6f3fb 0%, #eff7fd 45%, #e9f4fc 100%);
 }
 
-.TasacionPage-header { padding: 1rem 1.5rem; background: transparent; }
-.TasacionPage-headerInner { display: flex; align-items: center; justify-content: space-between; max-width: 1600px; margin: 0 auto; }
-.TasacionPage-brand { display: inline-flex; align-items: center; text-decoration: none; }
-.TasacionPage-brand .logo-img { width: clamp(150px, 14vw, 185px); height: auto; }
-.TasacionPage-subtitle { color: var(--color-text-muted); font-size: .95rem; }
-.TasacionPage-main { padding: 1rem clamp(1rem, 5vw, 5rem) 3rem; }
-.TasacionPage-card { max-width: 1600px; margin: auto; }
+.tasacion-pagina__cabecera { padding: 1rem 1.5rem; background: transparent; }
+.tasacion-pagina__cabecera-contenido { display: flex; align-items: center; justify-content: space-between; max-width: 1600px; margin: 0 auto; }
+.tasacion-pagina__marca { display: inline-flex; align-items: center; text-decoration: none; }
+.tasacion-pagina__marca .logo__imagen { width: clamp(150px, 14vw, 185px); height: auto; }
+.tasacion-pagina__subtitulo { color: var(--color-text-muted); font-size: .95rem; }
+.tasacion-pagina__principal { padding: 1rem clamp(1rem, 5vw, 5rem) 3rem; }
+.tasacion-pagina__tarjeta { max-width: 1600px; margin: auto; }
 
 .tasacion { width: 100%; }
 
@@ -147,7 +147,7 @@
 .tasacion__acciones button { min-width: 140px; border-radius: 1rem; }
 
 @media (max-width: 980px) { .tasacion__grilla { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tasacion__grilla--ubicacion { grid-template-columns: 1fr; } .tasacion__amenities { grid-template-columns: repeat(3, 1fr); } .tasacion__progreso-etiqueta { display: none; } .tasacion__progreso-paso { padding: .35rem; border-width: 0; background: transparent; } .tasacion__progreso-paso--activa { box-shadow: none; } .tasacion__progreso-linea { width: 4vw; } }
-@media (max-width: 620px) { .TasacionPage-header { padding-inline: 1rem; } .TasacionPage-main { padding-inline: 1rem; } .tasacion__tarjeta { border-radius: 1.5rem; } .tasacion__grilla, .tasacion__amenities { grid-template-columns: 1fr; } .tasacion__eleccion { grid-template-columns: 1fr; } .tasacion__fotos { grid-template-columns: repeat(3, 1fr); } .tasacion__acciones { justify-content: stretch; } .tasacion__acciones button { flex: 1; min-width: 0; } }
+@media (max-width: 620px) { .tasacion-pagina__cabecera { padding-inline: 1rem; } .tasacion-pagina__principal { padding-inline: 1rem; } .tasacion__tarjeta { border-radius: 1.5rem; } .tasacion__grilla, .tasacion__amenities { grid-template-columns: 1fr; } .tasacion__eleccion { grid-template-columns: 1fr; } .tasacion__fotos { grid-template-columns: repeat(3, 1fr); } .tasacion__acciones { justify-content: stretch; } .tasacion__acciones button { flex: 1; min-width: 0; } }
 
 
 /* ── Gemelo digital 3D (paso 4) ──────────────────────────────────────── */

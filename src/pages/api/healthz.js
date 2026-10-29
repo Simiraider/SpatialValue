@@ -1,15 +1,20 @@
-export const prerender = false;
+import {
+  BUCKET,
+  TABLA,
+  claveEsPublica,
+  tipoClave,
+  visorConfigurado,
+  visorOperativo,
+} from '../../Backend/visor-supabase.js';
 
-/**
- * Health check del motor 3D. La UI lo llama con `probarConexionWorker()`
- * antes de habilitar la subida; si responde 200 el flujo arranca.
- */
+export const prerender = false;
 export async function GET() {
-  const conKiri = Boolean(import.meta.env.KIRI_API_KEY || process.env.KIRI_API_KEY);
+  const conKiri = Boolean(process.env.KIRI_API_KEY);
   const conMakeSplat = Boolean(
-    import.meta.env.MAKESPLAT_API_KEY || process.env.MAKESPLAT_API_KEY
+    process.env.MAKESPLAT_API_KEY
   );
   const modo = conKiri ? 'kiri' : conMakeSplat ? 'makesplat' : 'simular';
+  const conSupabase = visorOperativo();
 
   return new Response(
     JSON.stringify({
@@ -19,6 +24,16 @@ export async function GET() {
       colmapInstalado: true,
       denseHabilitado: false,
       kaggleListo: false,
+      visor: {
+        almacenamiento: conSupabase ? 'supabase' : 'servidor',
+        supabaseConfigurado: visorConfigurado(),
+        tipoClave: tipoClave(),
+        clavePublica: claveEsPublica(),
+        bucket: conSupabase ? BUCKET : null,
+        tabla: conSupabase ? TABLA : null,
+        puedeAlmacenar: conSupabase,
+        puedeReconstruir: Boolean(conKiri || conMakeSplat),
+      },
       ok: true,
     }),
     {

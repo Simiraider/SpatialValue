@@ -21,11 +21,12 @@ export async function POST({ request, url }) {
       return responder(413, { error: 'El modelo supera los 120 MB.' });
     }
     const bytes = new Uint8Array(await archivo.arrayBuffer());
+    const texto = (valor) => (typeof valor === 'string' ? valor : null);
     const id = await guardarModeloExterno({
       bytes,
-      titulo: url.searchParams.get('titulo') || 'Modelo 3D externo',
-      idUsuario: url.searchParams.get('id_usuario') || null,
-      idPublicacion: url.searchParams.get('id_publicacion') || null,
+      titulo: texto(form.get('titulo')) || url.searchParams.get('titulo') || 'Modelo 3D externo',
+      idUsuario: texto(form.get('id_usuario')) || url.searchParams.get('id_usuario') || null,
+      idPublicacion: texto(form.get('id_publicacion')) || url.searchParams.get('id_publicacion') || null,
     });
     const estado = await consultarEstado(id);
     return responder(200, estado);
