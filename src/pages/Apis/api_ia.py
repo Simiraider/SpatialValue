@@ -1,31 +1,20 @@
 import os
 import json
-import warnings
+import math
 from pathlib import Path
 
 import pandas as pd
-import psycopg2
-from psycopg2 import pool
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from modelo_ia.modelo import (
-    CONSULTA_ENTRENAMIENTO, COLUMNAS_TEXTO, COLUMNAS_NUMERICAS,
-    limpiar_registros, _preparar_features, crear_modelo, evaluar_modelo,
+    cargar_dataset_csv, COLUMNAS_TEXTO, COLUMNAS_NUMERICAS,
+    limpiar_registros, _preparar_features, crear_modelo, evaluar_modelo, agrupar_inmuebles,
 )
 
 BASE_PATH = Path(__file__).resolve().parent.parent.parent.parent
 ENV_PATH = BASE_PATH / ".env.local"
 load_dotenv(dotenv_path=ENV_PATH)
-
-DATABASE_URL = os.environ.get("SpatialValueStorage_DATABASE_URL")
-if not DATABASE_URL:
-    raise ValueError(
-        "Error: No se encontró DATABASE_URL. Verificá que exista el archivo "
-        ".env.local en la raíz del proyecto o que la variable esté configurada "
-        "en el host (Render/Vercel)."
-    )
-COORDENADAS_DEFAULT = {"lat": -34.6037, "lng": -58.3816}
 
 app = FastAPI(title="API IA Estimador")
 
@@ -36,18 +25,11 @@ def _verificar_api_key(x_api_key: str | None) -> None:
         return
     if not x_api_key or x_api_key != INTERNAL_API_KEY:
         raise HTTPException(status_code=401, detail="API key inválida")
-db_pool = psycopg2.pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
 
 modelo_v4 = None
 
 def _cargar_datos_entrenamiento():
-    conn = db_pool.getconn()
-    try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            return pd.read_sql(CONSULTA_ENTRENAMIENTO, conn)
-    finally:
-        db_pool.putconn(conn)
+    return cargar_dataset_csv()
 
 
 def entrenar_modelo():
@@ -66,11 +48,11 @@ def entrenar_modelo():
 
     nuevo_modelo = crear_modelo()
 
-    nuevo_modelo, evaluacion, _ = evaluar_modelo(nuevo_modelo, X, y)
+    nuevo_modelo, evaluacion, _ = evaluar_modelo(nuevo_modelo, X, y, grupos=agrupar_inmuebles(pd.DataFrame(registros)), random_state=20261028)
     print("Evaluación del modelo: " + json.dumps(evaluacion, ensure_ascii=False))
 
     modelo_v4 = nuevo_modelo
-    print("Modelo entrenado con éxito con los datos actuales de Neon")
+    print("Modelo CatBoost entrenado con éxito con el dataset CSV configurado")
 
 
 try:
@@ -113,7 +95,7 @@ class PropiedadInput(BaseModel):
 @app.get("/")
 def health():
     return {
-        "status": "ok",
+        "status": "ok" if modelo_v4 is not None else "degradado",
         "servicio": "API IA Estimador SpatialValue",
         "modelo": "listo" if modelo_v4 is not None else "sin datos",
     }
@@ -125,16 +107,19 @@ def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(def
     total, cubierta = propiedad.superficie_total_m2, propiedad.superficie_cubierta_m2
     if total is None or cubierta is None or total <= 0 or cubierta <= 0 or cubierta > total:
         raise HTTPException(status_code=422, detail="Se requieren superficies positivas y cubierta menor o igual a total.")
-    latitud = propiedad.latitud if propiedad.latitud is not None else COORDENADAS_DEFAULT["lat"]
-    longitud = propiedad.longitud if propiedad.longitud is not None else COORDENADAS_DEFAULT["lng"]
+    for campo in ("ambientes", "dormitorios", "banos", "anios_de_antiguedad", "expensas_ars"):
+        valor = getattr(propiedad, campo)
+        if valor is not None and (valor < 0 or (campo == "ambientes" and valor == 0)):
+            raise HTTPException(status_code=422, detail=f"Valor inválido para {campo}.")
+    if propiedad.ambientes is not None and propiedad.dormitorios is not None and propiedad.dormitorios > propiedad.ambientes:
+        raise HTTPException(status_code=422, detail="Dormitorios no puede superar ambientes.")
+    latitud, longitud = propiedad.latitud, propiedad.longitud
+    for valor, limite in ((latitud, 90), (longitud, 180)):
+        if valor is not None and (not math.isfinite(valor) or abs(valor) > limite):
+            raise HTTPException(status_code=422, detail="Coordenadas inválidas.")
 
     if modelo_v4 is None:
-        return {
-            "status": "warning",
-            "coordenadas": {"lat": latitud, "lng": longitud},
-            "precio_estimado_usd": 450.0,
-            "message": "Modelo en fase de acumulación de datos inicial.",
-        }
+        raise HTTPException(status_code=503, detail="Modelo no disponible; no se puede producir una tasación.")
 
     datos_entrada = {
         "tipo_propiedad": [propiedad.tipo_propiedad],
@@ -173,10 +158,12 @@ def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(def
     df_input = df_input[COLUMNAS_TEXTO + COLUMNAS_NUMERICAS]
 
     precio_predicho = modelo_v4.predict(df_input)[0]
+    if not math.isfinite(float(precio_predicho)) or precio_predicho <= 0:
+        raise HTTPException(status_code=503, detail="El modelo no produjo un precio válido.")
 
     return {
         "status": "success",
-        "coordenadas": {"lat": latitud, "lng": longitud},
+        "coordenadas": {"lat": latitud, "lng": longitud} if latitud is not None and longitud is not None else None,
         "precio_estimado_usd": float(precio_predicho),
     }
 

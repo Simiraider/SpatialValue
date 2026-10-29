@@ -1,49 +1,77 @@
-# Evaluación del Random Forest actual
+# Modelo CatBoost de SpatialValue
 
-## Organización
+El documento principal es [Evolución y evaluación de CatBoost](informe/INFORME_CATBOOST.html). Abrilo en el navegador: incluye todos los cambios desde la incorporación de CatBoost, explicaciones para aprender, 9 gráficos fundamentales y tablas completas. Cada gráfico también está disponible como PNG en `informe/graficos/`.
 
-- `modelo.py`: consulta SQL, limpieza, preparación de variables, construcción de Random Forest y evaluación. Las funciones están agrupadas por esas etapas. Importarlo no conecta a Neon ni entrena.
-- `evaluar_neon.py`: conecta a Neon en modo de solo lectura y genera resultados usando las funciones de `modelo.py`.
-- `test_modelo.py`: reúne las pruebas de limpieza y evaluación, sin conexión a la base.
-- `auditoria/evaluacion/`: resultados de la última evaluación guardada.
+## Estado actual
 
-Ejecutar las pruebas desde la raíz:
+Se estima precio publicado en USD de viviendas individuales. No se dispone de precios de cierre verificados. La fuente actual es `dataset/propiedades.csv`, con 3.917 filas; después de limpiar quedan 3.375. El modelo recibe seis categorías y 24 variables numéricas. No entrena con su propio precio estimado ni abre PostgreSQL/Neon.
+
+Se mantienen logaritmo del precio, pérdida RMSE, profundidad 6, 1.400 árboles, tasa 0,03 y L2 igual a 1. La API usa estas mismas funciones y configuración. Esta limpieza no cambia sus parámetros, no reinicia servicios y no modifica backend ni frontend.
+
+Los parámetros se leen de `configuracion_catboost.json`; si falta, el entrenamiento devuelve un error. Los análisis por tipo, barrio y precio se calculan una sola vez, en `evaluacion_segmentos`. Se retiraron los resúmenes duplicados y el centrado logarítmico del experimento con Huber.
+
+| Métrica en prueba | Resultado |
+|---|---:|
+| Publicaciones / grupos | 674 / 600 |
+| Grupos compartidos con entrenamiento | 0 |
+| MAE | USD 135.473 |
+| RMSE | USD 609.222 |
+| MAPE | 21,48% |
+| Mediana del error porcentual | 16,10% |
+| Percentil 90 | 46,68% |
+| R² | 0,508 |
+
+Las 674 predicciones se compararon una por una antes y después de ordenar el proyecto: **diferencia máxima USD 0**. El MAPE histórico de 23,69% incluía una oferta de dos casas linderas, excluida por alcance verificado; bajar a 21,48% por retirarla es un cambio de población, no una mejora de las otras predicciones.
+
+La CV de evaluación usa cinco folds de grupos solo en las 2.701 filas de desarrollo: MAPE 21,76% con desvío entre folds de 1,04 puntos. La selección de las seis variantes posteriores utilizó otros folds internos y dio 21,89% para la base. Son protocolos distintos; no se mezclan sus cifras. Este CSV ya fue explorado y requiere confirmación con una muestra futura verificada.
+
+## Qué quedó y por qué
+
+| Archivo o carpeta | Función |
+|---|---|
+| `modelo.py` | Carga, limpieza, variables, CatBoost, grupos y evaluación compartidas con la API |
+| `evaluar_dataset.py` | Evaluación actual, SHAP, curva interna, bootstrap por grupos y permutación |
+| `generar_informe.py` | Documento HTML, tablas y gráficos individuales; no selecciona ni cambia el modelo |
+| `test_modelo.py` | Pruebas del flujo activo, métricas, fuga entre grupos, identidad de republicaciones y SHAP |
+| `configuracion_catboost.json` | Parámetros activos, sin credenciales ni pesos |
+| `dataset/propiedades.csv` | Fuente de entrenamiento, preservada durante esta limpieza |
+| `dataset/revision_republicaciones.json` | Decisiones e identidad verificadas para no eliminar unidades diferentes |
+| `auditoria/actual/metricas.json` | Métricas, configuración, hashes y análisis actuales |
+| `auditoria/actual/predicciones.csv` | Predicciones por ID y grupo; también funciona como referencia de regresión |
+| `auditoria/actual/analisis.npz` | Aportes SHAP y remuestreos bootstrap para regenerar gráficos sin entrenar |
+| `auditoria/historial_catboost.zip` | Respaldo verificado de resultados y código anteriores, fuentes y CSV original previo a las seis copias eliminadas |
+| `informe/` | Documento principal y sus 9 gráficos fundamentales |
+
+Se retiraron del flujo activo los especialistas por tipo, sus transformaciones experimentales, las búsquedas antiguas, imágenes repetidas, informes parciales y cachés. Las variantes descartadas permanecen en el historial para mantener la evidencia de por qué no se adoptaron. El ZIP no participa en la predicción de la API; solo se consulta para documentar la evolución.
+
+## Reglas de datos que siguen vigentes
+
+- Se preservan ceros válidos y faltantes; no se inventan características ni precios.
+- Se rechazan alquileres, operaciones no confirmadas, precios inválidos y características incoherentes.
+- Se excluyen desarrollos completos, ventas en bloque, una superficie contradictoria verificada y la oferta revisada de dos casas linderas.
+- La categoría de la URL corrige tipos mal copiados. Las republicaciones solo se eliminan con identidad verificada y huellas vigentes.
+- Dirección o GPS y estructura generan grupos preventivos, sin usar precio. Un grupo no certifica identidad catastral.
+- Cubierta debe ser positiva y no superar total bajo el contrato actual. Se documentaron 37 casas que requieren distinguir terreno y construido antes de reincorporarlas; la API también aplica esa restricción.
+- No se eliminan anuncios por ser caros, grandes o por tener un error alto. Las alertas estadísticas generan revisión.
+
+## Cómo ejecutar
+
+Desde la raíz del repositorio, en el entorno Python con las dependencias del modelo:
 
 ```sh
 PYTHONPATH=src/pages/Apis python -m unittest modelo_ia.test_modelo -v
+PYTHONPATH=src/pages/Apis python -m modelo_ia.evaluar_dataset
+PYTHONPATH=src/pages/Apis python -m modelo_ia.evaluar_dataset --solo-informe
 ```
 
-Ejecutar desde la raíz, con las dependencias Python del modelo y Matplotlib instaladas:
+`--solo-informe` verifica fuente, preparación, configuración, identidad de prueba y código; reutiliza las predicciones sin entrenar. Si esos elementos cambian, exige evaluar de nuevo. Se admite `--csv /ruta/propiedades.csv`; también se conserva `MODELO_DATASET_CSV`.
+
+El evaluador compara una nueva ejecución con las predicciones anteriores cuando fuente, configuración e IDs coinciden y se detiene si cambian antes de reemplazarlas. Una modificación deliberada del modelo debe revisarse explícitamente, no aceptarse como una simple limpieza.
+
+Para consultar el historial sin extraerlo:
 
 ```sh
-PYTHONPATH=src/pages/Apis python -m modelo_ia.evaluar_neon
+python -m zipfile -l src/pages/Apis/modelo_ia/auditoria/historial_catboost.zip
 ```
 
-La conexión se lee de `SpatialValueStorage_DATABASE_URL` en el entorno o `.env.local`. La consulta a Neon es de solo lectura. El comando no importa el servidor FastAPI, no modifica tablas y no publica el modelo entrenado.
-
-## Qué mide
-
-- **MAE (USD):** promedio del error absoluto. Un MAE de 20.000 significa un desvío absoluto promedio de USD 20.000 en esa muestra.
-- **RMSE (USD):** raíz del promedio del error al cuadrado; da más peso a errores grandes.
-- **MAPE (%):** promedio de errores absolutos relativos al precio observado. Puede aumentar mucho en propiedades baratas; requiere precios positivos.
-- **R²:** mejora del error cuadrático respecto de la media de los precios de la muestra evaluada. No es un porcentaje de aciertos. Puede ser negativo; se informa null si todos los precios reales son iguales.
-- **Cross-validation:** cinco modelos entrenados desde cero sobre diferentes particiones del conjunto de entrenamiento; se guardan métricas por fold, media y desviación estándar muestral. No incluye el conjunto final de prueba.
-- **Percentiles:** p50, p75, p90, p95, p99 y p100 del error absoluto en USD y del error absoluto relativo en porcentaje. p90 de USD 50.000 significa que el 90% de los errores observados no supera ese importe. No constituye un intervalo predictivo para una propiedad nueva.
-
-## Protocolo
-
-Se conservan las features, limpieza y los 100 árboles con semilla 42 del modelo actual. La extracción se ordena por ID para repetir particiones sobre los mismos registros. El 20% se reserva para prueba; la validación cruzada usa solo el 80% restante. Cada fold aprende su propio encoder e imputación. El modelo devuelto se ajusta al 80%, sin reentrenarlo con el test. Se compara contra una predicción constante igual a la mediana del entrenamiento.
-
-La consulta y el pipeline se comparten con FastAPI: la API también evalúa cada entrenamiento y registra las métricas. La evaluación agrega cinco ajustes al entrenamiento, aumentando su tiempo de ejecución. No se impone todavía un umbral para promover o rechazar candidatos.
-
-## Archivos generados
-
-En `auditoria/evaluacion/`:
-
-- `metricas_modelo.json`: métricas, folds, cobertura por categoría, parámetros, versiones y huella SHA-256 de los datos preparados.
-- `predicciones_prueba.csv`: predicciones y errores del conjunto de prueba, con ID del anuncio.
-- `evaluacion_modelo.png`: predicción frente a precio observado, percentiles y MAE por fold.
-
-## Límites
-
-La división es aleatoria, no temporal ni agrupada por inmueble. Las republicaciones pueden hacer que las métricas sean optimistas. Los precios y etiquetas originales aún requieren verificación; las reglas actuales no detectan todos los errores. Se mantiene el criterio actual para identificar ventas por URL: no se reinterpreta `compra` en este cambio. Una buena métrica global puede ocultar errores en PH o departamentos con pocos ejemplos. No se utiliza el JSON histórico para entrenar esta evaluación. No se ajustan hiperparámetros usando los resultados del test.
+El respaldo se verificó antes de retirar las copias activas. Los archivos anteriores mantienen sus rutas relativas dentro del ZIP; incluye el CSV original de 3.923 filas y el registro de las seis eliminaciones.

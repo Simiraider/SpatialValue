@@ -1,0 +1,11 @@
+{
+  "nombre": "ajuste_d6_i1400_lr0.03_l21",
+  "transformacion_objetivo": "log",
+  "parametros": {
+    "iterations": 1400,
+    "depth": 6,
+    "learning_rate": 0.03,
+    "loss_function": "RMSE",
+    "l2_leaf_reg": 1
+  }
+}

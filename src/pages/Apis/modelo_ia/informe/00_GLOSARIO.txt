@@ -1,0 +1,60 @@
+GLOSARIO DE CATBOOST EN SPATIALVALUE
+
+Entrenamiento: Ejemplos que el modelo usa para aprender.
+Prueba o test: Ejemplos reservados para medir el resultado; este test ya fue explorado durante el proyecto.
+Validación cruzada: Varios repartos internos para medir variación sin aprender de la partición que se está validando.
+Grupo: Publicaciones vinculadas de forma conservadora por dirección o GPS y estructura; no garantiza identidad.
+Sobreajuste: Aprender detalles del entrenamiento que no ayudan a predecir ejemplos nuevos.
+Sesgo con signo: Promedio de sobreestimaciones y subestimaciones; los signos pueden cancelarse.
+MAPE: Promedio de errores absolutos divididos por el precio observado. Da más peso relativo a precios bajos.
+RMSE: Raíz del promedio de errores cuadrados. Los errores grandes influyen mucho.
+R²: Compara el error cuadrático con la variación de los precios observados; no mide porcentaje de aciertos.
+SHAP: Reparto de la predicción entre aportes del modelo. No demuestra causalidad.
+Permutación: Mezclar una característica para medir cuánto depende de ella el modelo fijo.
+Bootstrap por grupos: Remuestrear grupos completos para explorar la variación de una medida en esta muestra.
+
+RECORRIDO DE MODELO.PY Y TEST_MODELO.PY
+====================================
+
+IDEA PRINCIPAL
+CatBoost aprende a estimar precios a partir de características de viviendas.
+Nuestro código prepara los datos y comprueba el resultado.
+
+MODELO.PY: EL RECORRIDO EN 8 PASOS
+1. cargar_dataset_csv: lee el CSV sin modificarlo. No consulta Neon.
+2. limpiar_registros: rechaza datos inválidos, alquileres y anuncios fuera
+   del alcance. Conserva ceros válidos y datos desconocidos.
+3. eliminar_republicaciones: excluye únicamente copias verificadas.
+4. _preparar_features: prepara seis categorías y 24 variables numéricas.
+   X son las características; y es el precio publicado que queremos estimar.
+5. agrupar_inmuebles y dividir_datos: mantienen anuncios relacionados juntos
+   y reservan aproximadamente el 20% de los grupos para prueba.
+6. crear_modelo: construye CatBoost. fit aprende; predict estima.
+   Aprende log(precio) y después transforma la salida de vuelta a USD.
+7. evaluar_modelo: hace cinco validaciones internas solo en entrenamiento
+   y ajusta otro modelo con todo ese entrenamiento para predecir la prueba.
+8. calcular_metricas y evaluar_segmentos: miden errores globales y por tipo,
+   barrio y precio. Los segmentos no cambian las predicciones.
+
+PARÁMETROS ACTUALES
+- 1.400 árboles: cantidad de etapas de ajuste.
+- Profundidad 6: complejidad de cada árbol.
+- Tasa 0,03: cuánto aporta cada etapa.
+- L2 = 1: regularización que limita la flexibilidad del ajuste.
+- RMSE: pérdida de entrenamiento, aplicada al precio en escala logarítmica.
+
+TEST_MODELO.PY: QUÉ COMPRUEBAN SUS 35 PRUEBAS
+- LimpiezaTest: reglas de entrada, ceros, faltantes y filas originales intactas.
+- EvaluacionTest: cuentas de métricas, bootstrap y separación de la prueba.
+- SegmentosTest: rangos, cobertura y grupos separados.
+- DatasetCSVTest: lectura del CSV y uso del precio observado, no del precio IA.
+- CatBoostTest: categorías nuevas, faltantes, clonación, salida en USD y SHAP.
+- IntegridadDatosTest: tipos correctos y grupos sin mezcla entre conjuntos.
+- RepublicacionesTest: no borrar unidades distintas ni usar revisiones viejas.
+
+Las pruebas usan ejemplos inventados y modelos pequeños. Que pasen no garantiza
+un MAPE ni precios correctos en propiedades futuras. LinearRegression aparece
+solo como herramienta de control en algunas pruebas; la tasación usa CatBoost.
+
+PARA EJECUTAR LAS PRUEBAS DESDE LA RAÍZ
+PYTHONPATH=src/pages/Apis python -m unittest modelo_ia.test_modelo -v

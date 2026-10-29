@@ -1,0 +1,196 @@
+{
+  "fecha_revision": "2026-10-28",
+  "metodo": "Revisión documental de ambas publicaciones, con detalles específicos del inmueble. Título, dirección, atributos y GPS solos solo generan candidatos. Fotos no verificadas. No es certificación catastral.",
+  "retencion": "Fecha de publicación más reciente informada por el CSV; a igual fecha mayor completitud de características observadas y luego menor ID. No se elige por precio ni error del modelo.",
+  "casos": [
+    {
+      "ids": [
+        "zp-60219946",
+        "zp-60527542"
+      ],
+      "decision": "mismo_inmueble",
+      "firma": [
+        "casa-en-devoto-a-reciclar-lote-propio-plaza-arenales",
+        "pareja 4190",
+        [],
+        160.0,
+        100.0,
+        5.0,
+        4.0,
+        4.0,
+        null
+      ],
+      "huellas": {
+        "zp-60219946": "a4af9ef6cfa0f8866b3d9d0a10c4cce0049dc65ec4bae0b094becec5f3f6657e",
+        "zp-60527542": "ff2f764193d017f82cd6baff4a5fa98a200c4ae01fe2810bf3b850ab8f263fd1"
+      },
+      "evidencia": "Ambos anuncios describen la misma casa completa en Pareja 4190: tres plantas, lote de 8 por 8,73 m, cuatro dormitorios y la misma distribución. Coinciden dirección precisa y descripción detallada; no solo atributos del CSV.",
+      "fuentes": [
+        "https://www.zonaprop.com.ar/propiedades/clasificado/veclcain-casa-en-devoto-a-reciclar-lote-propio-plaza-arenales-60219946.html",
+        "https://www.zonaprop.com.ar/propiedades/clasificado/veclcain-casa-en-devoto-a-reciclar-lote-propio-plaza-arenales-60527542.html"
+      ]
+    },
+    {
+      "ids": [
+        "zp-60154443",
+        "zp-60235709"
+      ],
+      "decision": "mismo_inmueble",
+      "firma": [
+        "caballito-casa-6-amb-232-m-sup2--cochera-jardin",
+        "jose juan biedma 800",
+        [],
+        283.0,
+        232.0,
+        6.0,
+        4.0,
+        1.0,
+        null
+      ],
+      "huellas": {
+        "zp-60154443": "c427a244e79ac1a78780e4b80bd39a25aca4b01304766bcf60d768ba90729088",
+        "zp-60235709": "d47e133d1bd2fa48c540dd4732ee65d9cc8b1ffff2902b9cebe661dda3dd73f4"
+      },
+      "evidencia": "Ambas fuentes describen casa sobre lote de 8,65 por 25,10 m, segunda vivienda independiente al fondo, vitraux, marquetería y jardín de 90 m². Misma distribución y anunciante. El tercer candidato zp-60154446 no pudo abrirse y se conserva.",
+      "fuentes": [
+        "https://www.zonaprop.com.ar/propiedades/clasificado/veclcain-caballito-casa-6-amb-232-m-sup2--cochera-jardin-60154443.html",
+        "https://www.zonaprop.com.ar/propiedades/clasificado/veclcain-caballito-casa-6-amb-232-m-sup2--cochera-jardin-60235709.html"
+      ]
+    },
+    {
+      "ids": [
+        "zp-60231993",
+        "zp-60231994"
+      ],
+      "decision": "mismo_inmueble",
+      "firma": [
+        "venta-casa-7-ambientes-a-reciclar-patio-2-banos-jardin",
+        "venezuela 3500",
+        [],
+        300.0,
+        300.0,
+        7.0,
+        5.0,
+        5.0,
+        null
+      ],
+      "huellas": {
+        "zp-60231993": "22fe72925ef54cf2958f2cad6a6860ac12d61717dde265653e153764479aeb95",
+        "zp-60231994": "958a036f507afd890407c194f1fdf98af36b5bf352d22dd48925a5476edca564"
+      },
+      "evidencia": "Ambos anuncios describen una sola casa sobre lote propio en Venezuela3500, PB yPA; indican ausencia de subdivisión bajo propiedad horizontal. Coinciden superficie de parcela231,80m², superficie edificada247m², totalaproximado300m² y detalle completo de la distribución. Coinciden múltiples medidas particulares: cocina8,60×3,00; patio11,05×5,50; jardín6,35×3,60; quincho8,60×3,00; cuatro dormitorios enPA con iguales medidas. La diferencia de barrio comercial (Almagro/Boedo) no cambia el domicilio ni la descripción específica.",
+      "fuentes": [
+        "https://www.zonaprop.com.ar/propiedades/clasificado/veclcain-venta-casa-7-ambientes-a-reciclar-patio-2-banos-jardin-60231993.html",
+        "https://www.zonaprop.com.ar/propiedades/clasificado/veclcain-venta-casa-7-ambientes-a-reciclar-patio-2-banos-jardin-60231994.html"
+      ]
+    },
+    {
+      "ids": [
+        "zp-57969799",
+        "zp-57969956"
+      ],
+      "decision": "mismo_inmueble",
+      "firma": [
+        "venta-casa-7-ambientes-con-jardin-terraza-y-cochera",
+        "zarraga 3500",
+        [],
+        286.0,
+        286.0,
+        7.0,
+        4.0,
+        4.0,
+        3.0
+      ],
+      "huellas": {
+        "zp-57969799": "5b4e874b6a913cee6bc140a30beb199582e5654a8a2c8b8a2770e643a1ad2351",
+        "zp-57969956": "d1801104e1b6e4e98245b6f4645b74d13b1c8e2a14d68c4c2d084ce5ae8758ed"
+      },
+      "evidencia": "Ambos anuncios presentan una casa completa de286m² y7ambientes en Zarraga3500, desarrollada en tresplantas. Coincide el inventario completo en el mismo orden: cuatrodormitorios, uno ensuite convestidor; cuatrobaños; escritorio; jardínypatio; terraza; dependencia de servicio conbaño; lavadero independiente; cochera cubierta con acceso directo; parquet; mismaorientación yestado. Las descripciones de la casa son iguales; se sustituyó el barrio comercial BelgranoR porVillaOrtúzar en el encabezado y párrafo de entorno. La casa completa, mismaubicación y descripción extendida coincidente aportan identidad adicional al título, GPS y superficies delCSV.",
+      "fuentes": [
+        "https://www.zonaprop.com.ar/propiedades/clasificado/veclcain-venta-casa-7-ambientes-con-jardin-terraza-y-cochera-57969799.html",
+        "https://www.zonaprop.com.ar/propiedades/clasificado/veclcain-venta-casa-7-ambientes-con-jardin-terraza-y-cochera-57969956.html"
+      ]
+    },
+    {
+      "ids": [
+        "zp-60117708",
+        "zp-60117733"
+      ],
+      "decision": "mismo_inmueble",
+      "firma": [
+        "venta-casa-reciclada-5-ambientes-jardin-terraza-y",
+        "washington 2500",
+        [],
+        315.0,
+        215.0,
+        5.0,
+        4.0,
+        1.0,
+        null
+      ],
+      "huellas": {
+        "zp-60117708": "62bec980deb6dc865109ce6adcf439cc55e83e8c06dd304f1f6e2d0c7a7f58ac",
+        "zp-60117733": "c77d204988842e22e2c212bc0227017e0400f2bc507c3b129aae68f14a83f794"
+      },
+      "evidencia": "Planta baja con cocina integrada e isla, anafe a inducción y horno Ariston; antecocina oculta, despensa y lavadero. Carpintería de pinotea restaurada. Planta alta con tres dormitorios; suite al frente con balcón compartido y terraza con pileta de borde infinito. Caldera Peisa Summa Condens y sistema de seguridad con sensores y cámaras. Misma secuencia de ambientes, disposición de dormitorios y balcón compartido, terraza con pileta de borde infinito y los mismos equipos Ariston y Peisa; texto completo específico idéntico. No se ofrecen unidades o pisos alternativos.",
+      "fuentes": [
+        "https://www.zonaprop.com.ar/propiedades/clasificado/veclcain-venta-casa-reciclada-5-ambientes-jardin-terraza-y-60117708.html",
+        "https://www.zonaprop.com.ar/propiedades/clasificado/veclcain-venta-casa-reciclada-5-ambientes-jardin-terraza-y-60117733.html"
+      ]
+    },
+    {
+      "ids": [
+        "zp-60508258",
+        "zp-60508390"
+      ],
+      "decision": "mismo_inmueble",
+      "firma": [
+        "venta-ph-4-ambientes-a-reciclar-en-villa-santa-rita",
+        "teodoro vilardebo 1900",
+        [],
+        125.0,
+        113.0,
+        4.0,
+        3.0,
+        3.0,
+        null
+      ],
+      "huellas": {
+        "zp-60508258": "420e1ec348d869735161785ba755ade532854cb65d68f0fa4fcd3be5931290a5",
+        "zp-60508390": "360e8ee426020dca967611d766822e01d923b8cd9d146ee33e4a7d757394a480"
+      },
+      "evidencia": "Recepción de 3,70 por 2,35; patio cubierto de 2,80 por 4,30; cocina de 2,45 por 2,95; escritorio en entrepiso de 4 por 3,65. Planta alta con tres habitaciones y dos pasillos específicos; terraza de 2,45 por 5. Entrada independiente y sin expensas. Misma distribución por plantas, escritorio de entrepiso y todas las medidas de cada ambiente, pasillos y terraza. Misma mención de entrada independiente y ausencia de expensas. Ninguna diferencia de unidad.",
+      "fuentes": [
+        "https://www.zonaprop.com.ar/propiedades/clasificado/veclphin-venta-ph-4-ambientes-a-reciclar-en-villa-santa-rita-60508258.html",
+        "https://www.zonaprop.com.ar/propiedades/clasificado/veclphin-venta-ph-4-ambientes-a-reciclar-en-villa-santa-rita-60508390.html"
+      ]
+    },
+    {
+      "ids": [
+        "zp-56845646",
+        "zp-59960669"
+      ],
+      "decision": "distintos_inmuebles",
+      "firma": [
+        "departamento-en-venta-2-ambientes-saavedra",
+        "vilela 2630",
+        [],
+        60.0,
+        52.0,
+        2.0,
+        1.0,
+        1.0,
+        null
+      ],
+      "huellas": {
+        "zp-56845646": "2d618afe6eaa2154f4ea183e6c7f1ac336cc6a4edddf4b411673a4fcbba4795e",
+        "zp-59960669": "8ed3baa86a2fe9f50cb4f9de808eea5f93e34e70efa028fcfb6f2c837dd1868d"
+      },
+      "evidencia": "Las fuentes describen primer piso y sexto piso, respectivamente. Aunque título, metraje, GPS y dirección coinciden, son unidades diferentes. No eliminar. El CSV no informa el piso de ninguna.",
+      "fuentes": [
+        "https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-departamento-en-venta-2-ambientes-saavedra-56845646.html",
+        "https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-departamento-en-venta-2-ambientes-saavedra-59960669.html"
+      ]
+    }
+  ]
+}
