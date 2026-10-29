@@ -10,6 +10,8 @@ import { calcularValores, esAlquiler, esBorrador } from '../lib/tasacion';
 import { MapaReporte } from './MapaReporte';
 import { normalizeData } from '../lib/normalizar-tasacion';
 import { navegarA } from '../lib/navigate';
+import { Visor3D } from './GemeloDigital/Visor3D';
+import type { EstadoTrabajo } from '../lib/gemelo';
 import '../styles/reporte.css';
 
 class RenderErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { hasError: boolean }> {
@@ -26,6 +28,7 @@ export const ReportPage = () => {
   const [error, setError] = useState<ErrorEstado>(null);
   const [comparables, setComparables] = useState<any[]>([]);
   const [vista, setVista] = useState<'datos' | 'graficos'>('datos');
+  const [gemelo, setGemelo] = useState<EstadoTrabajo | null>(null);
 
   const cargar = async () => {
     setData(null);
@@ -103,9 +106,34 @@ export const ReportPage = () => {
       .catch(() => {});
   }, [data]);
 
+  useEffect(() => {
+    if (!data?.id) return;
+    let cancelado = false;
+    const control = new AbortController();
+    const limite = window.setTimeout(() => control.abort(), 8000);
+
+    fetch(`/api/visor/trabajos?publicacion_id=${encodeURIComponent(String(data.id))}`, {
+      signal: control.signal,
+    })
+      .then((respuesta) => (respuesta.ok ? respuesta.json() : null))
+      .then((cuerpo: { trabajos?: EstadoTrabajo[] } | null) => {
+        if (cancelado || !Array.isArray(cuerpo?.trabajos)) return;
+        const listo = cuerpo.trabajos.find((t) => t.estado === 'listo' && t.modeloUrl);
+        if (listo) setGemelo(listo);
+      })
+      .catch(() => {})
+      .finally(() => window.clearTimeout(limite));
+
+    return () => {
+      cancelado = true;
+      window.clearTimeout(limite);
+      control.abort();
+    };
+  }, [data]);
+
   if (error) {
     return (
-      <div className="ReportePage" style={{ padding: '2rem', textAlign: 'center' }}>
+      <div className="reporte-pagina" style={{ padding: '2rem', textAlign: 'center' }}>
         <p style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>
           {error === 'session'
             ? 'Tu sesión expiró.'
@@ -136,7 +164,7 @@ export const ReportPage = () => {
     );
   }
 
-  if (!data) return <div className="ReportePage" style={{padding: '4rem 2rem', textAlign: 'center'}}><p style={{fontSize:'1.25rem',color:'#64748b'}}>Cargando reporte…</p></div>;
+  if (!data) return <div className="reporte-pagina" style={{padding: '4rem 2rem', textAlign: 'center'}}><p style={{fontSize:'1.25rem',color:'#64748b'}}>Cargando reporte…</p></div>;
 
   const alquiler = esAlquiler(data);
   const esBorradorTasacion = esBorrador(data);
@@ -183,7 +211,7 @@ export const ReportPage = () => {
   } catch (e) {
     console.error('[ReportPage] calcularValores error:', e);
     return (
-      <div className="ReportePage" style={{padding:'4rem 2rem',textAlign:'center'}}>
+      <div className="reporte-pagina" style={{padding:'4rem 2rem',textAlign:'center'}}>
         <p style={{fontSize:'1.25rem',fontWeight:600}}>Error al procesar los datos de la tasación.</p>
         <p style={{color:'#64748b',marginTop:'.5rem'}}>Los datos se recibieron pero no pudieron procesarse correctamente.</p>
         <Button type="button" onClick={() => window.location.reload()} style={{marginTop:'1rem'}}>Recargar</Button>
@@ -220,18 +248,18 @@ export const ReportPage = () => {
   }));
 
   return (
-    <RenderErrorBoundary fallback={<div className="ReportePage" style={{padding:'4rem 2rem',textAlign:'center'}}><p style={{fontSize:'1.25rem',fontWeight:600}}>Hubo un error al renderizar el reporte.</p><p style={{color:'#64748b',marginTop:'.5rem'}}>Los datos se cargaron pero algo falló al dibujarlos.</p><Button type="button" onClick={()=>window.location.reload()} style={{marginTop:'1rem'}}>Recargar</Button></div>}>
-    <div className="ReportePage">
-      <header className="ReportePage-header">
-        <div className="ReportePage-headerInner">
+    <RenderErrorBoundary fallback={<div className="reporte-pagina" style={{padding:'4rem 2rem',textAlign:'center'}}><p style={{fontSize:'1.25rem',fontWeight:600}}>Hubo un error al renderizar el reporte.</p><p style={{color:'#64748b',marginTop:'.5rem'}}>Los datos se cargaron pero algo falló al dibujarlos.</p><Button type="button" onClick={()=>window.location.reload()} style={{marginTop:'1rem'}}>Recargar</Button></div>}>
+    <div className="reporte-pagina">
+      <header className="reporte-pagina__cabecera">
+        <div className="reporte-pagina__cabecera-contenido">
           <div>
-            <p className="ReportePage-meta">
+            <p className="reporte-pagina__meta">
               ID: {data.id || 'N/A'} · {new Date().toLocaleDateString('es-AR')}
             </p>
-            <h1 className="ReportePage-title">
+            <h1 className="reporte-pagina__titulo">
               {alquiler ? 'Reporte de tasación locativa' : 'Reporte final'} - {data.direccion}
             </h1>
-            <p className="ReportePage-demoBadge" aria-label="Origen de la estimación">
+            <p className="reporte-pagina__insignia-demo" aria-label="Origen de la estimación">
               {v.esIA
                 ? 'Estimación generada por el modelo de IA'
                 : data.demo
@@ -243,30 +271,41 @@ export const ReportPage = () => {
         </div>
       </header>
 
-      <main className="ReportePage-main">
-        <section className="ReportePage-valueCard">
-          <p className="ReportePage-valueLabel">
+      <main className="reporte-pagina__principal">
+        <section className="reporte-pagina__tarjeta-valor">
+          <p className="reporte-pagina__valor-etiqueta">
             {alquiler ? 'Valor locativo mensual estimado' : 'Valor total estimado'}
           </p>
-          <p className="ReportePage-valueUsd">
+          <p className="reporte-pagina__valor-usd">
             {alquiler ? `${fmt(v.valorArs)} ARS` : `${fmt(v.valorUsd)} USD`}
           </p>
-          <p className="ReportePage-valueArs">
+          <p className="reporte-pagina__valor-ars">
             {alquiler
               ? `${fmt(v.valorUsd)} USD · Expensas ~ $${fmt(v.expensas)}/mes`
               : `${fmt(v.valorArs)} ARS`}
           </p>
           {!alquiler && (
-            <p className="ReportePage-valueRango">
+            <p className="reporte-pagina__valor-rango">
               Rango de mercado: entre {fmt(v.rangoMin)} y {fmt(v.rangoMax)} USD
             </p>
           )}
         </section>
 
-        <nav className="ReportePage-vista" aria-label="Vista del informe">
+        {gemelo && (
+          <section className="reporte-pagina__seccion" aria-label="Gemelo digital de la propiedad">
+            <Visor3D
+              config={{ workerUrl: '', minFotos: 5, maxFotos: 100, maxVideoMb: 300, modo: 'auto', almacenamiento: 'supabase' }}
+              job={gemelo}
+              onNuevo={() => {}}
+              compacto
+            />
+          </section>
+        )}
+
+        <nav className="reporte-pagina__vista" aria-label="Vista del informe">
           <button
             type="button"
-            className={`ReportePage-vista-btn${vista === 'datos' ? ' ReportePage-vista-btn--activa' : ''}`}
+            className={`reporte-pagina__vista-boton${vista === 'datos' ? ' reporte-pagina__vista-boton--activa' : ''}`}
             aria-pressed={vista === 'datos'}
             onClick={() => setVista('datos')}
           >
@@ -275,7 +314,7 @@ export const ReportPage = () => {
           </button>
           <button
             type="button"
-            className={`ReportePage-vista-btn${vista === 'graficos' ? ' ReportePage-vista-btn--activa' : ''}`}
+            className={`reporte-pagina__vista-boton${vista === 'graficos' ? ' reporte-pagina__vista-boton--activa' : ''}`}
             aria-pressed={vista === 'graficos'}
             onClick={() => setVista('graficos')}
           >
@@ -285,18 +324,18 @@ export const ReportPage = () => {
         </nav>
 
         {esBorradorTasacion && (
-          <div className="ReportePage-editarWrap">
-            <Button type="button" variant="outline" className="ReportePage-editarBtn" onClick={modificar}>
-              <Pencil className="ReportePage-editarIcono" aria-hidden />
+          <div className="reporte-pagina__editar-zona">
+            <Button type="button" variant="outline" className="reporte-pagina__editar-boton" onClick={modificar}>
+              <Pencil className="reporte-pagina__editar-icono" aria-hidden />
               Modificar propiedad
             </Button>
           </div>
         )}
 
         {vista === 'datos' && (<>
-        <section className="ReportePage-section">
-          <h2 className="ReportePage-sectionTitle">Datos de la propiedad</h2>
-          <div className="ReportePage-facts">
+        <section className="reporte-pagina__seccion">
+          <h2 className="reporte-pagina__seccion-titulo">Datos de la propiedad</h2>
+          <div className="reporte-pagina__datos-clave">
             <div><span>Barrio</span><strong>{data.barrio || data.ciudad || '—'}</strong></div>
             <div><span>Tipo</span><strong>{data.tipoUnidad || '—'}</strong></div>
             <div><span>Superficie total</span><strong>{fmt(v.supTotal)} m²</strong></div>
@@ -307,18 +346,18 @@ export const ReportPage = () => {
             <div><span>Dormitorios</span><strong>{data.dormitorios ?? '—'}</strong></div>
             <div><span>Baños</span><strong>{data.banos ?? '—'}</strong></div>
           </div>
-          {Array.isArray(data.comodidades) && data.comodidades.length > 0 && <p className="ReportePage-sectionSubtitle">Amenities: {data.comodidades.join(' · ')}</p>}
+          {Array.isArray(data.comodidades) && data.comodidades.length > 0 && <p className="reporte-pagina__seccion-subtitulo">Amenities: {data.comodidades.join(' · ')}</p>}
         </section>
 
         {alquiler && (
-          <section className="ReportePage-section">
-            <h2 className="ReportePage-sectionTitle">Expensas y servicios</h2>
-            <p className="ReportePage-sectionSubtitle">
+          <section className="reporte-pagina__seccion">
+            <h2 className="reporte-pagina__seccion-titulo">Expensas y servicios</h2>
+            <p className="reporte-pagina__seccion-subtitulo">
               {v.expensasDeclaradas > 0
                 ? `Expensas mensuales declaradas: $${fmt(v.expensas)} ARS.`
                 : `Expensas mensuales estimadas según amenities: $${fmt(v.expensas)} ARS (verificar con la administración).`}
             </p>
-            <p className="ReportePage-sectionSubtitle">
+            <p className="reporte-pagina__seccion-subtitulo">
               El valor del alquiler no incluye expensas ni servicios (luz, gas, agua/AySA, ABL), que suelen estar a cargo
               del inquilino. Las expensas extraordinarias corresponden al propietario.
             </p>
@@ -327,20 +366,20 @@ export const ReportPage = () => {
         </>)}
 
         {vista === 'graficos' && (<>
-        <section className="ReportePage-section">
-          <h2 className="ReportePage-sectionTitle">Historial de precios del barrio</h2>
-          <p className="ReportePage-sectionSubtitle">
+        <section className="reporte-pagina__seccion">
+          <h2 className="reporte-pagina__seccion-titulo">Historial de precios del barrio</h2>
+          <p className="reporte-pagina__seccion-subtitulo">
             Evolución del valor por m² en {data.barrio || 'la zona'} en los últimos 12 meses y su variación mes a mes.
           </p>
-          <div className="ReportePage-duo">
+          <div className="reporte-pagina__dupla-graficos">
             <HistorialBarrioChart barrio={data.barrio} valorM2={v.valorM2} />
             <VariacionMensualChart barrio={data.barrio} valorM2={v.valorM2} />
           </div>
         </section>
 
-        <section className="ReportePage-section">
-          <h2 className="ReportePage-sectionTitle">Análisis de dispersión de mercado</h2>
-          <p className="ReportePage-sectionSubtitle">
+        <section className="reporte-pagina__seccion">
+          <h2 className="reporte-pagina__seccion-titulo">Análisis de dispersión de mercado</h2>
+          <p className="reporte-pagina__seccion-subtitulo">
             Ubicación estratégica de la propiedad en relación con las del mismo barrio y zona.
             El eje X representa el valor por m² y el eje Y la superficie total.
           </p>
@@ -352,9 +391,9 @@ export const ReportPage = () => {
           />
         </section>
 
-        <section className="ReportePage-section">
-          <h2 className="ReportePage-sectionTitle">Comparativa directa de valores</h2>
-          <p className="ReportePage-sectionSubtitle">
+        <section className="reporte-pagina__seccion">
+          <h2 className="reporte-pagina__seccion-titulo">Comparativa directa de valores</h2>
+          <p className="reporte-pagina__seccion-subtitulo">
             Comparación del valor por m² de la propiedad tasada con propiedades similares de la zona.
           </p>
           <ComparativaBarChart
@@ -365,9 +404,9 @@ export const ReportPage = () => {
         </section>
 
         {!alquiler && (
-          <section className="ReportePage-section">
-            <h2 className="ReportePage-sectionTitle">Composición del valor</h2>
-            <p className="ReportePage-sectionSubtitle">
+          <section className="reporte-pagina__seccion">
+            <h2 className="reporte-pagina__seccion-titulo">Composición del valor</h2>
+            <p className="reporte-pagina__seccion-subtitulo">
               Desglose estimado del valor total según componentes: suelo, edificación, amenities y ubicación.
             </p>
             <ComposicionPieChart valorUsd={v.valorUsd} supCub={v.supCub} barrio={data.barrio} />
@@ -377,16 +416,16 @@ export const ReportPage = () => {
 
         {vista === 'datos' && (<>
 
-        <section className="ReportePage-section">
-          <h2 className="ReportePage-sectionTitle">
+        <section className="reporte-pagina__seccion">
+          <h2 className="reporte-pagina__seccion-titulo">
             {alquiler ? 'Propiedades de alquiler similares' : 'Propiedades comparables'}
           </h2>
           {comparables.length > 0 ? (
             <>
-              <p className="ReportePage-sectionSubtitle">
+              <p className="reporte-pagina__seccion-subtitulo">
                 Se encontraron {comparables.length} propiedad{comparables.length > 1 ? 'es' : ''} {comparables.length > 1 ? 'similares' : 'similar'} en tus tasaciones del mismo barrio.
               </p>
-              <div className="ReportePage-comparables">
+              <div className="reporte-pagina__comparables">
                 {comparables.map((c: any) => {
                   const precioIA = Number(c.precio_estimado_ia) || Number(c.precio) || 0;
                   const supC = Number(c.superficie_cubierta) || 0;
@@ -394,21 +433,21 @@ export const ReportPage = () => {
                     <a
                       key={c.id_publicacion}
                       href={`/reporte?id=${c.id_publicacion}`}
-                      className="ReportePage-comparableCard"
+                      className="reporte-pagina__comparable-tarjeta"
                     >
-                      <div className="ReportePage-comparableHeader">
-                        <span className="ReportePage-comparableBadge">{c.tipo_propiedad || 'Inmueble'}</span>
-                        <span className="ReportePage-comparableM2">
+                      <div className="reporte-pagina__comparable-cabecera">
+                        <span className="reporte-pagina__comparable-insignia">{c.tipo_propiedad || 'Inmueble'}</span>
+                        <span className="reporte-pagina__comparable-m2">
                           {supC > 0 ? `${fmt(supC)} m²` : '—'}
                         </span>
                       </div>
-                      <p className="ReportePage-comparableDir">{c.direccion || c.titulo || 'Sin dirección'}</p>
-                      <div className="ReportePage-comparableFooter">
-                        <span className="ReportePage-comparablePrice">
+                      <p className="reporte-pagina__comparable-direccion">{c.direccion || c.titulo || 'Sin dirección'}</p>
+                      <div className="reporte-pagina__comparable-pie">
+                        <span className="reporte-pagina__comparable-precio">
                           {precioIA > 0 ? `$${fmt(precioIA)} USD` : 'Sin precio'}
                         </span>
                         {supC > 0 && precioIA > 0 && (
-                          <span className="ReportePage-comparableM2Price">
+                          <span className="reporte-pagina__comparable-m2-precio">
                             {fmt(Math.round(precioIA / supC))} USD/m²
                           </span>
                         )}
@@ -419,16 +458,16 @@ export const ReportPage = () => {
               </div>
             </>
           ) : (
-            <div className="ReportePage-noComparables">
-              <svg className="ReportePage-noComparablesIcono" viewBox="0 0 64 64" fill="none" aria-hidden>
+            <div className="reporte-pagina__sin-comparables">
+              <svg className="reporte-pagina__sin-comparables-icono" viewBox="0 0 64 64" fill="none" aria-hidden>
                 <circle cx="27" cy="27" r="16" stroke="currentColor" strokeWidth="3" />
                 <path d="m39 39 12 12" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
                 <path d="M19 30h16M19 24h16M19 36h9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
               </svg>
-              <p className="ReportePage-noComparablesTitulo">
+              <p className="reporte-pagina__sin-comparables-titulo">
                 Todavía no hay comparables en {data.barrio || 'este barrio'}
               </p>
-              <p className="ReportePage-noComparablesTexto">
+              <p className="reporte-pagina__sin-comparables-texto">
                 Para mostrar propiedades similares necesitás tener otras tasaciones en el mismo barrio con superficie parecida.
                 El valor de este reporte no se ve afectado: se calculó con los datos de mercado del barrio.
               </p>
@@ -439,8 +478,8 @@ export const ReportPage = () => {
           )}
         </section>
 
-        <section className="ReportePage-section">
-          <h2 className="ReportePage-sectionTitle">
+        <section className="reporte-pagina__seccion">
+          <h2 className="reporte-pagina__seccion-titulo">
             Ubicación de la propiedad
           </h2>
           <MapaReporte

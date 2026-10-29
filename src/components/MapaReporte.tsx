@@ -45,7 +45,7 @@ export const MapaReporte = ({ lat, lng, direccion }: MapaReporteProps) => {
 
   if (cargando) {
     return (
-      <div className="ReportePage-mapPlaceholder">
+      <div className="reporte-pagina__mapa">
         <p style={{ color: '#94a3b8' }}>Buscando ubicación...</p>
       </div>
     );

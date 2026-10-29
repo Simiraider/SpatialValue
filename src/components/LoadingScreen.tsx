@@ -69,23 +69,23 @@ export const LoadingScreen = () => {
   }, []);
 
   return (
-    <section className="LoadingScreen">
-      <div className="LoadingScreen-spinnerWrap">
-        <Loader2 className="LoadingScreen-spinner" />
+    <section className="loading-screen">
+      <div className="loading-screen__spinner-contenedor">
+        <Loader2 className="loading-screen__spinner" />
       </div>
-      <h1 className="LoadingScreen-title">Cargando...</h1>
-      <ul className="LoadingScreen-steps">
+      <h1 className="loading-screen__titulo">Cargando...</h1>
+      <ul className="loading-screen__pasos">
         {steps.map((label, i) => {
           const done = completed > i;
           return (
             <li
               key={label}
-              className={done ? 'LoadingScreen-step LoadingScreen-step--done' : 'LoadingScreen-step'}
+              className={done ? 'loading-screen__paso loading-screen__paso--listo' : 'loading-screen__paso'}
             >
               {done ? (
-                <Check className="LoadingScreen-stepIcon" />
+                <Check className="loading-screen__paso-icono" />
               ) : (
-                <span className="LoadingScreen-stepPending" />
+                <span className="loading-screen__paso-pendiente" />
               )}
               {label}
             </li>

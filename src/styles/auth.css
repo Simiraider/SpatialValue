@@ -10,7 +10,7 @@
 }
 
 /* Split a sangre: mitad formulario, mitad degradé */
-.auth-layout {
+.auth-page__layout {
   min-height: 100vh;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -43,18 +43,18 @@
   margin-bottom: 0.25rem;
 }
 
-.auth-logo {
+.auth-form__logo {
   display: inline-flex;
   align-self: flex-start;
   margin-bottom: 0.6rem;
 }
 
-.auth-logo .logo-img {
+.auth-form__logo .logo__imagen {
   width: clamp(145px, 16vw, 180px);
   height: auto;
 }
 
-.auth-title {
+.auth-form__titulo {
   margin: 0;
   font-size: clamp(1.6rem, 3vw, 2.1rem);
   font-weight: 800;
@@ -63,43 +63,39 @@
   color: #0f172a;
 }
 
-.auth-status {
+.auth-form__estado {
   margin: 0;
   min-height: 1.1em;
   color: #64748b;
   font-size: 0.875rem;
 }
 
-.auth-btn-social {
+/* Botón social (Google próximamente): apagado a propósito */
+.auth-form__boton-social {
   width: 100%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
   min-height: 2.5rem;
-  border: 1px solid #cbd5e1; /* Borde más visible */
-  background-color: #ffffff; /* Fondo blanco sólido */
-  color: #0f172a; /* Texto oscuro visible */
+  border: 1px solid #e2e8f0;
+  border-radius: 0.85rem;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.9rem;
   font-weight: 600;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  opacity: 1;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  cursor: not-allowed;
+  opacity: 0.55;
+  filter: saturate(0.6);
 }
 
-.auth-btn-social:hover {
-  background-color: #f8fafc;
-  border-color: #94a3b8;
-}
-
-.auth-btn-social svg {
-  width: 18px;
-  height: 18px;
-  color: #ea4335;
+.auth-form__boton-social svg {
+  width: 1.1rem;
+  height: 1.1rem;
 }
 
 /* Divisor "o" */
-.auth-divider {
+.auth-form__divisor {
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -111,8 +107,8 @@
   margin: 0.15rem 0;
 }
 
-.auth-divider::before,
-.auth-divider::after {
+.auth-form__divisor::before,
+.auth-form__divisor::after {
   content: '';
   flex: 1;
   height: 1px;
@@ -175,39 +171,39 @@
 }
 
 /* Error de campo: inmediatamente debajo del input, en rojo */
-.auth-error {
+.auth-form__error {
   min-height: 0;
   margin: 0.25rem 0 0 0.25rem;
   font-size: 0.8rem;
   font-weight: 600;
   color: #dc2626;
 }
-.auth-error:empty { display: none; }
-.auth-input--invalido {
+.auth-form__error:empty { display: none; }
+.auth-form__entrada--invalida {
   border-color: #f87171 !important;
   box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.25) !important;
 }
 
 /* Fallback modo demo */
-.auth-demo {
+.auth-form__demo {
   border: 1px solid #fcd34d;
   background: #fffbeb;
   border-radius: 0.95rem;
   padding: 0.9rem 1rem;
   text-align: left;
 }
-.auth-demo-titulo {
+.auth-form__demo-titulo {
   margin: 0 0 0.25rem;
   font-size: 0.875rem;
   font-weight: 700;
   color: #92400e;
 }
-.auth-demo-texto {
+.auth-form__demo-texto {
   margin: 0 0 0.75rem;
   font-size: 0.8rem;
   color: #78350f;
 }
-.auth-demo button {
+.auth-form__demo button {
   width: 100%;
   min-height: 2.5rem;
   border: 1px solid #f59e0b;
@@ -219,30 +215,30 @@
   cursor: pointer;
   transition: background-color 0.15s ease;
 }
-.auth-demo button:hover {
+.auth-form__demo button:hover {
   background: #fef3c7;
 }
 
-.auth-switch {
+.auth-form__enlace-registro {
   margin: 0.5rem 0 0;
   text-align: center;
   font-size: 0.9rem;
   color: #64748b;
 }
 
-.auth-switch a,
-.auth-legal a {
+.auth-form__enlace-registro a,
+.auth-form__legal a {
   color: var(--color-brand, #0087c0);
   font-weight: 700;
   text-decoration: none;
 }
-.auth-switch a:hover,
-.auth-legal a:hover {
+.auth-form__enlace-registro a:hover,
+.auth-form__legal a:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
-.auth-legal {
+.auth-form__legal {
   margin: 0;
   text-align: center;
   font-size: 0.78rem;
@@ -279,7 +275,7 @@
 
 /* ---------------- Mitad de degradé (estilo mesh suave) ---------------- */
 
-.auth-marca {
+.auth-page__marca {
   position: relative;
   min-height: 100vh;
   overflow: hidden;
@@ -287,7 +283,7 @@
 }
 
 /* Blobs difuminados con blur pesado: el degradé se siente "fluido" */
-.auth-marca::before {
+.auth-page__marca::before {
   content: '';
   position: absolute;
   inset: -25%;
@@ -301,7 +297,7 @@
 }
 
 /* Eslogan discreto en una esquina */
-.auth-marca-esquina {
+.auth-page__marca-esquina {
   position: absolute;
   left: clamp(1.5rem, 4vw, 3rem);
   bottom: clamp(1.5rem, 4vw, 3rem);
@@ -328,25 +324,25 @@
   }
   .auth-form form { gap: 0.45rem; }
   .auth-form__cabecera { gap: 0.15rem; margin-bottom: 0; }
-  .auth-logo { margin-bottom: 0.3rem; }
-  .auth-logo .logo-img { width: clamp(130px, 14vw, 155px); }
-  .auth-title { font-size: clamp(1.5rem, 2.6vw, 1.85rem); }
-  .auth-status { font-size: 0.82rem; }
-  .auth-btn-social { min-height: 2.25rem; font-size: 0.85rem; }
-  .auth-divider { margin: 0.05rem 0; }
+  .auth-form__logo { margin-bottom: 0.3rem; }
+  .auth-form__logo .logo__imagen { width: clamp(130px, 14vw, 155px); }
+  .auth-form__titulo { font-size: clamp(1.5rem, 2.6vw, 1.85rem); }
+  .auth-form__estado { font-size: 0.82rem; }
+  .auth-form__boton-social { min-height: 2.25rem; font-size: 0.85rem; }
+  .auth-form__divisor { margin: 0.05rem 0; }
   .auth-form input:not([type='checkbox']) { height: 2.35rem; }
   .auth-form button[type='submit'] { min-height: 2.35rem; font-size: 0.95rem; }
-  .auth-switch { margin-top: 0.15rem; font-size: 0.85rem; }
-  .auth-legal { font-size: 0.72rem; }
+  .auth-form__enlace-registro { margin-top: 0.15rem; font-size: 0.85rem; }
+  .auth-form__legal { font-size: 0.72rem; }
   .auth-form__fila { gap: 0.5rem; }
 }
 
 @media (max-width: 900px) {
-  .auth-layout {
+  .auth-page__layout {
     grid-template-columns: 1fr;
     min-height: auto;
   }
-  .auth-marca {
+  .auth-page__marca {
     display: none;
   }
   .auth-form {
@@ -356,11 +352,11 @@
     padding: clamp(1.5rem, 5vw, 2.25rem);
     box-shadow: 0 12px 32px -18px rgba(15, 23, 42, 0.25);
   }
-  .auth-logo {
+  .auth-form__logo {
     align-self: center;
   }
   .auth-form__cabecera {
     align-items: center;
     text-align: center;
   }
-}
+}

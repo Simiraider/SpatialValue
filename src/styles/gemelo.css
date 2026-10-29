@@ -1,0 +1,10 @@
+/* Estilos complementarios del flujo de gemelo digital 3D.
+   La mayoría del layout usa Tailwind; acá van detalles puntuales. */
+
+model-viewer {
+  display: block;
+  width: 100%;
+  height: 100%;
+  --poster-color: transparent;
+  background: radial-gradient(ellipse at center, #eef7fa 0%, #dbe9ef 100%);
+}

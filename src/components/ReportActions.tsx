@@ -6,13 +6,13 @@ import { generarInformePdf, type DatosInforme } from '../lib/generar-pdf';
 
 export const ReportActions = () => {
   return (
-    <div className="ReportePage-actions">
+    <div className="reporte-pagina__acciones">
       <Button
         variant="outline"
         onClick={() => (window.location.href = '/dashboard')}
         id="btn-volver-dashboard"
       >
-        <ArrowLeft className="ReportePage-downloadIcon" aria-hidden />
+        <ArrowLeft className="reporte-pagina__descarga-icono" aria-hidden />
         Volver al Dashboard
       </Button>
     </div>
@@ -51,7 +51,7 @@ export const ReportDownloadButton = ({ data, cliente }: ReportDownloadButtonProp
   };
 
   return (
-    <div className="ReportePage-downloadGroup">
+    <div className="reporte-pagina__descarga-grupo">
       <Button
         variant="outline"
         onClick={handleDownload}
@@ -59,11 +59,11 @@ export const ReportDownloadButton = ({ data, cliente }: ReportDownloadButtonProp
         isLoading={generando}
         id="btn-descargar-pdf"
       >
-        <Download className="ReportePage-downloadIcon" aria-hidden />
+        <Download className="reporte-pagina__descarga-icono" aria-hidden />
         {generando ? 'Generando PDF...' : 'Descargar PDF'}
       </Button>
       {data && !generando && (
-        <span className="ReportePage-downloadSize">{estimarTamanoPdf(data)}</span>
+        <span className="reporte-pagina__descarga-tamano">{estimarTamanoPdf(data)}</span>
       )}
     </div>
   );

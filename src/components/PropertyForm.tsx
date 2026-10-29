@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { Building2, Check, Home, KeyRound, Loader2, TrendingUp, X } from 'lucide-react';
+import { Box, Building2, Camera, Check, Home, KeyRound, Loader2, TrendingUp, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
@@ -8,6 +8,16 @@ import { apiFetch } from '../lib/api';
 import { getUsuarioId } from '../lib/session';
 import { BARRIOS_CABA } from '../lib/mercado';
 import { cn } from '../lib/utils';
+import {
+  obtenerConfigGemelo,
+  probarConexionWorker,
+  type ConfigGemelo,
+  type EstadoTrabajo,
+} from '../lib/gemelo';
+import { visorEnSupabase } from '../lib/visor-supabase';
+import { SubidaFotos } from './GemeloDigital/SubidaFotos';
+import { BarraProgreso } from './GemeloDigital/BarraProgreso';
+import { Visor3D } from './GemeloDigital/Visor3D';
 
 const TOTAL_STEPS = 4;
 const PASOS = ['Ubicación', 'Características', 'Extras', 'Fotos'];
@@ -47,6 +57,7 @@ type TasacionDraft = {
   estadoGeneral?: number;
   expensas?: string | number;
   fotos?: FotoGuardada[];
+  modelo3d?: { jobId: string; motor?: string | null; bytes?: number | null } | null;
   precioEstimadoUsd?: number | null;
   coordenadas?: { lat: number; lng: number } | null;
   demo?: boolean;
@@ -188,6 +199,11 @@ export const PropertyForm = () => {
   const [guardarComoBorrador, setGuardarComoBorrador] = useState(false);
   const [verifDir, setVerifDir] = useState<VerificacionDireccion>({ estado: 'idle' });
   const [arrastrando, setArrastrando] = useState(false);
+  const [quiereModelo3d, setQuiereModelo3d] = useState(false);
+  const [gemeloFase, setGemeloFase] = useState<'sin-usar' | 'conectando' | 'subir' | 'progreso' | 'listo' | 'sin-worker'>('sin-usar');
+  const [gemeloConfig, setGemeloConfig] = useState<ConfigGemelo | null>(null);
+  const [gemeloJobId, setGemeloJobId] = useState<string | null>(null);
+  const [gemeloJob, setGemeloJob] = useState<EstadoTrabajo | null>(null);
   const esEdicion = Boolean(edicion);
 
   // Validación en tiempo real de superficies (paso 2)
@@ -228,6 +244,32 @@ export const PropertyForm = () => {
 
   const update = <K extends keyof FormData>(field: K, value: FormData[K]) => setData(prev => ({ ...prev, [field]: value }));
   const toggleAmenity = (amenity: string) => update('comodidades', data.comodidades.includes(amenity) ? data.comodidades.filter(item => item !== amenity) : [...data.comodidades, amenity]);
+
+  const activarModelo3d = async () => {
+    setQuiereModelo3d(true);
+    setGemeloFase('conectando');
+    const config = await obtenerConfigGemelo();
+    if (!config) {
+      setGemeloConfig(null);
+      setGemeloFase('sin-worker');
+      return;
+    }
+    setGemeloConfig(config);
+    const conexion = await probarConexionWorker(config);
+    setGemeloFase(conexion.ok ? 'subir' : 'sin-worker');
+  };
+
+  const desactivarModelo3d = () => {
+    setQuiereModelo3d(false);
+    setGemeloFase('sin-usar');
+    setGemeloJobId(null);
+    setGemeloJob(null);
+  };
+
+  const tituloGemelo = () => {
+    const base = `${data.tipoUnidad} en ${data.direccion}`.trim();
+    return base || 'Gemelo digital';
+  };
 
   const supTotalNum = Number(data.superficieTotal) || 0;
   const supCubiertaNum = Number(data.superficieCubierta) || 0;
@@ -293,7 +335,7 @@ export const PropertyForm = () => {
     const fotosGuardadas: FotoGuardada[] = photos.length > 0
       ? photos.map(({ name, size, type }) => ({ name, size, type }))
       : (edicion?.fotos ?? []);
-    const draft = { ...data, ciudad: 'Ciudad de Buenos Aires', superficieDescubierta, fotos: fotosGuardadas };
+    const draft = { ...data, ciudad: 'Ciudad de Buenos Aires', superficieDescubierta, fotos: fotosGuardadas, modelo3d: gemeloJob ? { jobId: gemeloJob.id, motor: gemeloJob.motor, bytes: gemeloJob.modeloBytes } : null };
     const idPublicacion = esEdicion ? edicion!.id! : null;
     const body = {
       titulo: `${data.tipoUnidad} en ${data.direccion}`, descripcion: `Tasación automática. Comodidades: ${data.comodidades.join(', ') || 'sin declarar'}`,
@@ -305,6 +347,7 @@ export const PropertyForm = () => {
       expensas: Number(data.expensas) || 0, comodidades: data.comodidades, fotos: fotosGuardadas, usuario_id: getUsuarioId() || 'demo-user',
       es_borrador: esEdicion ? true : guardarComoBorrador,
       ...(idPublicacion ? { id_publicacion: idPublicacion } : {}),
+      ...(gemeloJob ? { modelo3d_job_id: gemeloJob.id } : {}),
     };
     try {
       const { ok, data: result } = await apiFetch<any>(
@@ -443,6 +486,87 @@ export const PropertyForm = () => {
       </section>}
       {step === 4 && <section>
         <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">{kicker}</p><h1 className="tasacion__encabezado-titulo">Fotos de la propiedad</h1><span className="tasacion__encabezado-sub">Podés sumar imágenes para complementar el análisis visual.</span></div>
+        <div className="tasacion__gemelo">
+          {gemeloFase === 'sin-usar' && (
+            <div className="tasacion__gemelo-inicio">
+              <button type="button" className="tasacion__gemelo-activar" onClick={activarModelo3d}>
+                <Box aria-hidden />
+                <span>
+                  <strong>¿Querés un modelo 3D del ambiente?</strong>
+                  <em>Subí fotos o un video de recorrido y armamos una réplica interactiva. Es opcional.</em>
+                </span>
+              </button>
+            </div>
+          )}
+
+          {gemeloFase !== 'sin-usar' && (
+            <div className="tasacion__gemelo-modos">
+              <div className="tasacion__eleccion" role="group" aria-label="¿Querés generar un modelo 3D?">
+                <TarjetaEleccion icono={Box} titulo="Sí, modelo 3D" activo={quiereModelo3d} onClick={activarModelo3d} />
+                <TarjetaEleccion icono={Camera} titulo="No, solo fotos" activo={!quiereModelo3d} onClick={desactivarModelo3d} />
+              </div>
+
+              {gemeloFase === 'conectando' && <p className="tasacion__hint">Conectando con el servicio 3D…</p>}
+
+              {gemeloFase === 'sin-worker' && (
+                <div className="tasacion__aviso-gemelo">
+                  <p>
+                    <strong>El servicio 3D no está disponible ahora.</strong>{' '}
+                    {gemeloConfig
+                      ? `No responde en ${gemeloConfig.workerUrl}.`
+                      : 'No está configurado en el servidor.'}{' '}
+                    Podés seguir con fotos normales.
+                  </p>
+                  <div className="tasacion__acciones-gemelo">
+                    <Button type="button" variant="outline" size="sm" onClick={desactivarModelo3d}>
+                      Usar fotos normales
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {gemeloFase === 'subir' && gemeloConfig && (
+                <SubidaFotos
+                  config={gemeloConfig}
+                  tituloInicial={tituloGemelo()}
+                  propiedad={esEdicion ? String(edicion!.id!) : null}
+                  onTrabajoCreado={(id) => {
+                    setGemeloJobId(id);
+                    setGemeloFase('progreso');
+                  }}
+                />
+              )}
+
+              {gemeloFase === 'progreso' && gemeloConfig && gemeloJobId && (
+                <BarraProgreso
+                  config={gemeloConfig}
+                  jobId={gemeloJobId}
+                  onListo={job => {
+                    setGemeloJob(job);
+                    setGemeloFase('listo');
+                  }}
+                  onCancelar={() => {
+                    setGemeloJobId(null);
+                    setGemeloJob(null);
+                    setGemeloFase('subir');
+                  }}
+                />
+              )}
+
+              {gemeloFase === 'listo' && gemeloConfig && gemeloJob && (
+                <Visor3D
+                  config={gemeloConfig}
+                  job={gemeloJob}
+                  onNuevo={() => {
+                    setGemeloJob(null);
+                    setGemeloJobId(null);
+                    setGemeloFase('subir');
+                  }}
+                />
+              )}
+            </div>
+          )}
+        </div>
         <label
           className={cn('tasacion__subida', arrastrando && 'tasacion__subida--activa')}
           onDragOver={e => { e.preventDefault(); setArrastrando(true); }}
