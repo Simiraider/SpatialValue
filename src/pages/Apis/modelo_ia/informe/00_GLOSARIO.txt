@@ -6,9 +6,10 @@ Validación cruzada: Varios repartos internos para medir variación sin aprender
 Grupo: Publicaciones vinculadas de forma conservadora por dirección o GPS y estructura; no garantiza identidad.
 Sobreajuste: Aprender detalles del entrenamiento que no ayudan a predecir ejemplos nuevos.
 Sesgo con signo: Promedio de sobreestimaciones y subestimaciones; los signos pueden cancelarse.
-MAPE: Promedio de errores absolutos divididos por el precio observado. Da más peso relativo a precios bajos.
-RMSE: Raíz del promedio de errores cuadrados. Los errores grandes influyen mucho.
-R²: Compara el error cuadrático con la variación de los precios observados; no mide porcentaje de aciertos.
+MAE: Error absoluto medio en prueba: USD 135.473.
+MAPE: Error porcentual absoluto promedio en prueba: 21,48%.
+RMSE: Raíz del error cuadrático medio en prueba: USD 609.222. Penaliza más los errores grandes.
+R²: Resultado en prueba: 0,508. Compara con predecir la media; no es porcentaje de aciertos.
 SHAP: Reparto de la predicción entre aportes del modelo. No demuestra causalidad.
 Permutación: Mezclar una característica para medir cuánto depende de ella el modelo fijo.
 Bootstrap por grupos: Remuestrear grupos completos para explorar la variación de una medida en esta muestra.
