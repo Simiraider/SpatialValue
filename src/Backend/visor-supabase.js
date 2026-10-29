@@ -5,7 +5,7 @@ export const BUCKET = (process.env.SUPABASE_VISOR_BUCKET || BUCKET_POR_DEFECTO).
 export const TABLA = (process.env.SUPABASE_VISOR_TABLA || TABLA_POR_DEFECTO).trim() || TABLA_POR_DEFECTO;
 
 export const MAX_MEDIA_BYTES = 600 * 1024 * 1024;
-export const MAX_GLB_BYTES = 200 * 1024 * 1024;
+export const MAX_GLB_BYTES = 50 * 1024 * 1024;
 
 const URL_IMAGEN = /^image\//i;
 const URL_VIDEO = /^video\/(mp4|quicktime|webm|x-m4v)$/i;

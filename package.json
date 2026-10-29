@@ -17,6 +17,7 @@
   "dependencies": {
     "@astrojs/react": "^6.0.6",
     "@astrojs/vercel": "^11.0.10",
+    "@google/genai": "^2.32.0",
     "@google/model-viewer": "^4.4.0",
     "@neondatabase/serverless": "^1.1.0",
     "@tailwindcss/vite": "^4.1.8",

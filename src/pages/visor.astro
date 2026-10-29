@@ -188,7 +188,7 @@ const porDefecto = modelos[0]?.ruta ?? '/modelos/departamento-demo.glb';
 
   if (lienzo) {
     try {
-      await import('@google/model-viewer/dist/model-viewer-module.min.js');
+      await import('@google/model-viewer');
 
       const visor = document.createElement('model-viewer');
       visor.setAttribute('src', fuente);

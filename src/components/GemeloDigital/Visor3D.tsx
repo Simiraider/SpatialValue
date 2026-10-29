@@ -42,7 +42,7 @@ export const Visor3D = ({ config, job, onNuevo, compacto }: Props) => {
 
     (async () => {
       try {
-        await import('@google/model-viewer/dist/model-viewer-module.min.js');
+        await import('@google/model-viewer');
         if (desmontado || !contenedorRef.current) return;
         visor = document.createElement('model-viewer');
         visor.setAttribute('src', modelo || '');
