@@ -85,7 +85,6 @@ export async function GET({ request }) {
     const email = String(perfil.email).trim().toLowerCase();
     const nombre = perfil.name || email.split('@')[0];
 
-    // 3) Buscar el usuario; si no existe, se crea.
     const existentes = await sql`SELECT * FROM usuarios WHERE LOWER(email) = ${email}`;
     let user = existentes[0];
 

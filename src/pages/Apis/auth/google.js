@@ -1,5 +1,3 @@
-// src/pages/Apis/auth/google.js
-// Paso 1 del login con Google: redirige a la pantalla de consentimiento de Google.
 export const prerender = false;
 
 import crypto from 'node:crypto';
@@ -16,8 +14,6 @@ export async function GET({ request }) {
   const origin = new URL(request.url).origin;
   const redirectUri = `${origin}/Apis/auth/google/callback`;
 
-  // Token anti-CSRF de un solo uso: se guarda en una cookie httpOnly de corta
-  // vida y se compara contra el "state" que Google nos devuelva en el callback.
   const state = crypto.randomUUID();
 
   const params = new URLSearchParams({
