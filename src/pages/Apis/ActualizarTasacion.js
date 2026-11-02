@@ -99,8 +99,8 @@ export async function POST({ request }) {
       barrio || existente[0].ciudad || 'Buenos Aires'
     );
 
-    const IA_URL = import.meta.env.IA_URL || process.env.IA_URL || 'http://127.0.0.1:8000';
-    const IA_API_KEY = import.meta.env.INTERNAL_API_KEY || process.env.INTERNAL_API_KEY || '';
+    const IA_URL = process.env.IA_URL || 'http://127.0.0.1:8000';
+    const IA_API_KEY = process.env.INTERNAL_API_KEY || '';
     let precioIA = null;
     try {
       const resIA = await fetch(`${IA_URL}/estimar-precio`, {

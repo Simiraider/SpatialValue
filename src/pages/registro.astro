@@ -8,14 +8,14 @@ import "../styles/auth.css";
 
 <Layout title="Crear cuenta">
   <div class="auth-page">
-    <div class="auth-layout">
+    <div class="auth-page__layout">
       <section class="auth-form">
         <header class="auth-form__cabecera">
-          <a href="/" class="auth-logo">
+          <a href="/" class="auth-form__logo">
             <Logo variant="claro" />
           </a>
-          <h1 class="auth-title">Crear cuenta</h1>
-          <p class="auth-status" id="mensaje-estado">
+          <h1 class="auth-form__titulo">Crear cuenta</h1>
+          <p class="auth-form__estado" id="mensaje-estado">
             Empezá a tasar propiedades en segundos.
           </p>
         </header>
@@ -59,7 +59,7 @@ import "../styles/auth.css";
               required
               client:load
             />
-            <p class="auth-error" id="error-email" role="alert"></p>
+            <p class="auth-form__error" id="error-email" role="alert"></p>
           </div>
 
           <div>
@@ -79,7 +79,7 @@ import "../styles/auth.css";
               </div>
               <p class="fuerza__etiqueta" id="fuerza-etiqueta" role="status"></p>
             </div>
-            <p class="auth-error" id="error-password" role="alert"></p>
+            <p class="auth-form__error" id="error-password" role="alert"></p>
           </div>
 
           <div>
@@ -93,10 +93,10 @@ import "../styles/auth.css";
               required
               client:load
             />
-            <p class="auth-error" id="error-password-confirm" role="alert"></p>
+            <p class="auth-form__error" id="error-password-confirm" role="alert"></p>
           </div>
 
-          <p class="auth-legal">
+          <p class="auth-form__legal">
             Al registrarte aceptás nuestros <a href="#">Términos de uso</a> y <a href="#">Política de privacidad</a>.
           </p>
 
@@ -107,13 +107,13 @@ import "../styles/auth.css";
           </div>
         </form>
 
-        <p class="auth-switch">
+        <p class="auth-form__enlace-registro">
           ¿Ya tenés cuenta? <a href="/login">Iniciá sesión</a>
         </p>
       </section>
 
-      <aside class="auth-marca">
-        <p class="auth-marca-esquina">Tasá tu propiedad en minutos, no en semanas.</p>
+      <aside class="auth-page__marca">
+        <p class="auth-page__marca-esquina">Tasá tu propiedad en minutos, no en semanas.</p>
       </aside>
     </div>
   </div>
@@ -142,12 +142,12 @@ import "../styles/auth.css";
 
   const marcarError = (campo: HTMLInputElement | null, nodo: HTMLElement | null, mensaje: string) => {
     campo?.setAttribute('aria-invalid', 'true');
-    campo?.classList.add('auth-input--invalido');
+    campo?.classList.add('auth-form__entrada', 'auth-form__entrada--invalida');
     if (nodo) nodo.textContent = mensaje;
   };
   const limpiarError = (campo: HTMLInputElement | null, nodo: HTMLElement | null) => {
     campo?.removeAttribute('aria-invalid');
-    campo?.classList.remove('auth-input--invalido');
+    campo?.classList.remove('auth-form__entrada', 'auth-form__entrada--invalida');
     if (nodo) nodo.textContent = '';
   };
 

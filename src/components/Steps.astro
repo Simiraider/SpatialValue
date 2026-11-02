@@ -28,22 +28,22 @@ const pasos = [
 ---
 
 <section id="tres-pasos" class="steps">
-  <div class="steps-inner">
-    <header class="steps-header" data-reveal>
-      <h2 class="steps-title">Tres pasos, un valor<br />real de mercado.</h2>
-      <p class="steps-sub">
+  <div class="steps__contenido">
+    <header class="steps__cabecera" data-reveal>
+      <h2 class="steps__titulo">Tres pasos, un valor<br />real de mercado.</h2>
+      <p class="steps__subtitulo">
         Nuestro modelo analiza ubicación, superficie, amenities y comparables
         recientes para entregarte un rango preciso.
       </p>
     </header>
 
-    <div class="steps-grid">
+    <div class="steps__grilla">
       {pasos.map((paso, i) => (
-        <article class="step-card" data-reveal style={`--reveal-delay: ${i * 0.12}s`}>
-          <span class="step-num">{paso.numero}</span>
-          <span class="step-icon" set:html={paso.icono} />
-          <h3 class="step-card-title">{paso.titulo}</h3>
-          <p class="step-card-text">{paso.texto}</p>
+        <article class="steps__tarjeta" data-reveal style={`--reveal-delay: ${i * 0.12}s`}>
+          <span class="steps__numero">{paso.numero}</span>
+          <span class="steps__icono" set:html={paso.icono} />
+          <h3 class="steps__tarjeta-titulo">{paso.titulo}</h3>
+          <p class="steps__tarjeta-texto">{paso.texto}</p>
         </article>
       ))}
     </div>

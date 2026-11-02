@@ -1,10 +1,10 @@
 export const prerender = false;
 
-const IA_URL = import.meta.env.IA_URL || process.env.IA_URL || 'http://127.0.0.1:8000';
-const IA_API_KEY = import.meta.env.INTERNAL_API_KEY || process.env.INTERNAL_API_KEY || '';
+const IA_URL = process.env.IA_URL || 'http://127.0.0.1:8000';
+const IA_API_KEY = process.env.INTERNAL_API_KEY || '';
 
 export async function GET({ request }) {
-  const cronSecret = import.meta.env.CRON_SECRET || process.env.CRON_SECRET;
+  const cronSecret = process.env.CRON_SECRET;
   const authorization = request.headers.get('authorization');
   if (!cronSecret || authorization !== `Bearer ${cronSecret}`) {
     return new Response(JSON.stringify({ ok: false, error: 'No autorizado' }), {

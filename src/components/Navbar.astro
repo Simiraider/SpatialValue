@@ -3,21 +3,21 @@ import Logo from "./Logo.astro";
 ---
 
 <header class="navbar">
-  <div class="navbar-inner">
+  <div class="navbar__contenido">
     <a href="/" class="logo">
       <Logo />
     </a>
 
-    <nav class="nav-links" aria-label="Navegación principal">
-      <a href="/dashboard">Dashboard</a>
-      <a href="/tasacion" class="active" data-requiere-login>Tasá tu propiedad</a>
-      <a href="/#sobre-tasaciones">Sobre las tasaciones</a>
-      <a href="/#quienes-somos">Quiénes somos</a>
+    <nav class="navbar__enlaces" aria-label="Navegación principal">
+      <a href="/dashboard" class="navbar__enlace">Dashboard</a>
+      <a href="/tasacion" class="navbar__enlace navbar__enlace--activo" data-requiere-login>Tasá tu propiedad</a>
+      <a href="/#sobre-tasaciones" class="navbar__enlace">Sobre las tasaciones</a>
+      <a href="/#quienes-somos" class="navbar__enlace">Quiénes somos</a>
     </nav>
 
-    <div class="nav-right">
-      <a href="/login" class="nav-login">Iniciar sesión</a>
-      <a href="/tasacion" class="button-primary" data-requiere-login>Comenzá a tasar</a>
+    <div class="navbar__acciones">
+      <a href="/login" class="navbar__login">Iniciar sesión</a>
+      <a href="/tasacion" class="boton boton--primario" data-requiere-login>Comenzá a tasar</a>
     </div>
   </div>
 </header>
@@ -25,7 +25,7 @@ import Logo from "./Logo.astro";
 <script>
   import { getUser, exigirSesionEnEnlaces } from '../lib/session';
 
-  const navRight = document.querySelector('.nav-right');
+  const navRight = document.querySelector('.navbar__acciones');
 
   const ICONO_PERSONA = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.2" r="3.4" /><path d="M5.5 19.5c.9-3.3 3.4-5.1 6.5-5.1s5.6 1.8 6.5 5.1" /></svg>`;
 
@@ -35,12 +35,12 @@ import Logo from "./Logo.astro";
     if (!user?.nombre) return;
 
     const perfil = document.createElement('a');
-    perfil.className = 'nav-profile';
+    perfil.className = 'navbar__perfil';
     perfil.href = '/dashboard';
     perfil.title = 'Mi perfil';
 
     const avatar = document.createElement('span');
-    avatar.className = 'nav-profile-avatar';
+    avatar.className = 'navbar__perfil-avatar';
     if (user.avatar) {
       const img = document.createElement('img');
       img.src = user.avatar;
@@ -51,7 +51,7 @@ import Logo from "./Logo.astro";
     }
 
     const nombre = document.createElement('span');
-    nombre.className = 'nav-profile-name';
+    nombre.className = 'navbar__perfil-nombre';
     nombre.textContent = user.nombre;
 
     perfil.append(avatar, nombre);

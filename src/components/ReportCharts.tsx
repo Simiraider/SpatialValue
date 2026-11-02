@@ -70,8 +70,8 @@ export const DispercionChart = ({ valorM2Propiedad, supTotal, comparables, direc
   const yMax = Math.ceil(Math.max(...supVals) + 8);
 
   return (
-    <div className="ReportChart">
-      <p className="ReportChart-subtitle">
+    <div className="reporte-grafico">
+      <p className="reporte-grafico__subtitulo">
         USD/m² vs. Superficie total · promedio {avgM2.toLocaleString('es-AR')} USD/m² · superficie media {avgSup.toLocaleString('es-AR')} m²
       </p>
       <ResponsiveContainer width="100%" height="100%">
@@ -103,10 +103,10 @@ export const DispercionChart = ({ valorM2Propiedad, supTotal, comparables, direc
               if (!active || !payload?.length) return null;
               const d = payload[0].payload as ComparablePoint;
               return (
-                <div className="ReportChart-tooltip">
-                  <p className="ReportChart-tooltipTitle">{d.nombre}</p>
+                <div className="reporte-grafico__tooltip">
+                  <p className="reporte-grafico__tooltip-titulo">{d.nombre}</p>
                   <p>{d.precioM2.toLocaleString('es-AR')} USD/m² · {d.superficie} m²</p>
-                  <p className="ReportChart-tooltipExtra">
+                  <p className="reporte-grafico__tooltip-extra">
                     {d.esLaTasada ? 'Propiedad tasada' : `Valor aprox. $${Math.round((d.precioM2 * d.superficie) / 1000)}k USD`}
                   </p>
                 </div>
@@ -169,8 +169,8 @@ export const ComparativaBarChart = ({ valorM2Propiedad, direccion, testigos }: C
   const maxM2 = Math.max(...data.map((d) => d.precioM2), 1);
 
   return (
-    <div className="ReportChart">
-      <p className="ReportChart-subtitle">Comparativa directa de valores por m²</p>
+    <div className="reporte-grafico">
+      <p className="reporte-grafico__subtitulo">Comparativa directa de valores por m²</p>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 20 }} barCategoryGap="20%">
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
@@ -194,8 +194,8 @@ export const ComparativaBarChart = ({ valorM2Propiedad, direccion, testigos }: C
               if (!active || !payload?.length) return null;
               const d = payload[0].payload as TestigoBar;
               return (
-                <div className="ReportChart-tooltip">
-                  <p className="ReportChart-tooltipTitle">{d.nombre}</p>
+                <div className="reporte-grafico__tooltip">
+                  <p className="reporte-grafico__tooltip-titulo">{d.nombre}</p>
                   <p>{d.precioM2.toLocaleString('es-AR')} USD/m²</p>
                 </div>
               );
@@ -253,8 +253,8 @@ export const ComposicionPieChart = ({ valorUsd, supCub, barrio }: ComposicionPie
   const total = data.reduce((a, d) => a + d.value, 0);
 
   return (
-    <div className="ReportChart">
-      <p className="ReportChart-subtitle">Composición del valor estimado</p>
+    <div className="reporte-grafico">
+      <p className="reporte-grafico__subtitulo">Composición del valor estimado</p>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
@@ -292,8 +292,8 @@ export const ComposicionPieChart = ({ valorUsd, supCub, barrio }: ComposicionPie
               const val = Number(d.value) || 0;
               const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '0';
               return (
-                <div className="ReportChart-tooltip">
-                  <p className="ReportChart-tooltipTitle">{d.name}</p>
+                <div className="reporte-grafico__tooltip">
+                  <p className="reporte-grafico__tooltip-titulo">{d.name}</p>
                   <p>{val.toLocaleString('es-AR')} USD ({pct}%)</p>
                 </div>
               );
@@ -319,8 +319,8 @@ export const HistorialBarrioChart = ({ barrio, valorM2 }: { barrio?: string; val
   const acumulada = ((ultimo - primero) / primero) * 100;
 
   return (
-    <div className="ReportChart">
-      <p className="ReportChart-subtitle">
+    <div className="reporte-grafico">
+      <p className="reporte-grafico__subtitulo">
         USD/m² · {barrio || 'CABA'} · últimos 12 meses ({acumulada >= 0 ? '+' : ''}{acumulada.toFixed(1)}%)
       </p>
       <ResponsiveContainer width="100%" height="100%">
@@ -345,10 +345,10 @@ export const HistorialBarrioChart = ({ barrio, valorM2 }: { barrio?: string; val
               if (!active || !payload?.length) return null;
               const d = payload[0].payload as PuntoHistorial;
               return (
-                <div className="ReportChart-tooltip">
-                  <p className="ReportChart-tooltipTitle">{label}</p>
+                <div className="reporte-grafico__tooltip">
+                  <p className="reporte-grafico__tooltip-titulo">{label}</p>
                   <p>{d.valor.toLocaleString('es-AR')} USD/m²</p>
-                  <p className="ReportChart-tooltipExtra">
+                  <p className="reporte-grafico__tooltip-extra">
                     {d.variacion >= 0 ? '+' : ''}{d.variacion.toFixed(1)}% vs. mes anterior
                   </p>
                 </div>
@@ -380,8 +380,8 @@ export const VariacionMensualChart = ({ barrio, valorM2 }: { barrio?: string; va
     : 0;
 
   return (
-    <div className="ReportChart">
-      <p className="ReportChart-subtitle">
+    <div className="reporte-grafico">
+      <p className="reporte-grafico__subtitulo">
         Variación mensual · promedio {promedio >= 0 ? '+' : ''}{promedio.toFixed(2)}% por mes
       </p>
       <ResponsiveContainer width="100%" height="100%">
@@ -403,9 +403,9 @@ export const VariacionMensualChart = ({ barrio, valorM2 }: { barrio?: string; va
               if (!active || !payload?.length) return null;
               const valor = Number(payload[0].value) || 0;
               return (
-                <div className="ReportChart-tooltip">
-                  <p className="ReportChart-tooltipTitle">{label}</p>
-                  <p className={valor >= 0 ? 'ReportChart-tooltipUp' : 'ReportChart-tooltipDown'}>
+                <div className="reporte-grafico__tooltip">
+                  <p className="reporte-grafico__tooltip-titulo">{label}</p>
+                  <p className={valor >= 0 ? 'reporte-grafico__valor reporte-grafico__valor--sube' : 'reporte-grafico__valor reporte-grafico__valor--baja'}>
                     {valor >= 0 ? '+' : ''}{valor.toFixed(2)}% respecto al mes anterior
                   </p>
                 </div>

@@ -3,6 +3,7 @@ import Layout from "../layouts/Layout.astro";
 import { PropertyForm } from "../components/PropertyForm";
 import Logo from "../components/Logo.astro";
 import "../styles/tasacion.css";
+import "../styles/gemelo.css";
 ---
 
 <Layout title="Nueva Tasación">
@@ -20,18 +21,18 @@ import "../styles/tasacion.css";
     }
   </script>
 
-  <div class="tasacion-fondo">
-  <header class="TasacionPage-header">
-    <div class="TasacionPage-headerInner">
-      <a href="/dashboard" class="TasacionPage-brand">
+  <div class="tasacion-pagina__fondo">
+  <header class="tasacion-pagina__cabecera">
+    <div class="tasacion-pagina__cabecera-contenido">
+      <a href="/dashboard" class="tasacion-pagina__marca">
         <Logo variant="claro" />
       </a>
-      <span class="TasacionPage-subtitle">Nueva tasación</span>
+      <span class="tasacion-pagina__subtitulo">Nueva tasación</span>
     </div>
   </header>
 
-  <main class="TasacionPage-main">
-    <div class="TasacionPage-card">
+  <main class="tasacion-pagina__principal">
+    <div class="tasacion-pagina__tarjeta">
       <PropertyForm client:load />
     </div>
   </main>

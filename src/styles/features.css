@@ -5,12 +5,12 @@
   padding: clamp(3.5rem, 7vw, 6rem) 1.5rem;
 }
 
-.steps-inner {
+.steps__contenido {
   max-width: 1240px;
   margin: 0 auto;
 }
 
-.steps-header {
+.steps__cabecera {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -19,7 +19,7 @@
   margin-bottom: clamp(2rem, 4vw, 3.25rem);
 }
 
-.steps-title {
+.steps__titulo {
   margin: 0;
   font-family: var(--font-display, var(--font-sans));
   font-size: clamp(1.7rem, 3vw, 2.5rem);
@@ -28,7 +28,7 @@
   color: #0c2f52;
 }
 
-.steps-sub {
+.steps__subtitulo {
   margin: 0;
   max-width: 30rem;
   color: #5b6b7c;
@@ -36,13 +36,13 @@
   line-height: 1.6;
 }
 
-.steps-grid {
+.steps__grilla {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
 }
 
-.step-card {
+.steps__tarjeta {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -56,12 +56,12 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.step-card:hover {
+.steps__tarjeta:hover {
   transform: translateY(-4px);
   box-shadow: 0 12px 26px rgba(15, 23, 42, 0.1);
 }
 
-.step-num {
+.steps__numero {
   position: absolute;
   top: 1.4rem;
   right: 1.6rem;
@@ -70,7 +70,7 @@
   color: #9fc4dc;
 }
 
-.step-icon {
+.steps__icono {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -81,12 +81,12 @@
   color: #0c2f52;
 }
 
-.step-icon svg {
+.steps__icono svg {
   width: 1.7rem;
   height: 1.7rem;
 }
 
-.step-card-title {
+.steps__tarjeta-titulo {
   margin: 0.25rem 0 0;
   font-family: var(--font-display, var(--font-sans));
   font-size: 1.08rem;
@@ -94,7 +94,7 @@
   color: #0c2f52;
 }
 
-.step-card-text {
+.steps__tarjeta-texto {
   margin: 0;
   color: #5b6b7c;
   font-size: 0.9rem;
@@ -119,14 +119,14 @@
   padding: clamp(3.5rem, 7vw, 6rem) 1.5rem;
 }
 
-.tasaciones-inner {
+.tasaciones__contenido {
   position: relative;
   z-index: 1;
   max-width: 1240px;
   margin: 0 auto;
 }
 
-.tasaciones-title {
+.tasaciones__titulo {
   margin: 0 0 clamp(2rem, 4vw, 3.25rem);
   font-family: var(--font-display, var(--font-sans));
   font-size: clamp(1.8rem, 3.2vw, 2.6rem);
@@ -135,18 +135,18 @@
   color: #ffffff;
 }
 
-.tasaciones-title em {
+.tasaciones__titulo em {
   font-style: italic;
   color: rgba(255, 255, 255, 0.96);
 }
 
-.tasaciones-grid {
+.tasaciones__grilla {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 2rem 2.5rem;
 }
 
-.tasaciones-item h3 {
+.tasaciones__item h3 {
   margin: 0 0 0.6rem;
   font-family: var(--font-display, var(--font-sans));
   font-size: 1.05rem;
@@ -154,20 +154,20 @@
   color: #ffffff;
 }
 
-.tasaciones-item p {
+.tasaciones__item p {
   margin: 0;
   color: rgba(255, 255, 255, 0.92);
   font-size: 0.92rem;
   line-height: 1.6;
 }
 
-.tasaciones-cta {
+.tasaciones__cta {
   display: flex;
   justify-content: center;
   margin-top: clamp(2.5rem, 5vw, 4rem);
 }
 
-.tasaciones-cta-button {
+.tasaciones__cta-boton {
   display: inline-flex;
   align-items: center;
   gap: 0.7rem;
@@ -182,12 +182,12 @@
   transition: background 0.15s ease, transform 0.15s ease;
 }
 
-.tasaciones-cta-button:hover {
+.tasaciones__cta-boton:hover {
   background: #0f9de0;
   transform: translateY(-1px);
 }
 
-.tasaciones-cta-button svg {
+.tasaciones__cta-boton svg {
   width: 18px;
   height: 18px;
 }
@@ -201,12 +201,12 @@
   padding: 5rem 1.5rem 6rem;
 }
 
-.features-inner {
+.team-section__contenido {
   max-width: 1440px;
   margin: 0 auto;
 }
 
-.features-title {
+.team-section__titulo {
   text-align: left;
   font-family: var(--font-display, var(--font-sans));
   font-size: clamp(2rem, 4vw, 3rem);
@@ -216,13 +216,13 @@
   letter-spacing: 0;
 }
 
-.team-grid {
+.team-section__grilla {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 2rem;
 }
 
-.team-member {
+.team-section__miembro {
   text-align: left;
   background: #ffffff;
   border: 1px solid #e6ebf1;
@@ -232,12 +232,12 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.team-member:hover {
+.team-section__miembro:hover {
   transform: translateY(-4px);
   box-shadow: 0 12px 26px rgba(15, 23, 42, 0.1);
 }
 
-.team-photo {
+.team-section__foto {
   display: block;
   width: 100%;
   aspect-ratio: 0.8;
@@ -247,7 +247,7 @@
   object-fit: cover;
 }
 
-.team-member h3 {
+.team-section__miembro h3 {
   margin: 0 0 0.3rem;
   font-family: var(--font-display, var(--font-sans));
   font-size: 1.2rem;
@@ -256,7 +256,7 @@
   color: #0c2f52;
 }
 
-.team-member p {
+.team-section__miembro p {
   margin: 0;
   font-size: 0.92rem;
   font-weight: 500;
@@ -264,19 +264,19 @@
 }
 
 @media (max-width: 900px) {
-  .steps-grid,
-  .tasaciones-grid,
-  .team-grid {
+  .steps__grilla,
+  .tasaciones__grilla,
+  .team-section__grilla {
     grid-template-columns: 1fr;
   }
 
-  .step-card {
+  .steps__tarjeta {
     max-width: 28rem;
     margin: 0 auto;
   }
 
-  .steps-grid,
-  .tasaciones-grid {
+  .steps__grilla,
+  .tasaciones__grilla {
     max-width: 28rem;
     margin-inline: auto;
   }
@@ -311,14 +311,14 @@
   container-type: inline-size;
 }
 
-.laptop-screen {
+.laptop__pantalla {
   background: #182230;
   border-radius: 2.2cqw;
   padding: 1.5cqw 1.5cqw 1.8cqw;
   box-shadow: 0 24px 60px rgba(12, 47, 82, 0.28);
 }
 
-.laptop-base {
+.laptop__base {
   width: 108%;
   margin-left: -4%;
   height: 1.7cqw;
@@ -327,7 +327,7 @@
   box-shadow: 0 14px 30px rgba(12, 47, 82, 0.18);
 }
 
-.report {
+.reporte-demo {
   background: #ffffff;
   border-radius: 1.1cqw;
   padding: 2cqw 2.8cqw 2.8cqw;
@@ -336,7 +336,7 @@
   line-height: 1.45;
 }
 
-.report-top {
+.reporte-demo__superior {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -346,7 +346,7 @@
   margin-bottom: 1.4cqw;
 }
 
-.report-dl {
+.reporte-demo__descarga {
   background: #ffffff;
   border: 1px solid #d8dee8;
   border-radius: 999px;
@@ -356,14 +356,14 @@
   white-space: nowrap;
 }
 
-.report-title {
+.reporte-demo__titulo {
   margin: 0 0 0.6cqw;
   font-size: 2.1cqw;
   font-weight: 700;
   color: #0c2f52;
 }
 
-.report-sub {
+.reporte-demo__subtitulo {
   display: inline-block;
   margin: 0 0 1.4cqw;
   padding: 0.4cqw 0.9cqw;
@@ -373,20 +373,20 @@
   font-size: 1.05cqw;
 }
 
-.report-card {
+.reporte-demo__tarjeta {
   border: 1px solid #e6ebf1;
   border-radius: 1cqw;
   padding: 1.8cqw 2cqw;
   text-align: center;
 }
 
-.rc-label {
+.reporte-demo__etiqueta {
   margin: 0;
   font-size: 1.1cqw;
   color: #64748b;
 }
 
-.rc-value {
+.reporte-demo__valor {
   margin: 0.3cqw 0 0;
   font-size: 3.4cqw;
   font-weight: 800;
@@ -394,20 +394,20 @@
   letter-spacing: -0.01em;
 }
 
-.rc-ars {
+.reporte-demo__valor-ars {
   margin: 0.2cqw 0 0;
   font-size: 1.5cqw;
   font-weight: 600;
   color: #1fb2f5;
 }
 
-.rc-range {
+.reporte-demo__rango {
   margin: 0.8cqw 0 0;
   font-size: 1.1cqw;
   color: #475569;
 }
 
-.rc-bar {
+.reporte-demo__barra {
   position: relative;
   height: 0.5cqw;
   margin: 1.6cqw 0.8cqw 0.5cqw;
@@ -415,7 +415,7 @@
   border-radius: 999px;
 }
 
-.rc-dot {
+.reporte-demo__punto {
   position: absolute;
   top: 50%;
   width: 1.1cqw;
@@ -425,13 +425,13 @@
   transform: translate(-50%, -50%);
 }
 
-.rc-dot-ref {
+.reporte-demo__punto--referencia {
   width: 1.4cqw;
   height: 1.4cqw;
   background: #1fb2f5;
 }
 
-.rc-scale {
+.reporte-demo__escala {
   display: flex;
   justify-content: space-between;
   margin: 0 0.2cqw;
@@ -439,7 +439,7 @@
   color: #94a3b8;
 }
 
-.report-tabs {
+.reporte-demo__pestanas {
   display: flex;
   align-items: center;
   gap: 1.4cqw;
@@ -450,7 +450,7 @@
   color: #64748b;
 }
 
-.tab-active {
+.reporte-demo__pestana--activa {
   background: #1c4066;
   color: #ffffff;
   border-radius: 999px;
@@ -458,38 +458,38 @@
   font-weight: 600;
 }
 
-.report-data {
+.reporte-demo__datos {
   border: 1px solid #e6ebf1;
   border-radius: 1cqw;
   padding: 1.6cqw 2cqw 2cqw;
 }
 
-.report-data h4 {
+.reporte-demo__datos h4 {
   margin: 0 0 0.3cqw;
   font-size: 1.5cqw;
   font-weight: 700;
   color: #0c2f52;
 }
 
-.data-note {
+.reporte-demo__datos-nota {
   margin: 0 0 1.2cqw;
   font-size: 1.02cqw;
   color: #94a3b8;
 }
 
-.data-grid {
+.reporte-demo__datos-grilla {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1.1cqw 1.4cqw;
 }
 
-.data-grid small {
+.reporte-demo__datos-grilla small {
   display: block;
   font-size: 1cqw;
   color: #94a3b8;
 }
 
-.data-grid b {
+.reporte-demo__datos-grilla b {
   font-size: 1.3cqw;
   font-weight: 600;
   color: #16324a;

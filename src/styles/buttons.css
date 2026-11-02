@@ -1,4 +1,4 @@
-.button-primary {
+.boton--primario {
   display: inline-block;
   padding: 0.7rem 1.25rem;
   background: var(--color-brand);
@@ -12,11 +12,11 @@
   transition: background 0.15s ease;
 }
 
-.button-primary:hover {
+.boton--primario:hover {
   background: var(--color-brand-dark);
 }
 
-.button-primary-large {
+.boton--grande {
   padding: 0.85rem 1.75rem;
   font-size: 1rem;
 }
