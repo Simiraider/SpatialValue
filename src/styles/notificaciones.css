@@ -172,3 +172,28 @@
   right: auto;
   top: 0;
 }
+.notificaciones__item-detalle {
+  margin: 4px 0;
+  font-size: .76rem;
+  color: var(--dash-texto-secundario, #64748b);
+}
+
+.notificaciones__item-iniciales--propiedad {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.notificaciones__item-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  font-size: .75rem;
+  font-weight: 650;
+  color: #0284c7;
+  text-decoration: none;
+}
+
+.notificaciones__item-link:hover {
+  text-decoration: underline;
+}

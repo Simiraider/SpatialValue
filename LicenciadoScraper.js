@@ -45,6 +45,165 @@ if (!CONFIG.DB_URL && !CONFIG.DRY_RUN) {
 }
 const pool = new Pool({ connectionString: CONFIG.DB_URL });
 
+
+const asegurarTablasAlertas = async () => {
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS alertas_busqueda (
+            id_alerta UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            id_usuario UUID NOT NULL,
+            nombre VARCHAR(100) NOT NULL DEFAULT 'Mi búsqueda',
+            barrio VARCHAR(80),
+            tipo_propiedad VARCHAR(40),
+            precio_min_usd INTEGER,
+            precio_max_usd INTEGER,
+            superficie_min_m2 NUMERIC(10,2),
+            superficie_max_m2 NUMERIC(10,2),
+            ambientes_min INTEGER,
+            ambientes_max INTEGER,
+            activa BOOLEAN NOT NULL DEFAULT TRUE,
+            creada_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            actualizada_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS alertas_notificaciones (
+            id_notificacion UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            id_alerta UUID NOT NULL
+                REFERENCES alertas_busqueda(id_alerta)
+                ON DELETE CASCADE,
+            id_usuario UUID NOT NULL,
+            id_propiedad VARCHAR(100) NOT NULL,
+            titulo VARCHAR(180) NOT NULL,
+            barrio VARCHAR(80),
+            tipo_propiedad VARCHAR(40),
+            precio_usd INTEGER,
+            superficie_m2 NUMERIC(10,2),
+            ambientes INTEGER,
+            url TEXT,
+            creada_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            vista BOOLEAN NOT NULL DEFAULT FALSE,
+            UNIQUE (id_alerta, id_propiedad)
+        )
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS alertas_busqueda_usuario_idx
+        ON alertas_busqueda (id_usuario, activa)
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS alertas_notificaciones_usuario_idx
+        ON alertas_notificaciones (id_usuario, creada_en DESC)
+    `);
+};
+
+const generarAlertasParaPropiedad = async ({
+    id_propiedad,
+    link,
+    p,
+    precio_real_usd
+}) => {
+    const superficie =
+        p.superficie_total_m2 ??
+        p.superficie_cubierta_m2 ??
+        null;
+
+    const titulo = (
+        `${p.tipo_propiedad || 'Propiedad'} en ${p.barrio_zona || 'Capital Federal'}`
+    ).slice(0, 180);
+
+    const resultado = await pool.query(`
+        INSERT INTO alertas_notificaciones (
+            id_alerta,
+            id_usuario,
+            id_propiedad,
+            titulo,
+            barrio,
+            tipo_propiedad,
+            precio_usd,
+            superficie_m2,
+            ambientes,
+            url
+        )
+        SELECT
+            a.id_alerta,
+            a.id_usuario,
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            $6,
+            $7,
+            $8
+        FROM alertas_busqueda a
+        WHERE a.activa = TRUE
+
+          AND (
+            a.barrio IS NULL
+            OR LOWER(TRIM(a.barrio)) = LOWER(TRIM($3))
+          )
+
+          AND (
+            a.tipo_propiedad IS NULL
+            OR LOWER(TRIM(a.tipo_propiedad)) = LOWER(TRIM($4))
+          )
+
+          AND (
+            a.precio_min_usd IS NULL
+            OR $5 >= a.precio_min_usd
+          )
+
+          AND (
+            a.precio_max_usd IS NULL
+            OR $5 <= a.precio_max_usd
+          )
+
+          AND (
+            a.superficie_min_m2 IS NULL
+            OR $6 >= a.superficie_min_m2
+          )
+
+          AND (
+            a.superficie_max_m2 IS NULL
+            OR $6 <= a.superficie_max_m2
+          )
+
+          AND (
+            a.ambientes_min IS NULL
+            OR $7 >= a.ambientes_min
+          )
+
+          AND (
+            a.ambientes_max IS NULL
+            OR $7 <= a.ambientes_max
+          )
+
+        ON CONFLICT (id_alerta, id_propiedad)
+        DO NOTHING
+
+        RETURNING id_notificacion
+    `, [
+        id_propiedad,
+        titulo,
+        p.barrio_zona || null,
+        p.tipo_propiedad || null,
+        precio_real_usd,
+        superficie,
+        p.ambientes ?? null,
+        link
+    ]);
+
+    if (resultado.rowCount > 0) {
+        console.log(
+            `[ALERTAS] ${resultado.rowCount} notificación(es) generadas para ${id_propiedad}`
+        );
+    }
+
+    return resultado.rowCount;
+};
+
 const toNullableInt = (val) => {
     if (val === null || val === undefined || val === '') return null;
     const num = typeof val === 'number' ? val : parseFloat(String(val).replace(',', '.'));
@@ -1182,6 +1341,20 @@ const procesarPropiedad = async (context, link, id_propiedad, indice, total) => 
             fechaPublicacion,
             fp,
         });
+
+        try {
+            await generarAlertasParaPropiedad({
+                id_propiedad,
+                link,
+                p: propiedadData,
+                precio_real_usd
+            });
+        } catch (errorAlertas) {
+            console.error(
+                `[ALERTAS] Error procesando ${id_propiedad}:`,
+                errorAlertas.message
+            );
+        }
 
         console.log(`[${indice}/${total}] ${id_propiedad}: guardada (${precio_real_usd} USD)${fp ? ' + Fichaprop' : ''}.`);
         await delay(...CONFIG.DELAY_ENTRE_PROPIEDADES);

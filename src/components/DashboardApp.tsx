@@ -17,9 +17,11 @@ import { GraficoValor } from './GraficoValor';
 import { ActividadReciente } from './ActividadReciente';
 import { NotificationsBell } from './NotificationsBell';
 import { esConfigUsuario, formatValor, type Moneda } from '../lib/usuario-config';
+import { BellRing } from 'lucide-react';
+import AlertasBusqueda from './AlertasBusqueda';
 import '../styles/dashboard.css';
 
-type Section = 'tasaciones' | 'borradores' | 'indicadores' | 'config' | 'comunidad';
+type Section = 'tasaciones' | 'borradores' | 'indicadores' | 'alertas' | 'config' | 'comunidad';
 type Orden = 'predeterminado' | 'recientes' | 'mayor-precio' | 'menor-precio' | 'mas-antiguo';
 type CargaStatus = 'loading' | 'error' | 'ready';
 
@@ -28,6 +30,7 @@ const sidebarItems: { id: Section; label: string; icono: LucideIcon }[] = [
   { id: 'borradores', label: 'Mis borradores', icono: FolderOpen },
   { id: 'indicadores', label: 'Indicadores de mercado', icono: ChartColumn },
   { id: 'comunidad', label: 'Comunidad', icono: Users },
+  { id: 'alertas', label: 'Alertas inmobiliarias', icono: BellRing },
 ];
 
 const opcionesOrden: { id: Orden; label: string }[] = [
@@ -636,6 +639,7 @@ export const DashboardApp = () => {
 
           {section === 'comunidad' && <BuscarUsuarios />}
           {section === 'indicadores' && <IndicadoresMercado />}
+          {section === 'alertas' && <AlertasBusqueda />}
           {section === 'config' && (
             <ConfigPanel
               user={user}
