@@ -1,44 +1,15 @@
-import {
-  BUCKET,
-  TABLA,
-  claveEsPublica,
-  tipoClave,
-  visorConfigurado,
-  visorOperativo,
-} from '../../Backend/visor-supabase.js';
-
 export const prerender = false;
-export async function GET() {
-  const conKiri = Boolean(process.env.KIRI_API_KEY);
-  const conMakeSplat = Boolean(
-    process.env.MAKESPLAT_API_KEY
-  );
-  const modo = conKiri ? 'kiri' : conMakeSplat ? 'makesplat' : 'simular';
-  const conSupabase = visorOperativo();
 
-  return new Response(
-    JSON.stringify({
-      modo,
-      motor: 'adaptador',
-      proveedor: conKiri ? 'kiri-engine' : conMakeSplat ? 'makesplat' : 'demostración',
-      colmapInstalado: true,
-      denseHabilitado: false,
-      kaggleListo: false,
-      visor: {
-        almacenamiento: conSupabase ? 'supabase' : 'servidor',
-        supabaseConfigurado: visorConfigurado(),
-        tipoClave: tipoClave(),
-        clavePublica: claveEsPublica(),
-        bucket: conSupabase ? BUCKET : null,
-        tabla: conSupabase ? TABLA : null,
-        puedeAlmacenar: conSupabase,
-        puedeReconstruir: Boolean(conKiri || conMakeSplat),
-      },
-      ok: true,
-    }),
-    {
-      status: 200,
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-    }
-  );
+/**
+ * Healthcheck publico.
+ *
+ * Deliberadamente NO expone que proveedor 3D esta configurado, ni nombres de
+ * bucket, tabla o tipo de clave: eso le sirve a un atacante para mapear el
+ * backend. Para diagnostico interno existe /api/gemelo/config.
+ */
+export async function GET() {
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+  });
 }

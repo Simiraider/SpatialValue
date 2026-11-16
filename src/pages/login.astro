@@ -20,10 +20,10 @@ import "../styles/auth.css";
           </p>
         </header>
 
-        <button type="button" class="auth-form__boton-social" disabled aria-disabled="true">
+        <a href="/Apis/auth/google" class="auth-form__boton-social" rel="nofollow">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.35 11.1H12v2.98h5.35c-.23 1.4-1.66 4.1-5.35 4.1-3.22 0-5.85-2.67-5.85-5.95s2.63-5.95 5.85-5.95c1.83 0 3.06.78 3.76 1.45l2.56-2.47C16.66 3.9 14.6 3 12 3 6.98 3 3 6.98 3 12s3.98 9 9 9c5.2 0 8.64-3.65 8.64-8.79 0-.59-.06-1.04-.29-1.11Z"/></svg>
-          Continuar con Google (próximamente)
-        </button>
+          Continuar con Google
+        </a>
 
         <div class="auth-form__divisor"><span>o</span></div>
 
@@ -58,16 +58,20 @@ import "../styles/auth.css";
           </div>
         </form>
 
-        <div id="demo-fallback" class="hidden">
-          <div class="auth-form__demo">
-            <p class="auth-form__demo-titulo">No se pudo conectar con el servidor</p>
-            <p class="auth-form__demo-texto">
-              Podés explorar la app en <strong>modo demo</strong> con datos de ejemplo. Tu cuenta real no se verá afectada.
-            </p>
-            <Button variant="outline" fullWidth type="button" client:load id="btn-modo-demo">
-              Continuar en modo demo
-            </Button>
-          </div>
+        <p class="auth-form__enlace-registro">
+          <a href="/recuperar">¿Olvidaste tu contraseña?</a>
+        </p>
+
+        <div id="reset-ayuda" class="auth-form__reset" hidden>
+          <p class="auth-form__reset-titulo">No pudimos validar esos datos</p>
+          <p class="auth-form__reset-texto">
+            Si el email es correcto y la contraseña no, podés elegir una nueva desde acá. También
+            puede ser que la cuenta todavía no exista.
+          </p>
+          <a class="auth-form__reset-enlace" href="/recuperar">Restablecer mi contraseña</a>
+          <a class="auth-form__reset-enlace auth-form__reset-enlace--secundario" href="/registro">
+            Crear una cuenta
+          </a>
         </div>
 
         <p class="auth-form__enlace-registro">
@@ -86,19 +90,23 @@ import "../styles/auth.css";
 
     const form = document.getElementById('loginForm') as HTMLFormElement;
     const mensajeEstado = document.getElementById('mensaje-estado') as HTMLElement;
-    const demoFallback = document.getElementById('demo-fallback') as HTMLElement | null;
+    const resetAyuda = document.getElementById('reset-ayuda') as HTMLElement | null;
 
     const setMensaje = (texto: string, color: string) => {
       mensajeEstado.innerText = texto;
       mensajeEstado.style.color = color;
     };
 
-    const entrarDemo = () => {
-      setMensaje("Modo demo activado — redirigiendo...", "#f59e0b");
-      document.cookie = "usuario_id=demo-user; path=/";
-      setUser({ nombre: 'Demo', id: 'demo-user', demo: true });
-      setTimeout(() => { window.location.href = '/dashboard'; }, 800);
+    const mostrarAyudaReset = () => {
+      resetAyuda?.removeAttribute('hidden');
     };
+
+    // Errores que llegan por redirect (por ejemplo, el callback de Google).
+    const errorUrl = new URLSearchParams(window.location.search).get('error');
+    if (errorUrl) {
+      setMensaje(errorUrl, '#ef4444');
+      mostrarAyudaReset();
+    }
 
     const errorEmail = document.getElementById('error-email') as HTMLParagraphElement;
     const errorPassword = document.getElementById('error-password') as HTMLParagraphElement;
@@ -135,11 +143,6 @@ import "../styles/auth.css";
       }
       return true;
     };
-
-    demoFallback?.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-      if (target.closest('#btn-modo-demo')) entrarDemo();
-    });
 
     form?.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -186,13 +189,12 @@ import "../styles/auth.css";
         } else {
           setMensaje(`${data?.error || 'Error al iniciar sesión'}`, "#ef4444");
           marcarError(passwordElement, errorPassword, data?.error || 'No pudimos iniciar sesión. Revisá tus datos.');
-          if (demoFallback) demoFallback.classList.remove('hidden');
+          mostrarAyudaReset();
         }
       } catch (error) {
         console.error("Error en la petición:", error);
         setMensaje("No se pudo conectar con el servidor.", "#ef4444");
         marcarError(passwordElement, errorPassword, 'No se pudo conectar con el servidor.');
-        if (demoFallback) demoFallback.classList.remove('hidden');
       } finally {
         if (submitBtn) {
           submitBtn.disabled = false;

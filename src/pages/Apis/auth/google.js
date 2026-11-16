@@ -8,7 +8,15 @@ export async function GET({ request }) {
   const clientId = import.meta.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
 
   if (!clientId) {
-    return new Response('Falta configurar GOOGLE_CLIENT_ID en el servidor.', { status: 500 });
+    console.error('[google] Falta GOOGLE_CLIENT_ID en el servidor.');
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: `/login?error=${encodeURIComponent(
+          'El acceso con Google no está disponible en este momento.'
+        )}`,
+      },
+    });
   }
 
   const origin = new URL(request.url).origin;

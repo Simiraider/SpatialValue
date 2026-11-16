@@ -4,7 +4,7 @@ import type { LucideIcon } from 'lucide-react';
 import { type TasacionItem } from '../data/mock';
 import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
-import { apiFetch, getCookie } from '../lib/api';
+import { apiFetch } from '../lib/api';
 import { estimarPrecioVenta, valorM2Alquiler } from '../lib/mercado';
 import { cargarDolar, dolarActual } from '../lib/dolar';
 import { getUser, getUsuarioId, cerrarSesion, syncSessionAcrossTabs, actualizarSesion, setUser as guardarSesionCliente, type SesionUsuario } from '../lib/session';
@@ -130,6 +130,16 @@ export const DashboardApp = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(true);
+
+  // En móvil el menú lateral es un panel superpuesto: arranca cerrado para que
+  // el contenido se vea completo.
+  useEffect(() => {
+    if (window.matchMedia('(max-width: 900px)').matches) setSidebarVisible(false);
+  }, []);
+
+  const cerrarSidebarEnMovil = () => {
+    if (window.matchMedia('(max-width: 900px)').matches) setSidebarVisible(false);
+  };
   const confirmTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const filtrosRef = useRef<HTMLDivElement | null>(null);
   const perfilRef = useRef<HTMLDivElement | null>(null);
@@ -156,7 +166,7 @@ export const DashboardApp = () => {
   setUser(u);
   setMoneda(u?.moneda ?? 'USD');
   setAvatar(u?.avatar ?? '');
-  if (!getCookie('usuario_id') || !getUser()) {
+  if (!getUser()) {
     window.location.href = '/login';
     return;
   }
@@ -492,7 +502,7 @@ export const DashboardApp = () => {
               onClick={() => setFiltrosAbiertos((v) => !v)}
             >
               <SlidersHorizontal className="dashboard__boton-filtros-icono" aria-hidden />
-              Filtros
+              <span className="dashboard__boton-filtros-texto">Filtros</span>
             </button>
 
             {filtrosAbiertos && (
@@ -542,7 +552,6 @@ export const DashboardApp = () => {
                 <div className="dashboard__menu-perfil" role="menu" aria-label="Menú de usuario">
                   <div className="dashboard__menu-perfil-cabecera">
                     <p className="dashboard__menu-perfil-nombre">{user.nombre}</p>
-                    {user.demo && <p className="dashboard__menu-perfil-demo">Modo demo</p>}
                   </div>
                   <button
                     type="button"
@@ -573,6 +582,13 @@ export const DashboardApp = () => {
       </header>
 
       <div className="dashboard__cuerpo">
+        <button
+          type="button"
+          className="dashboard__scrim"
+          aria-label="Cerrar menú"
+          onClick={() => setSidebarVisible(false)}
+        />
+
         <aside className="dashboard__sidebar" aria-label="Menú principal">
           <div className="dashboard__sidebar-superior">
             <NotificationsBell enSidebar />
@@ -589,7 +605,10 @@ export const DashboardApp = () => {
                     "dashboard__nav-item",
                     section === item.id && "dashboard__nav-item--activo"
                   )}
-                  onClick={() => setSection(item.id)}
+                  onClick={() => {
+                    setSection(item.id);
+                    cerrarSidebarEnMovil();
+                  }}
                 >
                   <Icono className="dashboard__nav-item-icono" aria-hidden />
                   <span className="dashboard__nav-item-texto">{item.label}</span>
@@ -601,7 +620,10 @@ export const DashboardApp = () => {
           <div className="dashboard__sidebar-pie">
             <button
               type="button"
-              onClick={() => setSection('config')}
+              onClick={() => {
+                setSection('config');
+                cerrarSidebarEnMovil();
+              }}
               className={cn(
                 "dashboard__boton-config",
                 section === 'config' && "dashboard__boton-config--activo"
@@ -631,12 +653,6 @@ export const DashboardApp = () => {
         </button>
 
         <main className="dashboard__principal">
-          {user?.demo && (
-            <div className="dashboard__aviso-demo">
-              <strong>Modo demo:</strong> no se pudo conectar con el servidor. Estás viendo datos de ejemplo.
-            </div>
-          )}
-
           {section === 'comunidad' && <BuscarUsuarios />}
           {section === 'indicadores' && <IndicadoresMercado />}
           {section === 'alertas' && <AlertasBusqueda />}
@@ -653,7 +669,7 @@ export const DashboardApp = () => {
 
           {(section === 'tasaciones' || section === 'borradores') && (
             <div className="dashboard__panel">
-              {(status === 'ready' || (status === 'error' && user?.demo)) && (
+              {status === 'ready' && (
                 <>
                   <section className="dashboard__bienvenida">
                     <div className="dashboard__bienvenida-textos">
@@ -716,7 +732,7 @@ export const DashboardApp = () => {
                 </div>
               )}
 
-              {status === 'error' && !user?.demo && (
+              {status === 'error' && (
                 <div className="dashboard__error">
                   <p className="dashboard__error-titulo">
                     No pudimos conectar con el servidor para cargar tus tasaciones.
@@ -731,7 +747,7 @@ export const DashboardApp = () => {
                 </div>
               )}
 
-              {(status === 'ready' || (status === 'error' && user?.demo)) && (lista.length === 0 ? (
+              {status === 'ready' && (lista.length === 0 ? (
                 <div className="dashboard__vacio">
                   <p className="dashboard__vacio-texto">
                     {isSearching

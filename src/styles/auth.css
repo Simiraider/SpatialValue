@@ -70,7 +70,7 @@
   font-size: 0.875rem;
 }
 
-/* Botón social (Google próximamente): apagado a propósito */
+/* Botón social (acceso con Google) */
 .auth-form__boton-social {
   width: 100%;
   display: inline-flex;
@@ -84,9 +84,14 @@
   color: #334155;
   font-size: 0.9rem;
   font-weight: 600;
-  cursor: not-allowed;
-  opacity: 0.55;
-  filter: saturate(0.6);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.auth-form__boton-social:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
 }
 
 .auth-form__boton-social svg {
@@ -119,6 +124,11 @@
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
+}
+
+/* El atributo `hidden` pierde contra las reglas de display de arriba */
+.auth-form [hidden] {
+  display: none !important;
 }
 
 .auth-form__fila {
@@ -184,39 +194,99 @@
   box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.25) !important;
 }
 
-/* Fallback modo demo */
-.auth-form__demo {
-  border: 1px solid #fcd34d;
-  background: #fffbeb;
+/* Ayuda de acceso: aparece cuando el login falla */
+.auth-form__reset {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
   border-radius: 0.95rem;
   padding: 0.9rem 1rem;
   text-align: left;
 }
-.auth-form__demo-titulo {
+.auth-form__reset-titulo {
   margin: 0 0 0.25rem;
   font-size: 0.875rem;
   font-weight: 700;
-  color: #92400e;
+  color: #0f172a;
 }
-.auth-form__demo-texto {
-  margin: 0 0 0.75rem;
+.auth-form__reset-texto {
+  margin: 0 0 0.7rem;
   font-size: 0.8rem;
-  color: #78350f;
+  line-height: 1.5;
+  color: #64748b;
 }
-.auth-form__demo button {
-  width: 100%;
-  min-height: 2.5rem;
-  border: 1px solid #f59e0b;
+.auth-form__reset-enlace {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.35rem;
+  padding: 0 1rem;
+  margin-right: 0.4rem;
   border-radius: 0.75rem;
-  background: #ffffff;
-  color: #b45309;
-  font-size: 0.875rem;
+  background: var(--color-brand, #0087c0);
+  color: #ffffff;
+  font-size: 0.85rem;
   font-weight: 700;
-  cursor: pointer;
+  text-decoration: none;
   transition: background-color 0.15s ease;
 }
-.auth-form__demo button:hover {
-  background: #fef3c7;
+.auth-form__reset-enlace:hover {
+  background: var(--color-brand-dark, #006b99);
+}
+.auth-form__reset-enlace--secundario {
+  background: transparent;
+  color: var(--color-brand-dark, #006b99);
+  border: 1px solid #cbd5e1;
+}
+.auth-form__reset-enlace--secundario:hover {
+  background: #ffffff;
+}
+
+/* Aviso de entorno sin SMTP (sólo desarrollo) */
+.auth-form__aviso-dev {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  word-break: break-word;
+}
+.auth-form__aviso-dev a {
+  color: #b45309;
+  font-weight: 700;
+}
+
+/* Bloque de enlace inválido/incompleto */
+.auth-form__bloque-aviso {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 0.95rem;
+  padding: 1rem;
+  text-align: left;
+}
+.auth-form__bloque-aviso-titulo {
+  margin: 0 0 0.3rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+.auth-form__bloque-aviso-texto {
+  margin: 0 0 0.65rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #64748b;
+}
+.auth-form__bloque-aviso-enlace {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-brand, #0087c0);
+  text-decoration: none;
+}
+.auth-form__bloque-aviso-enlace:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .auth-form__enlace-registro {

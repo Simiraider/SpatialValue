@@ -1,0 +1,161 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
+import Logo from "../components/Logo.astro";
+import "../styles/auth.css";
+---
+
+<Layout title="Nueva contraseña">
+  <div class="auth-page">
+    <div class="auth-page__layout">
+      <section class="auth-form">
+        <header class="auth-form__cabecera">
+          <a href="/" class="auth-form__logo">
+            <Logo variant="claro" />
+          </a>
+          <h1 class="auth-form__titulo">Elegí una nueva contraseña</h1>
+          <p class="auth-form__estado" id="mensaje-estado" role="note">
+            Mínimo 8 caracteres, con una mayúscula, un número y un símbolo.
+          </p>
+        </header>
+
+        <form id="restablecer-form" novalidate>
+          <div>
+            <Input
+              id="passwordInput"
+              label="Nueva contraseña"
+              type="password"
+              placeholder="Mínimo 8 caracteres"
+              autoComplete="new-password"
+              required
+              client:load
+            />
+            <p class="auth-form__error" id="error-password" role="alert"></p>
+          </div>
+
+          <div>
+            <Input
+              id="passwordConfirmInput"
+              label="Confirmar contraseña"
+              type="password"
+              placeholder="Repetí tu contraseña"
+              autoComplete="new-password"
+              required
+              client:load
+            />
+            <p class="auth-form__error" id="error-password-confirm" role="alert"></p>
+          </div>
+
+          <div>
+            <Button type="submit" fullWidth variant="secondary" client:load id="restablecer-submit">
+              Guardar contraseña
+            </Button>
+          </div>
+        </form>
+
+        <div id="sin-token" class="auth-form__bloque-aviso" hidden>
+          <p class="auth-form__bloque-aviso-titulo">Este enlace está incompleto</p>
+          <p class="auth-form__bloque-aviso-texto">
+            Nos falta el código del enlace. Pedí uno nuevo y abrilo desde el correo.
+          </p>
+          <a href="/recuperar" class="auth-form__bloque-aviso-enlace">Pedir un enlace nuevo</a>
+        </div>
+
+        <p class="auth-form__enlace-registro">
+          <a href="/login">Volver a iniciar sesión</a>
+        </p>
+      </section>
+
+      <aside class="auth-page__marca">
+        <p class="auth-page__marca-esquina">Tasá tu propiedad en minutos, no en semanas.</p>
+      </aside>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  const form = document.getElementById('restablecer-form') as HTMLFormElement | null;
+  const pwd = document.getElementById('passwordInput') as HTMLInputElement | null;
+  const pwdConfirm = document.getElementById('passwordConfirmInput') as HTMLInputElement | null;
+  const mensajeEstado = document.getElementById('mensaje-estado') as HTMLElement | null;
+  const errorPassword = document.getElementById('error-password') as HTMLParagraphElement | null;
+  const errorPasswordConfirm = document.getElementById('error-password-confirm') as HTMLParagraphElement | null;
+  const bloqueSinToken = document.getElementById('sin-token') as HTMLElement | null;
+
+  const token = new URLSearchParams(window.location.search).get('token') || '';
+
+  if (!token) {
+    form?.setAttribute('hidden', '');
+    bloqueSinToken?.removeAttribute('hidden');
+  }
+
+  const setMensaje = (texto: string, color: string) => {
+    if (!mensajeEstado) return;
+    mensajeEstado.innerText = texto;
+    mensajeEstado.style.color = color;
+  };
+
+  const MSG_PASSWORD =
+    'La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un símbolo.';
+
+  const passwordValida = (v: string) =>
+    v.length >= 8 && /[A-Z]/.test(v) && /[0-9]/.test(v) && /[^A-Za-z0-9]/.test(v);
+
+  form?.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    if (!pwd || !pwdConfirm) return;
+
+    if (errorPassword) errorPassword.textContent = '';
+    if (errorPasswordConfirm) errorPasswordConfirm.textContent = '';
+
+    if (!passwordValida(pwd.value)) {
+      if (errorPassword) errorPassword.textContent = MSG_PASSWORD;
+      return;
+    }
+
+    if (pwd.value !== pwdConfirm.value) {
+      if (errorPasswordConfirm) errorPasswordConfirm.textContent = 'Las contraseñas no coinciden.';
+      return;
+    }
+
+    const submitBtn = document.getElementById('restablecer-submit') as HTMLButtonElement | null;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Guardando...';
+    }
+
+    try {
+      setMensaje('Guardando la nueva contraseña...', '#06b6d4');
+
+      const res = await fetch('/Apis/restablecer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          password: pwd.value,
+          password_confirm: pwdConfirm.value,
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (res.ok && data?.success) {
+        setMensaje(data.mensaje || 'Contraseña actualizada.', '#10b981');
+        form?.reset();
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 1800);
+      } else {
+        setMensaje(data?.error || 'No pudimos cambiar la contraseña.', '#ef4444');
+      }
+    } catch {
+      setMensaje('No se pudo conectar con el servidor.', '#ef4444');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Guardar contraseña';
+      }
+    }
+  });
+</script>

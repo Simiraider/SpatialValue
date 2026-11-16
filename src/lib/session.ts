@@ -1,4 +1,3 @@
-import { getCookie } from './api';
 import { rutaInternaSegura } from './navigate';
 
 export { rutaInternaSegura };
@@ -8,7 +7,6 @@ const SV_USER_KEY = 'sv_user';
 export interface SesionUsuario {
   nombre: string;
   id?: string;
-  demo?: boolean;
   avatar?: string;
   moneda?: 'USD' | 'ARS';
 }
@@ -38,10 +36,15 @@ export function clearUser(): void {
   localStorage.removeItem(SV_USER_KEY);
 }
 
+/**
+ * Id del usuario para mostrar datos en pantalla.
+ *
+ * NO es una credencial: la sesión real vive en una cookie `HttpOnly` que este
+ * código nunca puede leer. Cualquier endpoint debe autenticar con
+ * `resolverUsuarioId(request)` en el servidor.
+ */
 export function getUsuarioId(): string | null {
-  const cookie = getCookie('usuario_id');
-  if (cookie) return cookie.split('.')[0] || null;
-  return getUser()?.id || null;
+  return getUser()?.id ?? null;
 }
 
 export function getMoneda(): 'USD' | 'ARS' {
@@ -54,12 +57,23 @@ export function setMoneda(moneda: 'USD' | 'ARS'): void {
 
 export function cerrarSesion(redirectTo = '/'): void {
   clearUser();
-  document.cookie = 'usuario_id=; Max-Age=0; path=/';
+
+  // La cookie es HttpOnly: sólo el servidor puede borrarla.
+  try {
+    void fetch('/Apis/logout', {
+      method: 'POST',
+      credentials: 'same-origin',
+      keepalive: true,
+    });
+  } catch {
+    void 0;
+  }
+
   if (redirectTo) window.location.href = rutaInternaSegura(redirectTo);
 }
 
 export function tieneSesion(): boolean {
-  return Boolean(getCookie('usuario_id') || getUser());
+  return Boolean(getUser());
 }
 
 export function exigirSesionEnEnlaces(selector = '[data-requiere-login]'): void {

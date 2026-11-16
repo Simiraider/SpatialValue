@@ -11,21 +11,7 @@ interface Props {
   compacto?: boolean;
 }
 
-declare global {
-  interface HTMLElementTagNameMap {
-    'model-viewer': HTMLElement & {
-      src: string;
-      alt: string;
-      autoRotate: boolean;
-      cameraControls: boolean;
-      shadowIntensity: string;
-      exposure: string;
-      cameraOrbit: string;
-      setAttribute(name: string, value: string): void;
-      removeAttribute(name: string): void;
-    };
-  }
-}
+// La declaración de 'model-viewer' vive en src/types/model-viewer.d.ts
 
 export const Visor3D = ({ config, job, onNuevo, compacto }: Props) => {
   const contenedorRef = useRef<HTMLDivElement>(null);

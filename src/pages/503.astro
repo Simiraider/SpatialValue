@@ -1,0 +1,18 @@
+---
+export const prerender = false;
+
+import PaginaError from '../components/errores/PaginaError.astro';
+
+Astro.response.status = 503;
+Astro.response.headers.set('Retry-After', '300');
+---
+
+<PaginaError
+  codigo="503"
+  titulo="Estamos recalibrando nuestros algoritmos."
+  subtitulo="Nuestros modelos de inteligencia artificial están en mantenimiento para darte tasaciones cada vez más precisas. Volvemos en unos minutos."
+  principal={{ texto: 'Reintentar conexión', recargar: true }}
+  secundaria={{ texto: 'Volver al inicio', href: '/' }}
+  soporte
+  pista="Código 503 · Servicio en mantenimiento"
+/>

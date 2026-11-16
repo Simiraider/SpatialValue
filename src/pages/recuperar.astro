@@ -1,0 +1,131 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
+import Logo from "../components/Logo.astro";
+import "../styles/auth.css";
+---
+
+<Layout title="Recuperar contraseña">
+  <div class="auth-page">
+    <div class="auth-page__layout">
+      <section class="auth-form">
+        <header class="auth-form__cabecera">
+          <a href="/" class="auth-form__logo">
+            <Logo variant="claro" />
+          </a>
+          <h1 class="auth-form__titulo">Recuperar contraseña</h1>
+          <p class="auth-form__estado" id="mensaje-estado" role="note">
+            Ingresá tu email y te mandamos un enlace para elegir una nueva.
+          </p>
+        </header>
+
+        <form id="recuperar-form" novalidate>
+          <div>
+            <Input
+              id="emailInput"
+              label="Email"
+              type="email"
+              placeholder="usuario@gmail.com"
+              autoComplete="email"
+              required
+              client:load
+            />
+            <p class="auth-form__error" id="error-email" role="alert"></p>
+          </div>
+
+          <div>
+            <Button type="submit" fullWidth variant="secondary" client:load id="recuperar-submit">
+              Enviarme el enlace
+            </Button>
+          </div>
+        </form>
+
+        <p class="auth-form__enlace-registro">
+          <a href="/login">Volver a iniciar sesión</a>
+        </p>
+
+        <p class="auth-form__enlace-registro">
+          ¿No tenés cuenta? <a href="/registro">Registrate</a>
+        </p>
+      </section>
+
+      <aside class="auth-page__marca">
+        <p class="auth-page__marca-esquina">Tasá tu propiedad en minutos, no en semanas.</p>
+      </aside>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  const form = document.getElementById('recuperar-form') as HTMLFormElement | null;
+  const email = document.getElementById('emailInput') as HTMLInputElement | null;
+  const mensajeEstado = document.getElementById('mensaje-estado') as HTMLElement | null;
+  const errorEmail = document.getElementById('error-email') as HTMLParagraphElement | null;
+
+  const setMensaje = (texto: string, color: string) => {
+    if (!mensajeEstado) return;
+    mensajeEstado.innerText = texto;
+    mensajeEstado.style.color = color;
+  };
+
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  form?.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    if (!email) return;
+
+    const valor = email.value.trim();
+    if (errorEmail) errorEmail.textContent = '';
+    email.removeAttribute('aria-invalid');
+
+    if (!EMAIL_RE.test(valor)) {
+      email.setAttribute('aria-invalid', 'true');
+      email.classList.add('auth-form__entrada', 'auth-form__entrada--invalida');
+      if (errorEmail) errorEmail.textContent = 'Ingresá un email válido.';
+      return;
+    }
+
+    const submitBtn = document.getElementById('recuperar-submit') as HTMLButtonElement | null;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Enviando...';
+    }
+
+    try {
+      setMensaje('Enviando el enlace...', '#06b6d4');
+
+      const res = await fetch('/Apis/recuperar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: valor }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (res.ok && data?.success) {
+        setMensaje(data.mensaje || 'Revisá tu correo.', '#10b981');
+        if (data.enlace_desarrollo) {
+          const aviso = document.createElement('p');
+          aviso.className = 'auth-form__aviso-dev';
+          aviso.textContent = 'Entorno de desarrollo (sin SMTP): ';
+          const enlace = document.createElement('a');
+          enlace.href = data.enlace_desarrollo;
+          enlace.textContent = 'abrir el enlace de restablecimiento';
+          aviso.appendChild(enlace);
+          mensajeEstado?.insertAdjacentElement('afterend', aviso);
+        }
+        form.reset();
+      } else {
+        setMensaje(data?.error || 'No pudimos enviar el enlace. Probá de nuevo.', '#ef4444');
+      }
+    } catch {
+      setMensaje('No se pudo conectar con el servidor.', '#ef4444');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Enviarme el enlace';
+      }
+    }
+  });
+</script>

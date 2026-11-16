@@ -1,0 +1,12 @@
+---
+import PaginaError from '../components/errores/PaginaError.astro';
+---
+
+<PaginaError
+  codigo="404"
+  titulo="Esta propiedad no figura en nuestros planos."
+  subtitulo="Nuestra IA analizó todo el mapa y no encontró lo que buscabas. Puede que el enlace esté roto o que la página haya sido demolida."
+  principal={{ texto: 'Tasar una propiedad ahora', href: '/tasacion' }}
+  secundaria={{ texto: 'Volver al inicio', href: '/' }}
+  pista="Código 404 · Dirección inexistente"
+/>

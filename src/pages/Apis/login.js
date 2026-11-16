@@ -2,11 +2,19 @@ export const prerender = false;
 import sql from '../../Backend/carga.js';
 import sqlConfig, { asegurarEsquemaConfig } from '../../Backend/carga-config.js';
 import argon2 from 'argon2';
-import { cookieSesion, permitirFrecuencia, ipDePeticion } from '../../Backend/sesion.js';
+import { cookieSesion, ipDePeticion, esMismoOrigen } from '../../Backend/sesion.js';
+import { permitirFrecuencia } from '../../Backend/limite.js';
 
 export async function POST({ request }) {
   try {
-    if (!permitirFrecuencia(`login:${ipDePeticion(request)}`, 10)) {
+    if (!esMismoOrigen(request)) {
+      return new Response(
+        JSON.stringify({ error: "Origen no permitido." }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!(await permitirFrecuencia(`login:${ipDePeticion(request)}`, 10, 300_000))) {
       return new Response(
         JSON.stringify({ error: "Demasiados intentos. Esperá unos minutos y probá de nuevo." }),
         { status: 429, headers: { "Content-Type": "application/json" } }

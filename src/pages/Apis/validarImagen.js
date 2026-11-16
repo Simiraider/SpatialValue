@@ -1,4 +1,6 @@
 import { GoogleGenAI, Type } from '@google/genai';
+import { resolverUsuarioId, esMismoOrigen } from '../../Backend/sesion.js';
+import { permitirFrecuencia } from '../../Backend/limite.js';
 
 // Forzar renderizado en el servidor para endpoints dinámicos en Astro
 export const prerender = false;
@@ -59,6 +61,21 @@ const responseSchema = {
 
 export async function POST({ request }) {
   try {
+    // Cada análisis consume créditos reales de Gemini: exige sesión y limita el uso.
+    if (!esMismoOrigen(request)) {
+      return json({ error: 'Origen no permitido.' }, 403);
+    }
+
+    const usuarioId = resolverUsuarioId(request);
+    if (!usuarioId) {
+      return json({ error: 'Necesitás iniciar sesión para validar imágenes.' }, 401);
+    }
+
+    const permitido = await permitirFrecuencia(`validar-imagen:${usuarioId}`, 40, 3_600_000);
+    if (!permitido) {
+      return json({ error: 'Alcanzaste el máximo de análisis por hora. Probá más tarde.' }, 429);
+    }
+
     const formData = await request.formData();
     const file = formData.get('file');
 

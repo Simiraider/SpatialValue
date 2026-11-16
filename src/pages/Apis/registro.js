@@ -1,7 +1,8 @@
 export const prerender = false;
 import sql from '../../Backend/carga.js';
 import argon2 from 'argon2';
-import { cookieSesion, permitirFrecuencia, ipDePeticion } from '../../Backend/sesion.js';
+import { cookieSesion, ipDePeticion, esMismoOrigen } from '../../Backend/sesion.js';
+import { permitirFrecuencia } from '../../Backend/limite.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const NOMBRE_RE = /^[\p{L}][\p{L}\s'.-]{1,99}$/u;
@@ -23,7 +24,14 @@ function normalizarNombre(v) {
 
 export async function POST({ request }) {
   try {
-    if (!permitirFrecuencia(`registro:${ipDePeticion(request)}`, 5, 3_600_000)) {
+    if (!esMismoOrigen(request)) {
+      return new Response(
+        JSON.stringify({ error: "Origen no permitido." }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!(await permitirFrecuencia(`registro:${ipDePeticion(request)}`, 5, 3_600_000))) {
       return new Response(
         JSON.stringify({ error: "Demasiados registros desde esta conexión. Probá más tarde." }),
         { status: 429, headers: { "Content-Type": "application/json" } }
