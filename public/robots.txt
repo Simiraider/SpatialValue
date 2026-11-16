@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /Apis/
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /tasacion
+Disallow: /reporte
+Disallow: /cargando
+Disallow: /visor

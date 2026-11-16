@@ -1,0 +1,254 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Navbar from '../components/Navbar.astro';
+import Footer from '../components/Footer.astro';
+import '../styles/variables.css';
+import '../styles/buttons.css';
+import '../styles/navbar.css';
+import '../styles/footer.css';
+
+const emailSoporte = String(import.meta.env.PUBLIC_EMAIL_SOPORTE ?? '').trim();
+const actualizado = 'noviembre de 2026';
+---
+
+<Layout title="Política de privacidad">
+  <Fragment slot="head">
+    <meta
+      name="description"
+      content="Qué datos guarda Spatial Value, para qué los usa, con quién los comparte y cómo pedir su eliminación."
+    />
+  </Fragment>
+
+  <Navbar />
+
+  <main class="legal">
+    <article class="legal__contenido">
+      <p class="legal__etiqueta">Privacidad</p>
+      <h1 class="legal__titulo">Política de privacidad</h1>
+      <p class="legal__meta">Última actualización: {actualizado}</p>
+
+      <p>
+        Spatial Value es una herramienta de tasación inmobiliaria automatizada. Esta política
+        explica, en lenguaje llano, qué información guardamos, para qué la usamos y qué podés hacer
+        al respecto.
+      </p>
+
+      <h2>1. Qué datos guardamos</h2>
+      <ul>
+        <li>
+          <strong>Datos de cuenta:</strong> nombre, email y contraseña. La contraseña nunca se
+          guarda en texto plano: se almacena únicamente como un hash con algoritmo argon2id.
+        </li>
+        <li>
+          <strong>Datos de perfil opcionales:</strong> teléfono, avatar y redes sociales, sólo si
+          decidís completarlos.
+        </li>
+        <li>
+          <strong>Datos de la propiedad:</strong> título, descripción, tipo de operación, superficies,
+          ambientes, dormitorios, baños, cocheras, expensas, dirección, barrio, ciudad y coordenadas
+          geográficas.
+        </li>
+        <li>
+          <strong>Fotos de la propiedad</strong> que subís para la tasación o para el gemelo digital
+          3D, junto con el modelo 3D resultante.
+        </li>
+        <li>
+          <strong>Datos técnicos mínimos:</strong> dirección IP y fecha de la petición, usados
+          únicamente para limitar abuso (por ejemplo, frenar intentos de login masivos).
+        </li>
+      </ul>
+
+      <h2>2. Para qué los usamos</h2>
+      <ul>
+        <li>Generar la estimación de valor y el reporte de tasación que pediste.</li>
+        <li>Verificar que una dirección exista y ubicarla en el mapa.</li>
+        <li>Mantener tu cuenta, tu historial de tasaciones y tus preferencias.</li>
+        <li>Enviarte correos operativos: verificación de contacto y restablecimiento de contraseña.</li>
+        <li>Detectar y frenar abuso del servicio.</li>
+      </ul>
+      <p>
+        No usamos tus datos para publicidad, no los vendemos y no elaboramos perfiles comerciales con
+        ellos.
+      </p>
+
+      <h2>3. Cookies que usa el sitio</h2>
+      <p>Spatial Value usa únicamente cookies técnicas, estrictamente necesarias:</p>
+      <ul>
+        <li>
+          <span class="legal__code">usuario_id</span>: mantiene tu sesión iniciada. Es
+          <strong>HttpOnly</strong> y <code>Secure</code>, así que ningún script de la página puede
+          leerla. Dura hasta 7 días.
+        </li>
+        <li>
+          <span class="legal__code">oauth_state</span>: protege el ingreso con Google contra ataques
+          de falsificación de petición. Vive 10 minutos.
+        </li>
+      </ul>
+      <p>
+        No usamos cookies de analítica, publicidad ni seguimiento de terceros. Por eso no vas a ver un
+        banner de consentimiento: no hay nada que consentir más allá de lo imprescindible para que el
+        sitio funcione.
+      </p>
+
+      <h2>4. Con quién se comparte</h2>
+      <p>
+        Para funcionar, la plataforma se apoya en proveedores que procesan datos por encargo. No
+        autorizamos a ninguno a usarlos para fines propios:
+      </p>
+      <ul>
+        <li><strong>Neon</strong> — base de datos PostgreSQL donde vive tu cuenta y tus tasaciones.</li>
+        <li><strong>Supabase</strong> — almacenamiento de fotos y modelos 3D.</li>
+        <li><strong>Vercel</strong> — hosting de la aplicación.</li>
+        <li>
+          <strong>Google</strong> — geocodificación de direcciones, mapas y análisis de imágenes.
+        </li>
+        <li><strong>OpenStreetMap / Nominatim</strong> — geocodificación alternativa.</li>
+        <li>
+          <strong>Proveedores de reconstrucción 3D</strong> — reciben las fotos o el video que subís
+          para generar el gemelo digital.
+        </li>
+        <li><strong>Proveedor de correo saliente</strong> — entrega los emails operativos.</li>
+      </ul>
+
+      <h2>5. Cuánto tiempo los conservamos</h2>
+      <p>
+        Los datos de cuenta y las tasaciones se conservan mientras tu cuenta exista. Los enlaces de
+        restablecimiento de contraseña vencen en 60 minutos. Los códigos de verificación de contacto
+        vencen en 15 minutos. Los trabajos del visor 3D tienen una caducidad propia de 7 días.
+      </p>
+
+      <h2>6. Tus derechos</h2>
+      <ul>
+        <li><strong>Acceso:</strong> podés ver tus datos desde el panel de tu cuenta.</li>
+        <li>
+          <strong>Rectificación:</strong> podés corregir tu nombre, email, teléfono y preferencias
+          desde la configuración.
+        </li>
+        <li>
+          <strong>Supresión:</strong> desde la configuración podés eliminar tu cuenta, lo que borra tu
+          registro de usuario y tus datos asociados.
+        </li>
+        <li>
+          <strong>Oposición:</strong> podés desactivar tu cuenta sin eliminarla y dejar de usar el
+          servicio cuando quieras.
+        </li>
+      </ul>
+      {
+        emailSoporte ? (
+          <p>
+            Para ejercer cualquier otro derecho, escribinos a{' '}
+            <a href={`mailto:${emailSoporte}`}>{emailSoporte}</a>.
+          </p>
+        ) : (
+          <p>
+            Para ejercer cualquier otro derecho, usá el panel de configuración de tu cuenta o el canal
+            de contacto que el equipo del proyecto indique en el pie del sitio.
+          </p>
+        )
+      }
+
+      <h2>7. Seguridad</h2>
+      <p>
+        Las contraseñas se almacenan con argon2id, el sitio se sirve exclusivamente sobre HTTPS con
+        HSTS, y la cookie de sesión es HttpOnly y Secure. Ningún sistema es infalible: si detectás un
+        problema de seguridad, avisanos antes de difundirlo.
+      </p>
+
+      <h2>8. Menores de edad</h2>
+      <p>
+        El servicio está pensado para personas mayores de 18 años. No recopilamos datos de menores de
+        forma consciente.
+      </p>
+
+      <h2>9. Naturaleza del proyecto</h2>
+      <p>
+        Spatial Value es un proyecto académico en desarrollo. Las estimaciones que genera son
+        orientativas y no constituyen una tasación oficial ni un informe vinculante.
+      </p>
+
+      <h2>10. Cambios en esta política</h2>
+      <p>
+        Si cambiamos qué datos tratamos, actualizamos esta página y la fecha del encabezado. Los
+        cambios sustanciales se avisan dentro de la aplicación.
+      </p>
+    </article>
+  </main>
+
+  <Footer />
+</Layout>
+
+<style>
+  .legal {
+    padding: clamp(2rem, 6vw, 4.5rem) 1.25rem clamp(3rem, 8vw, 6rem);
+    background: var(--color-bg, #f8fafc);
+  }
+
+  .legal__contenido {
+    max-width: 46rem;
+    margin: 0 auto;
+    color: var(--color-text-muted, #4d4d4d);
+    font-size: 1rem;
+    line-height: 1.75;
+  }
+
+  .legal__etiqueta {
+    margin: 0 0 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-brand, #0087c0);
+  }
+
+  .legal__titulo {
+    margin: 0 0 0.4rem;
+    font-family: var(--font-display, 'Poppins', system-ui, sans-serif);
+    font-size: clamp(1.9rem, 5vw, 2.6rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--color-graphite, #2e3036);
+  }
+
+  .legal__meta {
+    margin: 0 0 2rem;
+    font-size: 0.82rem;
+    color: #94a3b8;
+  }
+
+  .legal h2 {
+    margin: 2.4rem 0 0.75rem;
+    font-family: var(--font-display, 'Poppins', system-ui, sans-serif);
+    font-size: 1.15rem;
+    color: var(--color-graphite, #2e3036);
+  }
+
+  .legal p {
+    margin: 0 0 1rem;
+  }
+
+  .legal ul {
+    margin: 0 0 1rem;
+    padding-left: 1.15rem;
+  }
+
+  .legal li {
+    margin-bottom: 0.5rem;
+  }
+
+  .legal strong {
+    color: #0f172a;
+  }
+
+  .legal a {
+    color: var(--color-brand-dark, #006b99);
+    font-weight: 600;
+  }
+
+  .legal code,
+  .legal__code {
+    font-size: 0.88em;
+    background: #eef2f7;
+    padding: 0.1rem 0.35rem;
+    border-radius: 0.35rem;
+  }
+</style>

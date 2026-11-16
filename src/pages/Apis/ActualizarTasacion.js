@@ -1,7 +1,8 @@
 export const prerender = false;
 import sql from '../../Backend/carga.js';
 import { estimarPrecioVenta } from '../../lib/mercado';
-import { resolverUsuarioId, permitirFrecuencia, ipDePeticion } from '../../Backend/sesion.js';
+import { resolverUsuarioId, ipDePeticion, esMismoOrigen } from '../../Backend/sesion.js';
+import { permitirFrecuencia } from '../../Backend/limite.js';
 
 const numeroEnRango = (v, min, max, defecto) => {
   const n = Number(v);
@@ -13,7 +14,14 @@ const textoLimpio = (v, max) => String(v ?? '').trim().slice(0, max);
 
 export async function POST({ request }) {
   try {
-    if (!permitirFrecuencia(`actualizar-tasacion:${ipDePeticion(request)}`, 40, 3_600_000)) {
+    if (!esMismoOrigen(request)) {
+      return new Response(
+        JSON.stringify({ error: "Origen no permitido." }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!(await permitirFrecuencia(`actualizar-tasacion:${ipDePeticion(request)}`, 40, 3_600_000))) {
       return new Response(
         JSON.stringify({ error: "Demasiadas actualizaciones seguidas. Probá de nuevo más tarde." }),
         { status: 429, headers: { "Content-Type": "application/json" } }

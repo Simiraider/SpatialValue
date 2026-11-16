@@ -339,12 +339,6 @@ export const IndicadoresMercado = () => {
           <div className="indicadores__panel-grafico">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={seriePromedio} margin={{ top: 10, right: 12, bottom: 0, left: -8 }}>
-                <defs>
-                  <linearGradient id="gradIndic" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#0087c0" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#0087c0" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <XAxis dataKey="mes" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
                 <YAxis
@@ -360,7 +354,7 @@ export const IndicadoresMercado = () => {
                   dataKey="valor"
                   stroke="#0087c0"
                   strokeWidth={2.5}
-                  fill="url(#gradIndic)"
+                  fill="none"
                   dot={false}
                   activeDot={{ r: 5, fill: '#0087c0', stroke: '#fff', strokeWidth: 2 }}
                   isAnimationActive={false}

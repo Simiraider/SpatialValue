@@ -1,0 +1,200 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Navbar from '../components/Navbar.astro';
+import Footer from '../components/Footer.astro';
+import '../styles/variables.css';
+import '../styles/buttons.css';
+import '../styles/navbar.css';
+import '../styles/footer.css';
+
+const actualizado = 'noviembre de 2026';
+---
+
+<Layout title="Términos y condiciones">
+  <Fragment slot="head">
+    <meta
+      name="description"
+      content="Condiciones de uso de Spatial Value: qué ofrece la herramienta, sus límites y las responsabilidades de cada parte."
+    />
+  </Fragment>
+
+  <Navbar />
+
+  <main class="legal">
+    <article class="legal__contenido">
+      <p class="legal__etiqueta">Términos</p>
+      <h1 class="legal__titulo">Términos y condiciones</h1>
+      <p class="legal__meta">Última actualización: {actualizado}</p>
+
+      <p>
+        Al crear una cuenta o usar Spatial Value aceptás estas condiciones. Si no estás de acuerdo, no
+        uses el servicio.
+      </p>
+
+      <h2>1. Qué es Spatial Value</h2>
+      <p>
+        Spatial Value es una plataforma que estima el valor de propiedades a partir de los datos que
+        vos ingresás, datos de mercado y análisis automatizado. Es un
+        <strong>proyecto académico en desarrollo</strong>, no un servicio profesional de tasación.
+      </p>
+
+      <h2>2. Las estimaciones son orientativas</h2>
+      <p>
+        El resultado que devuelve la plataforma es una <strong>estimación automatizada</strong>,
+        producida con modelos estadísticos y datos que pueden estar desactualizados o incompletos.
+      </p>
+      <ul>
+        <li>No constituye una tasación oficial ni un informe de valuación vinculante.</li>
+        <li>No reemplaza el trabajo de un tasador matriculado.</li>
+        <li>No debe usarse como única base para una operación inmobiliaria, crediticia o judicial.</li>
+        <li>
+          Los datos de superficie y características son los que declarás vos: no se miden ni se
+          verifican de forma independiente.
+        </li>
+      </ul>
+
+      <h2>3. Tu cuenta</h2>
+      <ul>
+        <li>Tenés que ser mayor de 18 años para registrarte.</li>
+        <li>Sos responsable de mantener tu contraseña en reserva y de la actividad de tu cuenta.</li>
+        <li>Los datos que declarás tienen que ser propios y veraces.</li>
+        <li>Podés eliminar tu cuenta desde la configuración en cualquier momento.</li>
+      </ul>
+
+      <h2>4. Uso aceptable</h2>
+      <p>No está permitido:</p>
+      <ul>
+        <li>Publicar propiedades que no te pertenecen o información falsa.</li>
+        <li>Subir contenido ilegal, ofensivo o que vulnere derechos de terceros.</li>
+        <li>Intentar acceder a cuentas o datos de otras personas.</li>
+        <li>Automatizar peticiones para saturar el servicio o eludir sus límites de uso.</li>
+        <li>Realizar ingeniería inversa destinada a extraer los modelos de valuación.</li>
+      </ul>
+      <p>
+        Podemos suspender una cuenta que incumpla estas reglas, avisando cuando sea razonablemente
+        posible.
+      </p>
+
+      <h2>5. Contenido que subís</h2>
+      <p>
+        Conservás la titularidad de las fotos, videos y datos que subís. Nos otorgás sólo el permiso
+        necesario para procesarlos y mostrar el resultado dentro de la plataforma. Podés borrarlos
+        eliminando la propiedad o tu cuenta.
+      </p>
+
+      <h2>6. Disponibilidad</h2>
+      <p>
+        El servicio se ofrece "tal como está". Puede haber interrupciones por mantenimiento, límites de
+        los proveedores externos o fallas técnicas. No garantizamos disponibilidad ininterrumpida ni
+        que los resultados estén libres de error.
+      </p>
+
+      <h2>7. Límite de responsabilidad</h2>
+      <p>
+        En la medida en que la ley lo permita, el equipo del proyecto no responde por daños indirectos,
+        lucro cesante ni decisiones tomadas a partir de una estimación. Usá el resultado como una
+        referencia más dentro de tu propio análisis.
+      </p>
+
+      <h2>8. Propiedad intelectual</h2>
+      <p>
+        El nombre Spatial Value, su identidad visual, el código y los modelos de valuación pertenecen a
+        sus autores. No se concede ninguna licencia sobre ellos por el uso del sitio.
+      </p>
+
+      <h2>9. Cambios en los términos</h2>
+      <p>
+        Podemos actualizar estas condiciones. Publicamos la versión vigente en esta página con su
+        fecha; si el cambio es sustancial, lo avisamos dentro de la aplicación.
+      </p>
+
+      <h2>10. Ley aplicable</h2>
+      <p>
+        Estas condiciones se rigen por las leyes de la República Argentina. Cualquier controversia se
+        somete a los tribunales ordinarios competentes.
+      </p>
+
+      <p class="legal__pie">
+        Para consultas sobre estos términos, mirá también nuestra
+        <a href="/privacidad">política de privacidad</a>.
+      </p>
+    </article>
+  </main>
+
+  <Footer />
+</Layout>
+
+<style>
+  .legal {
+    padding: clamp(2rem, 6vw, 4.5rem) 1.25rem clamp(3rem, 8vw, 6rem);
+    background: var(--color-bg, #f8fafc);
+  }
+
+  .legal__contenido {
+    max-width: 46rem;
+    margin: 0 auto;
+    color: var(--color-text-muted, #4d4d4d);
+    font-size: 1rem;
+    line-height: 1.75;
+  }
+
+  .legal__etiqueta {
+    margin: 0 0 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-brand, #0087c0);
+  }
+
+  .legal__titulo {
+    margin: 0 0 0.4rem;
+    font-family: var(--font-display, 'Poppins', system-ui, sans-serif);
+    font-size: clamp(1.9rem, 5vw, 2.6rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--color-graphite, #2e3036);
+  }
+
+  .legal__meta {
+    margin: 0 0 2rem;
+    font-size: 0.82rem;
+    color: #94a3b8;
+  }
+
+  .legal h2 {
+    margin: 2.4rem 0 0.75rem;
+    font-family: var(--font-display, 'Poppins', system-ui, sans-serif);
+    font-size: 1.15rem;
+    color: var(--color-graphite, #2e3036);
+  }
+
+  .legal p {
+    margin: 0 0 1rem;
+  }
+
+  .legal ul {
+    margin: 0 0 1rem;
+    padding-left: 1.15rem;
+  }
+
+  .legal li {
+    margin-bottom: 0.5rem;
+  }
+
+  .legal strong {
+    color: #0f172a;
+  }
+
+  .legal a {
+    color: var(--color-brand-dark, #006b99);
+    font-weight: 600;
+  }
+
+  .legal__pie {
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-border, #d8dee8);
+    font-size: 0.9rem;
+  }
+</style>

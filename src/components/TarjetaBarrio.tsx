@@ -259,12 +259,6 @@ export const TarjetaBarrio = ({
               <div className="barrio-card__grafico" style={{ height: 74 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={serieMini} margin={{ top: 4, right: 2, bottom: 2, left: 2 }}>
-                    <defs>
-                      <linearGradient id={`grad-mini-${clave}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={colorMini} stopOpacity={0.28} />
-                        <stop offset="100%" stopColor={colorMini} stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
                     <XAxis dataKey="p" hide />
                     <YAxis hide domain={dominioMini} />
                     <Tooltip content={<TooltipPeriodo sufijo={sufijo} />} />
@@ -273,7 +267,7 @@ export const TarjetaBarrio = ({
                       dataKey="v"
                       stroke={colorMini}
                       strokeWidth={2.25}
-                      fill={`url(#grad-mini-${clave})`}
+                      fill="none"
                       dot={false}
                       activeDot={{ r: 4, strokeWidth: 0, fill: colorMini }}
                       isAnimationActive={false}
@@ -320,12 +314,6 @@ export const TarjetaBarrio = ({
               <div className="barrio-card__grafico barrio-card__grafico--grande">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={serie} margin={{ top: 12, right: 12, bottom: 4, left: -6 }}>
-                    <defs>
-                      <linearGradient id={`grad-all-${clave}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#0087c0" stopOpacity={0.35} />
-                        <stop offset="100%" stopColor="#0087c0" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                     <XAxis
                       dataKey="p"
@@ -350,7 +338,7 @@ export const TarjetaBarrio = ({
                       dataKey="v"
                       stroke="#0087c0"
                       strokeWidth={2.5}
-                      fill={`url(#grad-all-${clave})`}
+                      fill="none"
                       dot={false}
                       activeDot={{ r: 5, fill: '#0087c0', stroke: '#fff', strokeWidth: 2 }}
                       isAnimationActive={false}

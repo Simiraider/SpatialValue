@@ -1,0 +1,16 @@
+---
+export const prerender = false;
+
+import PaginaError from '../components/errores/PaginaError.astro';
+
+Astro.response.status = 403;
+---
+
+<PaginaError
+  codigo="403"
+  titulo="Este plano es privado."
+  subtitulo="Necesitás iniciar sesión para ver esta propiedad. Si ya tenés cuenta, volvé a entrar; si no, registrate y en un minuto ya estás tasando."
+  principal={{ texto: 'Iniciar sesión', href: '/login' }}
+  secundaria={{ texto: 'Crear cuenta', href: '/registro' }}
+  pista="Código 403 · Acceso restringido"
+/>

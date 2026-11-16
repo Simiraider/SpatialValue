@@ -2,7 +2,8 @@ export const prerender = false;
 import sql from '../../Backend/carga.js';
 import { estimarPrecioVenta } from '../../lib/mercado';
 import { verificarDireccion, canonizarBarrio } from '../../lib/verificar-direccion';
-import { resolverUsuarioId, permitirFrecuencia, ipDePeticion } from '../../Backend/sesion.js';
+import { resolverUsuarioId, ipDePeticion, esMismoOrigen } from '../../Backend/sesion.js';
+import { permitirFrecuencia } from '../../Backend/limite.js';
 
 const IA_URL = process.env.IA_URL || 'http://127.0.0.1:8000';
 const IA_TIMEOUT_MS = 15000;
@@ -61,7 +62,14 @@ async function llamarAI(payload) {
 
 export async function POST({ request }) {
   try {
-    if (!permitirFrecuencia(`publicar:${ipDePeticion(request)}`, 20, 3_600_000)) {
+    if (!esMismoOrigen(request)) {
+      return new Response(
+        JSON.stringify({ error: "Origen no permitido." }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!(await permitirFrecuencia(`publicar:${ipDePeticion(request)}`, 20, 3_600_000))) {
       return new Response(
         JSON.stringify({ error: "Demasiadas publicaciones seguidas. Probá de nuevo más tarde." }),
         { status: 429, headers: { "Content-Type": "application/json" } }

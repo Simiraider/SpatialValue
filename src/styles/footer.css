@@ -79,3 +79,27 @@
   color: #45b3f0;
   text-align: right;
 }
+
+@media (max-width: 640px) {
+  .footer {
+    padding: 2rem 1.25rem 1.25rem;
+  }
+
+  .footer__grilla {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .footer__enlaces {
+    gap: 0.6rem 1.25rem;
+  }
+
+  .footer__marca p {
+    max-width: none;
+  }
+
+  .footer__pie {
+    text-align: left;
+    line-height: 1.6;
+  }
+}

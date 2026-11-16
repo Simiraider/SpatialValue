@@ -325,12 +325,6 @@ export const HistorialBarrioChart = ({ barrio, valorM2 }: { barrio?: string; val
       </p>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={datos} margin={{ top: 10, right: 16, bottom: 0, left: 0 }}>
-          <defs>
-            <linearGradient id="gradHistorialM2" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#0087c0" stopOpacity={0.34} />
-              <stop offset="100%" stopColor="#0087c0" stopOpacity={0.02} />
-            </linearGradient>
-          </defs>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
           <XAxis dataKey="mes" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
           <YAxis
@@ -360,7 +354,7 @@ export const HistorialBarrioChart = ({ barrio, valorM2 }: { barrio?: string; val
             dataKey="valor"
             stroke="#0087c0"
             strokeWidth={2.5}
-            fill="url(#gradHistorialM2)"
+            fill="none"
             dot={false}
             activeDot={{ r: 5, fill: '#0087c0', stroke: '#ffffff', strokeWidth: 2 }}
           />

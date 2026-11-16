@@ -41,3 +41,9 @@
   color: #dc2626;
   font-weight: 700;
 }
+
+@media (max-width: 640px) {
+  .reporte-grafico {
+    height: 240px;
+  }
+}

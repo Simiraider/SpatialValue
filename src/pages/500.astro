@@ -1,0 +1,12 @@
+---
+import PaginaError from '../components/errores/PaginaError.astro';
+---
+
+<PaginaError
+  codigo="500"
+  titulo="Se nos movió un muro portante."
+  subtitulo="Algo falló mientras el servidor armaba el reporte. Ya estamos revisando los planos del lado de adentro; probá de nuevo en unos segundos."
+  principal={{ texto: 'Reintentar', recargar: true }}
+  secundaria={{ texto: 'Volver al inicio', href: '/' }}
+  pista="Código 500 · Error del servidor"
+/>

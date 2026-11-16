@@ -4,10 +4,7 @@ import crypto from 'node:crypto';
 import argon2 from 'argon2';
 import sql from '../../../../Backend/carga.js';
 import sqlConfig, { asegurarEsquemaConfig } from '../../../../Backend/carga-config.js';
-import { cookieSesion } from '../../../../Backend/sesion.js';
-const clientId = (import.meta.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '').trim();
-const clientSecret = (import.meta.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || '').trim();
-const redirectUri = (import.meta.env.GOOGLE_REDIRECT_URI || process.env.GOOGLE_REDIRECT_URI || '').trim();
+import { cookieSesion, igualSeguro } from '../../../../Backend/sesion.js';
 
 function leerCookie(request, nombre) {
   const cookies = request.headers.get('cookie') || '';
@@ -35,7 +32,7 @@ export async function GET({ request }) {
   }
 
   const stateCookie = leerCookie(request, 'oauth_state');
-  if (!code || !stateRecibido || !stateCookie || stateRecibido !== stateCookie) {
+  if (!code || !stateRecibido || !stateCookie || !igualSeguro(stateRecibido, stateCookie)) {
     return redirigirALogin('No pudimos verificar el pedido de acceso con Google. Probá de nuevo.');
   }
 

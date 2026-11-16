@@ -344,7 +344,7 @@ export const PropertyForm = () => {
       superficie_cubierta: superficieCubierta, superficie_total: superficieTotal, piso: data.piso, antiguedad: Number(data.antiguedad) || null,
       orientacion: data.orientacion || null, disposicion: data.disposicion || null, estadoGeneral: data.estadoGeneral,
       luz_natural: data.luzNatural || null,
-      expensas: Number(data.expensas) || 0, comodidades: data.comodidades, fotos: fotosGuardadas, usuario_id: getUsuarioId() || 'demo-user',
+      expensas: Number(data.expensas) || 0, comodidades: data.comodidades, fotos: fotosGuardadas, usuario_id: getUsuarioId() ?? undefined,
       es_borrador: esEdicion ? true : guardarComoBorrador,
       ...(idPublicacion ? { id_publicacion: idPublicacion } : {}),
       ...(gemeloJob ? { modelo3d_job_id: gemeloJob.id } : {}),
