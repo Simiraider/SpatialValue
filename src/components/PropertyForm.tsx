@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { Box, Building2, Camera, Check, Home, KeyRound, Loader2, TrendingUp, X } from 'lucide-react';
+import { Box, Building2, Check, Home, KeyRound, Loader2, TrendingUp, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
@@ -14,8 +14,8 @@ import {
   type ConfigGemelo,
   type EstadoTrabajo,
 } from '../lib/gemelo';
-import { visorEnSupabase } from '../lib/visor-supabase';
 import { SubidaFotos } from './GemeloDigital/SubidaFotos';
+import { PagoModelo } from './GemeloDigital/PagoModelo';
 import { BarraProgreso } from './GemeloDigital/BarraProgreso';
 import { Visor3D } from './GemeloDigital/Visor3D';
 
@@ -199,11 +199,11 @@ export const PropertyForm = () => {
   const [guardarComoBorrador, setGuardarComoBorrador] = useState(false);
   const [verifDir, setVerifDir] = useState<VerificacionDireccion>({ estado: 'idle' });
   const [arrastrando, setArrastrando] = useState(false);
-  const [quiereModelo3d, setQuiereModelo3d] = useState(false);
-  const [gemeloFase, setGemeloFase] = useState<'sin-usar' | 'conectando' | 'subir' | 'progreso' | 'listo' | 'sin-worker'>('sin-usar');
+  const [gemeloFase, setGemeloFase] = useState<'sin-usar' | 'precio' | 'pago' | 'conectando' | 'subir' | 'progreso' | 'listo' | 'sin-worker'>('sin-usar');
   const [gemeloConfig, setGemeloConfig] = useState<ConfigGemelo | null>(null);
   const [gemeloJobId, setGemeloJobId] = useState<string | null>(null);
   const [gemeloJob, setGemeloJob] = useState<EstadoTrabajo | null>(null);
+  const [pagoId, setPagoId] = useState<string | null>(null);
   const esEdicion = Boolean(edicion);
 
   // Validación en tiempo real de superficies (paso 2)
@@ -245,8 +245,12 @@ export const PropertyForm = () => {
   const update = <K extends keyof FormData>(field: K, value: FormData[K]) => setData(prev => ({ ...prev, [field]: value }));
   const toggleAmenity = (amenity: string) => update('comodidades', data.comodidades.includes(amenity) ? data.comodidades.filter(item => item !== amenity) : [...data.comodidades, amenity]);
 
-  const activarModelo3d = async () => {
-    setQuiereModelo3d(true);
+  const elegirModelo3d = () => {
+    setGemeloFase('precio');
+  };
+
+  const iniciarGemelo = async (idPago: string) => {
+    setPagoId(idPago);
     setGemeloFase('conectando');
     const config = await obtenerConfigGemelo();
     if (!config) {
@@ -260,10 +264,10 @@ export const PropertyForm = () => {
   };
 
   const desactivarModelo3d = () => {
-    setQuiereModelo3d(false);
     setGemeloFase('sin-usar');
     setGemeloJobId(null);
     setGemeloJob(null);
+    setPagoId(null);
   };
 
   const tituloGemelo = () => {
@@ -489,7 +493,7 @@ export const PropertyForm = () => {
         <div className="tasacion__gemelo">
           {gemeloFase === 'sin-usar' && (
             <div className="tasacion__gemelo-inicio">
-              <button type="button" className="tasacion__gemelo-activar" onClick={activarModelo3d}>
+              <button type="button" className="tasacion__gemelo-activar" onClick={elegirModelo3d}>
                 <Box aria-hidden />
                 <span>
                   <strong>¿Querés un modelo 3D del ambiente?</strong>
@@ -501,10 +505,27 @@ export const PropertyForm = () => {
 
           {gemeloFase !== 'sin-usar' && (
             <div className="tasacion__gemelo-modos">
-              <div className="tasacion__eleccion" role="group" aria-label="¿Querés generar un modelo 3D?">
-                <TarjetaEleccion icono={Box} titulo="Sí, modelo 3D" activo={quiereModelo3d} onClick={activarModelo3d} />
-                <TarjetaEleccion icono={Camera} titulo="No, solo fotos" activo={!quiereModelo3d} onClick={desactivarModelo3d} />
-              </div>
+              {gemeloFase === 'precio' && (
+                <div className="tasacion__aviso-gemelo">
+                  <p>
+                    <strong>El modelo 3D tiene un costo de USD 2.</strong>{' '}
+                    Se cobra una sola vez por modelo. Si no querés pagarlo, seguí solo con fotos:
+                    no se genera nada.
+                  </p>
+                  <div className="tasacion__acciones-gemelo">
+                    <Button type="button" size="sm" onClick={() => setGemeloFase('pago')}>
+                      Sí, quiero el modelo 3D
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={desactivarModelo3d}>
+                      No, solo fotos
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {gemeloFase === 'pago' && (
+                <PagoModelo onPagado={iniciarGemelo} onCancelar={desactivarModelo3d} />
+              )}
 
               {gemeloFase === 'conectando' && <p className="tasacion__hint">Conectando con el servicio 3D…</p>}
 
@@ -530,6 +551,7 @@ export const PropertyForm = () => {
                   config={gemeloConfig}
                   tituloInicial={tituloGemelo()}
                   propiedad={esEdicion ? String(edicion!.id!) : null}
+                  pagoId={pagoId}
                   onTrabajoCreado={(id) => {
                     setGemeloJobId(id);
                     setGemeloFase('progreso');
@@ -541,6 +563,7 @@ export const PropertyForm = () => {
                 <BarraProgreso
                   config={gemeloConfig}
                   jobId={gemeloJobId}
+                  propiedad={esEdicion ? String(edicion!.id!) : null}
                   onListo={job => {
                     setGemeloJob(job);
                     setGemeloFase('listo');

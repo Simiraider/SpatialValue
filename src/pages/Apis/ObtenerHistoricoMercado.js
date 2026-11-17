@@ -1,4 +1,6 @@
 export const prerender = false;
+import { ipDePeticion } from '../../Backend/sesion.js';
+import { permitirFrecuencia } from '../../Backend/limite.js';
 import { SERIE_VENTA, PERIODO_ACTUAL, SERIE_ETIQUETA, SERIE_FUENTE } from '../../data/historico-barrios';
 import { FACTOR_ALQUILER, serieDeAlquiler, valoresBarrio, resumenSerie } from '../../lib/historico';
 import { VALORES_M2_POR_BARRIO } from '../../lib/mercado';
@@ -13,6 +15,13 @@ export async function GET({ request }) {
     'Cache-Control': 'public, max-age=3600',
     'Access-Control-Allow-Origin': '*',
   };
+
+  if (!(await permitirFrecuencia(`historico:${ipDePeticion(request)}`, 120, 60_000))) {
+    return new Response(
+      JSON.stringify({ ok: false, error: 'Demasiadas consultas. Probá en un minuto.' }),
+      { status: 429, headers: cabeceras }
+    );
+  }
 
   if (barrioQuery && barrioQuery !== 'todos') {
     const clave = barrioQuery

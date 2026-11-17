@@ -294,7 +294,7 @@ export const ReportPage = () => {
         {gemelo && (
           <section className="reporte-pagina__seccion" aria-label="Gemelo digital de la propiedad">
             <Visor3D
-              config={{ workerUrl: '', minFotos: 5, maxFotos: 100, maxVideoMb: 300, modo: 'auto', almacenamiento: 'supabase' }}
+              config={{ workerUrl: '', minFotos: 5, maxFotos: 100, maxVideoMb: 50, modo: 'auto', almacenamiento: 'supabase' }}
               job={gemelo}
               onNuevo={() => {}}
               compacto

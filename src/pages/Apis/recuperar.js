@@ -1,7 +1,7 @@
 export const prerender = false;
 
 import sql from '../../Backend/carga.js';
-import { crearSolicitud } from '../../Backend/recuperacion.js';
+import { crearSolicitud, asegurarEsquemaRecuperacion } from '../../Backend/recuperacion.js';
 import { enviarCorreo, correoConfigurado } from '../../Backend/correo.js';
 import { ipDePeticion, esMismoOrigen } from '../../Backend/sesion.js';
 import { permitirFrecuencia } from '../../Backend/limite.js';
@@ -47,6 +47,7 @@ export async function POST({ request }) {
     }
 
     // Anti-spam por cuenta: un pedido cada 2 minutos.
+    await asegurarEsquemaRecuperacion();
     const recientes = await sql`
       SELECT COUNT(*)::int AS n FROM "recuperacion_password"
       WHERE "id_usuario" = ${usuario.id_usuario}

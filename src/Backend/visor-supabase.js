@@ -4,8 +4,10 @@ const TABLA_POR_DEFECTO = 'visor3d_trabajos';
 export const BUCKET = (process.env.SUPABASE_VISOR_BUCKET || BUCKET_POR_DEFECTO).trim() || BUCKET_POR_DEFECTO;
 export const TABLA = (process.env.SUPABASE_VISOR_TABLA || TABLA_POR_DEFECTO).trim() || TABLA_POR_DEFECTO;
 
-export const MAX_MEDIA_BYTES = 600 * 1024 * 1024;
+export const MAX_MEDIA_BYTES = 50 * 1024 * 1024;
 export const MAX_GLB_BYTES = 50 * 1024 * 1024;
+export const MAX_TOTAL_BYTES = 300 * 1024 * 1024;
+export const MAX_ARCHIVOS = 120;
 
 const URL_IMAGEN = /^image\//i;
 const URL_VIDEO = /^video\/(mp4|quicktime|webm|x-m4v)$/i;
@@ -111,7 +113,10 @@ export function rutaModelo(id) {
 }
 
 async function pedir(url, opciones = {}) {
-  const respuesta = await fetch(url, opciones);
+  const respuesta = await fetch(url, {
+    ...opciones,
+    signal: opciones.signal || AbortSignal.timeout(45_000),
+  });
   const texto = await respuesta.text();
   let cuerpo = null;
   if (texto) {
@@ -159,6 +164,25 @@ export async function actualizarFila(id, cambios) {
   return fila;
 }
 
+export async function reclamarEnvio(id) {
+  exigirConfiguracion();
+  const params = new URLSearchParams({
+    id: `eq.${id}`,
+    proveedor_ref: 'is.null',
+    estado: 'neq.enviando',
+  });
+  const filas = await pedir(`${rest()}?${params.toString()}`, {
+    method: 'PATCH',
+    headers: cabeceras({ 'Content-Type': 'application/json', Prefer: 'return=representation' }),
+    body: JSON.stringify({
+      estado: 'enviando',
+      mensaje: 'Enviando el material a KIRI…',
+      progreso: 15,
+    }),
+  });
+  return Array.isArray(filas) && filas.length ? filas[0] : null;
+}
+
 export async function borrarFila(id) {
   exigirConfiguracion();
   await pedir(`${rest()}?id=eq.${encodeURIComponent(id)}`, {
@@ -202,16 +226,19 @@ export async function vincularPublicacionTrabajo(trabajoId, publicacionId) {
   return actualizarFila(trabajoId, { publicacion_id: publicacionId });
 }
 
-export async function firmarSubida(ruta) {
+export async function crearLinkFirmado(ruta, segundos = 3600) {
   exigirConfiguracion();
-  const cuerpo = await pedir(storage(`object/upload/sign/${BUCKET}/${codificarRuta(ruta)}`), {
-    method: 'POST',
-    headers: cabeceras({ 'Content-Type': 'application/json' }),
-    body: '{}',
-  });
-  const relativa = cuerpo?.url;
-  if (!relativa) throw new Error('Supabase no devolvió la URL firmada de subida.');
-  return { ruta, url: `${limpiarUrl(process.env.SUPABASE_URL)}/storage/v1${relativa}` };
+  const respuesta = await pedir(
+    storage(`object/sign/${BUCKET}/${codificarRuta(ruta)}?expires=${segundos}`),
+    {
+      method: 'POST',
+      headers: cabeceras({ 'Content-Type': 'application/json' }),
+      body: '{}',
+    }
+  );
+  const relativa = respuesta?.signedUrl;
+  if (!relativa) throw new Error('Supabase no devolvió la URL firmada.');
+  return `${limpiarUrl(process.env.SUPABASE_URL)}/storage/v1${relativa}`;
 }
 
 export async function subirObjeto(ruta, bytes, contentType) {
@@ -277,15 +304,16 @@ export async function inspeccionarObjeto(ruta) {
   return { existe: true, esGlb, bytes };
 }
 
-export async function borrarObjetos(rutas) {
-  const lista = (rutas || []).filter(Boolean);
-  if (!lista.length) return;
+export async function firmarDescarga(ruta, segundos = 3600) {
   exigirConfiguracion();
-  await pedir(storage(`object/${BUCKET}`), {
-    method: 'DELETE',
+  const cuerpo = await pedir(storage(`object/sign/${BUCKET}/${codificarRuta(ruta)}`), {
+    method: 'POST',
     headers: cabeceras({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ prefixes: lista }),
+    body: JSON.stringify({ expiresIn: segundos }),
   });
+  const relativa = cuerpo?.signedURL;
+  if (!relativa) throw new Error('Supabase no devolvió el link firmado de descarga.');
+  return `${limpiarUrl(process.env.SUPABASE_URL)}/storage/v1${relativa}`;
 }
 
 const ESTADO_API = {

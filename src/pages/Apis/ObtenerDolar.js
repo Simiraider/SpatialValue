@@ -1,5 +1,6 @@
 export const prerender = false;
-import { resolverUsuarioId, permitirFrecuencia, ipDePeticion } from '../../Backend/sesion.js';
+import { resolverUsuarioId, ipDePeticion } from '../../Backend/sesion.js';
+import { permitirFrecuencia } from '../../Backend/limite.js';
 import { TASA_ARS_USD } from '../../lib/mercado';
 
 const CACHE_MS = 30 * 60 * 1000;
@@ -28,7 +29,7 @@ export async function GET({ request }) {
     );
   }
 
-  if (!permitirFrecuencia(`dolar:${ipDePeticion(request)}`, 60)) {
+  if (!(await permitirFrecuencia(`dolar:${ipDePeticion(request)}`, 60))) {
     return new Response(
       JSON.stringify({ error: 'Demasiadas consultas' }),
       { status: 429, headers: { 'Content-Type': 'application/json' } }

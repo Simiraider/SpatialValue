@@ -292,8 +292,12 @@ export async function POST({ request }) {
 
       if (modelo3dJobId && publicacionGuardada?.id_publicacion) {
         try {
-          const { vincularPublicacionTrabajo } = await import('../../Backend/visor-supabase.js');
-          await vincularPublicacionTrabajo(modelo3dJobId, publicacionGuardada.id_publicacion);
+          const { vincularTrabajoAUsuario } = await import('../../Backend/visor-vinculo.js');
+          await vincularTrabajoAUsuario({
+            trabajoId: modelo3dJobId,
+            publicacionId: publicacionGuardada.id_publicacion,
+            usuarioId: idUsuarioFinal,
+          });
         } catch (visError) {
           console.warn('No se pudo vincular el gemelo 3D a la publicación:', visError.message);
         }

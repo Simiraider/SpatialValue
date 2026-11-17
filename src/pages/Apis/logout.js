@@ -1,8 +1,15 @@
 export const prerender = false;
 
-import { cookieSesionExpirada } from '../../Backend/sesion.js';
+import { cookieSesionExpirada, esMismoOrigen } from '../../Backend/sesion.js';
 
-export async function POST() {
+export async function POST({ request }) {
+  if (!esMismoOrigen(request)) {
+    return new Response(JSON.stringify({ error: 'Origen no permitido.' }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+    });
+  }
+
   const headers = new Headers({ 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
   headers.append('Set-Cookie', cookieSesionExpirada());
 

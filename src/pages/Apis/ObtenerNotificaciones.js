@@ -1,192 +1,118 @@
-
 export const prerender = false;
+import sqlConfig, { asegurarEsquemaConfig } from '../../Backend/carga-config.js';
+import sqlIdentidad from '../../Backend/carga.js';
+import { resolverUsuarioId, ipDePeticion, esMismoOrigen } from '../../Backend/sesion.js';
+import { permitirFrecuencia } from '../../Backend/limite.js';
 
-import sqlConfig, {
-  asegurarEsquemaConfig
-} from '../../Backend/carga-config.js';
+function getCookieUsuarioId(request) {
+  return resolverUsuarioId(request);
+}
 
-import sql from '../../Backend/carga.js';
-
-import { resolverUsuarioId } from '../../Backend/sesion.js';
-
-import {
-  asegurarEsquemaAlertas,
-  jsonResponse
-} from '../../Backend/alertas.js';
+function respuestaError(mensaje, status) {
+  return new Response(JSON.stringify({ error: mensaje }), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
 
 export async function GET({ request }) {
   try {
-    const usuarioId = resolverUsuarioId(request);
-
+    await asegurarEsquemaConfig();
+    const usuarioId = getCookieUsuarioId(request);
     if (!usuarioId) {
-      return jsonResponse({ error: 'Sesión no válida' }, 401);
+      return respuestaError('Sesión no válida', 401);
     }
 
-    await asegurarEsquemaConfig();
-    await asegurarEsquemaAlertas();
-
-    // Notificaciones de amigos
-    const likes = await sqlConfig`
-      SELECT fecha, id_emisor
-      FROM usuario_likes
-      WHERE id_receptor = ${usuarioId}
-      ORDER BY fecha DESC
+    const soloMios = await sqlConfig`
+      SELECT "fecha", "id_emisor" FROM "usuario_likes"
+      WHERE "id_receptor" = ${usuarioId}
+      ORDER BY "fecha" DESC
       LIMIT 20
     `;
 
-    let likesFormateados = [];
-
-    if (likes.length) {
-      const emisores = likes.map(l => l.id_emisor);
-
-      const [usuarios, perfiles, meta] = await Promise.all([
-        sql`
-          SELECT id_usuario, nombre
-          FROM usuarios
-          WHERE id_usuario = ANY(${emisores}::uuid[])
-        `,
-
-        sqlConfig`
-          SELECT id_usuario, avatar, perfil_publico
-          FROM usuarios
-          WHERE id_usuario = ANY(${emisores}::uuid[])
-        `,
-
-        sqlConfig`
-          SELECT visto_hasta
-          FROM usuario_notificaciones_meta
-          WHERE id_usuario = ${usuarioId}
-          LIMIT 1
-        `
-      ]);
-
-      const nombres = new Map(
-        usuarios.map(u => [String(u.id_usuario), u.nombre])
+    if (soloMios.length === 0) {
+      return new Response(
+        JSON.stringify({ success: true, no_vistos: 0, notificaciones: [] }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
       );
-
-      const avatares = new Map(
-        perfiles.map(u => [String(u.id_usuario), u])
-      );
-
-      const vistoHasta = meta[0]?.visto_hasta
-        ? new Date(meta[0].visto_hasta)
-        : null;
-
-      likesFormateados = likes.map(l => {
-        const perfil = avatares.get(String(l.id_emisor));
-
-        return {
-          tipo: 'like',
-          id: `like-${l.id_emisor}-${new Date(l.fecha).getTime()}`,
-          emisor_id: String(l.id_emisor),
-          emisor_nombre: nombres.get(String(l.id_emisor)) || 'Usuario',
-          emisor_avatar:
-            perfil && perfil.perfil_publico !== false
-              ? perfil.avatar || ''
-              : '',
-          fecha: l.fecha,
-          no_visto:
-            !vistoHasta || new Date(l.fecha) > vistoHasta
-        };
-      });
     }
 
-    // Notificaciones inmobiliarias
-    const alertas = await sql`
-      SELECT
-        id_notificacion,
-        id_propiedad,
-        titulo,
-        barrio,
-        tipo_propiedad,
-        precio_usd,
-        superficie_m2,
-        ambientes,
-        url,
-        creada_en,
-        vista
-      FROM alertas_notificaciones
-      WHERE id_usuario = ${usuarioId}
-      ORDER BY creada_en DESC
-      LIMIT 30
+    const emisores = soloMios.map((l) => l.id_emisor);
+    const identificadores = await sqlIdentidad`
+      SELECT "id_usuario", "nombre" FROM "usuarios"
+      WHERE "id_usuario" = ANY(${emisores}::uuid[])
     `;
+    const nombres = new Map(identificadores.map((i) => [String(i.id_usuario), i.nombre]));
 
-    const alertasFormateadas = alertas.map(n => ({
-      tipo: 'propiedad',
-      id: String(n.id_notificacion),
-      id_propiedad: n.id_propiedad,
-      titulo: n.titulo,
-      barrio: n.barrio,
-      tipo_propiedad: n.tipo_propiedad,
-      precio_usd: n.precio_usd,
-      superficie_m2: n.superficie_m2,
-      ambientes: n.ambientes,
-      url: n.url,
-      fecha: n.creada_en,
-      no_visto: !n.vista
-    }));
+    const avatares = await sqlConfig`
+      SELECT "id_usuario", "avatar", "perfil_publico" FROM "usuarios"
+      WHERE "id_usuario" = ANY(${emisores}::uuid[])
+    `;
+    const avatarPorId = new Map(avatares.map((a) => [String(a.id_usuario), a]));
 
-    const notificaciones = [
-      ...likesFormateados,
-      ...alertasFormateadas
-    ].sort(
-      (a, b) =>
-        new Date(b.fecha).getTime() -
-        new Date(a.fecha).getTime()
+    const ultimaMarca = await sqlConfig`
+      SELECT "visto_hasta" FROM "usuario_notificaciones_meta"
+      WHERE "id_usuario" = ${usuarioId} LIMIT 1
+    `;
+    const vistoHasta = ultimaMarca[0]?.visto_hasta ? new Date(ultimaMarca[0].visto_hasta) : null;
+
+    const notificaciones = soloMios
+      .map((l) => {
+        const pub = avatarPorId.get(String(l.id_emisor));
+        const esPublico = pub ? pub.perfil_publico !== false : true;
+        return {
+          emisor_id: String(l.id_emisor),
+          emisor_nombre: nombres.get(String(l.id_emisor)) || 'Usuario',
+          emisor_avatar: esPublico ? (pub?.avatar || '') : '',
+          fecha: l.fecha,
+          no_visto: !vistoHasta || new Date(l.fecha) > vistoHasta,
+        };
+      })
+      .filter(Boolean);
+
+    const noVistos = notificaciones.filter((n) => n.no_visto).length;
+
+    return new Response(
+      JSON.stringify({ success: true, no_vistos: noVistos, notificaciones }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
 
-    return jsonResponse({
-      success: true,
-      no_vistos: notificaciones.filter(n => n.no_visto).length,
-      notificaciones
-    });
-
   } catch (error) {
-    console.error('[ObtenerNotificaciones GET]', error);
-
-    return jsonResponse({
-      error: 'Error al cargar notificaciones'
-    }, 500);
+    console.error('Error en ObtenerNotificaciones:', error.message);
+    return respuestaError('Error al cargar notificaciones', 500);
   }
 }
 
 export async function POST({ request }) {
   try {
-    const usuarioId = resolverUsuarioId(request);
+    await asegurarEsquemaConfig();
 
-    if (!usuarioId) {
-      return jsonResponse({ error: 'Sesión no válida' }, 401);
+    if (!esMismoOrigen(request)) {
+      return respuestaError('Origen no permitido.', 403);
     }
 
-    await asegurarEsquemaConfig();
-    await asegurarEsquemaAlertas();
+    if (!(await permitirFrecuencia(`notificaciones:${ipDePeticion(request)}`, 60, 60_000))) {
+      return respuestaError('Demasiadas acciones. Esperá un momento.', 429);
+    }
 
-    await Promise.all([
-      sqlConfig`
-        INSERT INTO usuario_notificaciones_meta (
-          id_usuario,
-          visto_hasta
-        )
-        VALUES (${usuarioId}, NOW())
-        ON CONFLICT (id_usuario)
-        DO UPDATE SET visto_hasta = NOW()
-      `,
+    const usuarioId = getCookieUsuarioId(request);
+    if (!usuarioId) {
+      return respuestaError('Sesión no válida', 401);
+    }
 
-      sql`
-        UPDATE alertas_notificaciones
-        SET vista = TRUE
-        WHERE id_usuario = ${usuarioId}
-          AND vista = FALSE
-      `
-    ]);
+    await sqlConfig`
+      INSERT INTO "usuario_notificaciones_meta" ("id_usuario", "visto_hasta")
+      VALUES (${usuarioId}, NOW())
+      ON CONFLICT ("id_usuario") DO UPDATE SET "visto_hasta" = NOW()
+    `;
 
-    return jsonResponse({ success: true });
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
 
   } catch (error) {
-    console.error('[ObtenerNotificaciones POST]', error);
-
-    return jsonResponse({
-      error: 'Error al marcar notificaciones'
-    }, 500);
+    console.error('Error al marcar notificaciones:', error.message);
+    return respuestaError('Error al marcar notificaciones', 500);
   }
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Check, Loader2, XCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { cn } from '../../lib/utils';
@@ -15,6 +15,7 @@ import {
 interface Props {
   config: ConfigGemelo;
   jobId: string;
+  propiedad?: string | null;
   onListo: (job: EstadoTrabajo) => void;
   onCancelar: () => void;
 }
@@ -39,7 +40,7 @@ const PASOS: Record<string, { titulo: string; detalle: string }> = {
 
 const FALLOS_MAXIMOS = 5;
 
-export const BarraProgreso = ({ config, jobId, onListo, onCancelar }: Props) => {
+export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCancelar }: Props) => {
   const [job, setJob] = useState<EstadoTrabajo | null>(null);
   const [fallos, setFallos] = useState(0);
   const [cancelando, setCancelando] = useState(false);
@@ -125,6 +126,7 @@ export const BarraProgreso = ({ config, jobId, onListo, onCancelar }: Props) => 
     try {
       const listo = await subirModeloGLBSupabase(config, {
         titulo: job?.titulo || 'Gemelo digital',
+        idPublicacion: propiedad,
         archivo: archivoGlb,
       });
       setJob(listo);

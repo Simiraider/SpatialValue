@@ -1,7 +1,8 @@
 export const prerender = false;
 import sqlConfig, { asegurarEsquemaConfig } from '../../Backend/carga-config.js';
 import sqlIdentidad from '../../Backend/carga.js';
-import { resolverUsuarioId, permitirFrecuencia, ipDePeticion } from '../../Backend/sesion.js';
+import { resolverUsuarioId, ipDePeticion, esMismoOrigen } from '../../Backend/sesion.js';
+import { permitirFrecuencia } from '../../Backend/limite.js';
 
 function getCookieUsuarioId(request) {
   return resolverUsuarioId(request);
@@ -13,8 +14,14 @@ export async function POST({ request }) {
   try {
     await asegurarEsquemaConfig();
 
-    // Anti abuso: máx 40 likes por IP cada 5 minutos.
-    if (!permitirFrecuencia(`like:${ipDePeticion(request)}`, 40)) {
+    if (!esMismoOrigen(request)) {
+      return new Response(
+        JSON.stringify({ error: 'Origen no permitido.' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!(await permitirFrecuencia(`like:${ipDePeticion(request)}`, 40))) {
       return new Response(
         JSON.stringify({ error: 'Demasiadas acciones. Esperá un momento.' }),
         { status: 429, headers: { 'Content-Type': 'application/json' } }

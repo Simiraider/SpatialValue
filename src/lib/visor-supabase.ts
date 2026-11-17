@@ -107,6 +107,7 @@ export async function subirTrabajoSupabase(
     id_publicacion: datos.idPublicacion || null,
     calidad: datos.calidad,
     tipo: 'media',
+    pago_id: datos.pagoId || null,
     archivos: archivos.map((archivo) => ({
       nombre: archivo.name,
       tipo: archivo.type,

@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { unzipSync } from 'fflate';
 import { resolverUrlModeloFallback } from '../lib/gemelo.ts';
+import { procesarConMASt3R } from './visor-mast3r.js';
 
 const API_KIRI = 'https://api.kiriengine.app/api/v1/open';
 const API_MAKESPLAT = 'https://api.makesplat.com';
@@ -57,6 +58,7 @@ async function tabla() {
 }
 
 export function proveedorConfigurado() {
+  if (valor('HF_TOKEN')) return 'mast3r';
   if (valor('KIRI_API_KEY')) return 'kiri';
   if (valor('MAKESPLAT_API_KEY')) return 'makesplat';
   return null;
@@ -219,8 +221,26 @@ const fallar = async (fila, mensaje) => {
   return fila;
 };
 
+// ── MASt3R ────────────────────────────────────────────────────────────────────
+export async function crearEnMASt3R({ titulo, idUsuario, idPublicacion, nFotos, esVideo }) {
+  const id = `mast3r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const fila = nuevaFila({
+    id,
+    proveedor: 'mast3r',
+    proveedorRef: id,
+    titulo,
+    idUsuario,
+    idPublicacion,
+    nFotos,
+    esVideo,
+    motor: 'mast3r',
+  });
+  fila.mensaje = 'Iniciando reconstrucción con MASt3R...';
+  await guardarFila(fila);
+  return fila;
+}
+
 // ── KIRI ─────────────────────────────────────────────────────────────────────
-// status: -1 subiendo, 0 procesando, 1 falló, 2 ok, 3 en cola, 4 expiró
 const MAPEO_KIRI = {
   '-1': { etapa: 'recibiendo', progreso: 12, mensaje: 'Subiendo el material a KIRI Engine…' },
   '3': { etapa: 'recibiendo', progreso: 20, mensaje: 'En cola de procesamiento en KIRI Engine…' },
@@ -243,7 +263,6 @@ async function estadoKiri(fila) {
   const st = String(cuerpo.data?.status);
 
   if (st === '2') {
-    // materializar: pedir el zip, bajarlo, extraer el .glb y guardarlo
     fila.etapa = 'convirtiendo';
     fila.progreso = 85;
     fila.mensaje = 'Descargando y convirtiendo el modelo…';
@@ -358,15 +377,12 @@ async function estadoMakeSplat(fila) {
   return estado;
 }
 
-// ── simulación (fallback sin credenciales) ───────────────────────────────────
-const DURACION_SIMULADA_MS = 15_000;
 async function estadoSimulado(fila) {
   const transcurrido = Date.now() - Number(fila.creado_en);
   const esMotivo = /^(Sin credenciales|MakeSplat|Motor 3D)/.test(fila.mensaje || '');
   if (transcurrido >= DURACION_SIMULADA_MS) {
     fila.estado = 'listo';
     fila.etapa = 'listo';
-    fila.progreso = 100;
     fila.mensaje = esMotivo ? fila.mensaje : 'Modelo de demostración listo';
     fila.modelo_url = resolverUrlModeloFallback(valor('GEMELO_MODELO_FALLBACK'));
     await guardarFila(fila);
@@ -379,7 +395,6 @@ async function estadoSimulado(fila) {
   return armarEstado(fila);
 }
 
-// ── API pública del módulo ───────────────────────────────────────────────────
 export async function consultarEstado(id) {
   const cacheado = enCache(id);
   if (cacheado) return cacheado;
@@ -409,7 +424,7 @@ export async function crearSimulado(datos, motivo = null) {
     proveedor: 'simular',
     titulo: datos.titulo,
     idUsuario: datos.idUsuario,
-    idPublicacion: datos.idPublicacion,
+    idPublicacion: datos.idHPublicacion,
     nFotos: datos.nFotos,
     esVideo: datos.esVideo,
     motor: 'simular',
@@ -419,8 +434,7 @@ export async function crearSimulado(datos, motivo = null) {
   return fila;
 }
 
-/** Crea el trabajo en KIRI reenviando el multipart crudo (sin cargarlo en memoria). */
-export async function crearEnKiri({ request, url, titulo, idUsuario, idPublicacion, nFotos, esVideo }) {
+export async function crearEnKiri({ request, titulo, idUsuario, idPublicacion, nFotos, esVideo }) {
   const destino = `${API_KIRI}/${esVideo ? 'photo/video' : 'photo/image'}`;
   const r = await fetch(destino, {
     method: 'POST',
@@ -452,13 +466,12 @@ export async function crearEnKiri({ request, url, titulo, idUsuario, idPublicaci
   return fila;
 }
 
-/** Crea el trabajo en MakeSplat: reserva, sube el video al enlace firmado y arranca. */
 export async function crearEnMakeSplat({ request, titulo, idUsuario, idPublicacion, nFotos, esVideo }) {
   const reserva = await fetch(`${API_MAKESPLAT}/v1/scans`, {
     method: 'POST',
     headers: encabezadoMakeSplat(),
     signal: AbortSignal.timeout(30000),
-  });
+  } );
   const cuerpo = await reserva.json().catch(() => null);
   if (!reserva.ok || !cuerpo?.job_id) {
     throw new Error(cuerpo?.error || `MakeSplat no reservó el escaneo (HTTP ${reserva.status}).`);
@@ -476,15 +489,15 @@ export async function crearEnMakeSplat({ request, titulo, idUsuario, idPublicaci
     body: archivo.stream(),
     duplex: 'half',
     signal: AbortSignal.timeout(300000),
-  });
+  } );
   if (!subida.ok) throw new Error(`No se pudo subir el video (HTTP ${subida.status}).`);
 
   const arranque = await fetch(`${API_MAKESPLAT}/v1/scans/${jobId}/start`, {
     method: 'POST',
     headers: { ...encabezadoMakeSplat(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ params: { mesh: true } }),
+    body: JSON.stringify({ params: { mesh: true } },),
     signal: AbortSignal.timeout(30000),
-  });
+  } );
   const cuerpoArranque = await arranque.json().catch(() => null);
   if (!arranque.ok) {
     throw new Error(cuerpoArranque?.error || `MakeSplat no arrancó el escaneo (HTTP ${arranque.status}).`);
@@ -505,7 +518,6 @@ export async function crearEnMakeSplat({ request, titulo, idUsuario, idPublicaci
   return fila;
 }
 
-/** Guarda un .glb subido a mano ("ya tengo un modelo"). */
 export async function guardarModeloExterno({ bytes, titulo, idUsuario, idPublicacion }) {
   const id = `ext-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const fila = nuevaFila({
@@ -513,32 +525,30 @@ export async function guardarModeloExterno({ bytes, titulo, idUsuario, idPublica
     proveedor: 'externo',
     titulo,
     idUsuario,
-    idPublicacion,
-    nFotos: 0,
-    esVideo: false,
+    idUsuario: idUsuario,
+    idPublicacion: idPublicacion,
+    estado: 'listo',
+    etapa: 'listo',
+    progreso: 100,
+    mensaje: 'Modelo vinculado',
     motor: 'externo',
   });
-  fila.estado = 'listo';
-  fila.etapa = 'listo';
-  fila.progreso = 100;
-  fila.mensaje = 'Modelo vinculado';
   await guardarFila(fila);
   await guardarGlb(id, bytes);
-  return id;
+  return fila;
 }
 
-/** Extrae el .glb más grande de un ZIP (KIRI devuelve varios formatos). */
 export function extraerGlb(zip) {
   const archivos = unzipSync(zip);
   let mejor = null;
   let mejorTam = 0;
-  for (const [nombre, datos] of Object.entries(archivos)) {
+  for (const nombre of Object.keys(archivos)) {
     if (!nombre.toLowerCase().endsWith('.glb')) continue;
-    if (datos.length > mejorTam) {
-      mejor = datos;
-      mejorTam = datos.length;
+    if (archivos[nombre].length > mejorTam) {
+      mejor = archivos[nombre];
+      mejorTam = archivos[nombre].length;
     }
   }
-  if (!mejor) throw new Error('El ZIP no contiene un archivo .glb.');
+  if (!mejor) throw new Error('El ZIP no contiene un archivo .glb');
   return mejor;
 }
