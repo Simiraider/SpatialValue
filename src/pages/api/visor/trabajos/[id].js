@@ -1,4 +1,6 @@
 import {
+  MAX_MEDIA_BYTES,
+  MAX_TOTAL_BYTES,
   actualizarFila,
   borrarFila,
   borrarObjetos,
@@ -10,6 +12,8 @@ import {
   visorOperativo,
 } from '../../../../Backend/visor-supabase.js';
 import { kiriConfigurado, sincronizarConKiri } from '../../../../Backend/visor-kiri.js';
+import { liberarOrden } from '../../../../Backend/pagos.js';
+import { exigirSesion, limitar, puedeAccederTrabajo } from '../../../../Backend/seguridad.js';
 
 export const prerender = false;
 
@@ -17,11 +21,31 @@ const ESPERA_CHEQUEO_MS = 10_000;
 
 const noConfigurado = () => responderJson(503, { error: errorConfiguracion() });
 
-export async function GET({ params }) {
+async function trabajoAutorizado(id, usuarioId) {
+  const fila = await leerFila(id);
+  if (!fila) {
+    return { error: responderJson(404, { error: 'Trabajo no encontrado.' }) };
+  }
+  if (!(await puedeAccederTrabajo(fila, usuarioId))) {
+    return { error: responderJson(403, { error: 'No tenés permiso para acceder a este trabajo.' }) };
+  }
+  return { fila };
+}
+
+export async function GET({ params, request }) {
   if (!visorOperativo()) return noConfigurado();
+
+  const sesion = exigirSesion(request);
+  if (sesion.error) return sesion.error;
+
+  if (!(await limitar(`visor-estado:${sesion.usuarioId}`, 120, 60_000))) {
+    return responderJson(429, { error: 'Demasiadas consultas. Esperá un momento.' });
+  }
+
   try {
-    let fila = await leerFila(params.id);
-    if (!fila) return responderJson(404, { error: 'Trabajo no encontrado.' });
+    const autorizado = await trabajoAutorizado(params.id, sesion.usuarioId);
+    if (autorizado.error) return autorizado.error;
+    let fila = autorizado.fila;
 
     const enKiri =
       fila.estado === 'procesando' && fila.proveedor === 'kiri' && fila.proveedor_ref;
@@ -55,6 +79,13 @@ export async function GET({ params }) {
 export async function POST({ params, request }) {
   if (!visorOperativo()) return noConfigurado();
 
+  const sesion = exigirSesion(request);
+  if (sesion.error) return sesion.error;
+
+  if (!(await limitar(`visor-confirmar:${sesion.usuarioId}`, 120, 3_600_000))) {
+    return responderJson(429, { error: 'Demasiadas confirmaciones. Esperá un momento.' });
+  }
+
   let cuerpo = null;
   try {
     cuerpo = await request.json();
@@ -66,19 +97,36 @@ export async function POST({ params, request }) {
   }
 
   try {
-    const fila = await leerFila(params.id);
-    if (!fila) return responderJson(404, { error: 'Trabajo no encontrado.' });
+    const autorizado = await trabajoAutorizado(params.id, sesion.usuarioId);
+    if (autorizado.error) return autorizado.error;
+    const fila = autorizado.fila;
 
     const rutas = Array.isArray(fila.media_paths) ? fila.media_paths : [];
     if (!rutas.length) {
       return responderJson(409, { error: 'El trabajo no tiene archivos registrados.' });
     }
 
+    let total = 0;
     for (const ruta of rutas) {
-      const { existe } = await inspeccionarObjeto(ruta);
+      const { existe, bytes } = await inspeccionarObjeto(ruta);
       if (!existe) {
         return responderJson(409, {
           error: `Falta subir ${String(ruta).split('/').pop()} a Supabase Storage.`,
+        });
+      }
+      if (bytes > MAX_MEDIA_BYTES) {
+        return responderJson(413, {
+          error: `${String(ruta).split('/').pop()} supera el máximo de ${Math.round(
+            MAX_MEDIA_BYTES / 1024 / 1024
+          )} MB.`,
+        });
+      }
+      total += bytes;
+      if (total > MAX_TOTAL_BYTES) {
+        return responderJson(413, {
+          error: `El material supera el máximo total de ${Math.round(
+            MAX_TOTAL_BYTES / 1024 / 1024
+          )} MB.`,
         });
       }
     }
@@ -103,18 +151,33 @@ export async function POST({ params, request }) {
   }
 }
 
-export async function DELETE({ params }) {
+export async function DELETE({ params, request }) {
   if (!visorOperativo()) return noConfigurado();
+
+  const sesion = exigirSesion(request);
+  if (sesion.error) return sesion.error;
+
+  if (!(await limitar(`visor-borrar:${sesion.usuarioId}`, 30, 3_600_000))) {
+    return responderJson(429, { error: 'Demasiadas cancelaciones. Esperá un momento.' });
+  }
+
   try {
-    const fila = await leerFila(params.id);
-    if (fila) {
-      const rutas = [
-        ...(Array.isArray(fila.media_paths) ? fila.media_paths : []),
-        fila.modelo_path,
-      ].filter(Boolean);
-      await borrarObjetos(rutas);
-      await borrarFila(params.id);
+    const autorizado = await trabajoAutorizado(params.id, sesion.usuarioId);
+    if (autorizado.error) return autorizado.error;
+    const fila = autorizado.fila;
+
+    const rutas = [
+      ...(Array.isArray(fila.media_paths) ? fila.media_paths : []),
+      fila.modelo_path,
+    ].filter(Boolean);
+
+    await borrarObjetos(rutas);
+    await borrarFila(params.id);
+
+    if (fila.estado !== 'listo') {
+      await liberarOrden(params.id).catch(() => {});
     }
+
     return responderJson(200, { ok: true });
   } catch (e) {
     return responderJson(500, {

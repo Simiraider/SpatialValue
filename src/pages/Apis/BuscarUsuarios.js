@@ -1,7 +1,8 @@
 export const prerender = false;
 import sqlIdentidad from '../../Backend/carga.js';
 import sqlConfig, { asegurarEsquemaConfig } from '../../Backend/carga-config.js';
-import { resolverUsuarioId, permitirFrecuencia, ipDePeticion } from '../../Backend/sesion.js';
+import { resolverUsuarioId, ipDePeticion } from '../../Backend/sesion.js';
+import { permitirFrecuencia } from '../../Backend/limite.js';
 
 const escaparLike = (v) => v.replace(/([\\%_])/g, '\\$1');
 
@@ -9,7 +10,7 @@ export async function GET({ url, request }) {
   try {
     await asegurarEsquemaConfig();
 
-    if (!permitirFrecuencia(`buscar:${ipDePeticion(request)}`, 30)) {
+    if (!(await permitirFrecuencia(`buscar:${ipDePeticion(request)}`, 30))) {
       return new Response(
         JSON.stringify({ error: 'Demasiadas búsquedas. Esperá un momento.' }),
         { status: 429, headers: { 'Content-Type': 'application/json' } }

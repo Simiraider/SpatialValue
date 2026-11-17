@@ -1,5 +1,6 @@
 import os
 import json
+import secrets
 import warnings
 from pathlib import Path
 
@@ -66,12 +67,22 @@ COLUMNAS_NUMERICAS = [
 
 app = FastAPI(title="API IA Estimador")
 
-INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
+INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "").strip()
+EN_PRODUCCION = (
+    os.environ.get("RENDER") == "true"
+    or os.environ.get("ENVIRONMENT") == "production"
+    or os.environ.get("NODE_ENV") == "production"
+)
+
+if EN_PRODUCCION and not INTERNAL_API_KEY:
+    raise RuntimeError(
+        "INTERNAL_API_KEY es obligatoria en produccion. Definila en el panel de Render."
+    )
 
 def _verificar_api_key(x_api_key: str | None) -> None:
     if not INTERNAL_API_KEY:
         return
-    if not x_api_key or x_api_key != INTERNAL_API_KEY:
+    if not x_api_key or not secrets.compare_digest(x_api_key, INTERNAL_API_KEY):
         raise HTTPException(status_code=401, detail="API key inválida")
 db_pool = psycopg2.pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
 

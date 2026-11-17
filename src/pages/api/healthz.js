@@ -1,13 +1,16 @@
+import { ipDePeticion } from '../../Backend/sesion.js';
+import { limitar } from '../../Backend/seguridad.js';
+
 export const prerender = false;
 
-/**
- * Healthcheck publico.
- *
- * Deliberadamente NO expone que proveedor 3D esta configurado, ni nombres de
- * bucket, tabla o tipo de clave: eso le sirve a un atacante para mapear el
- * backend. Para diagnostico interno existe /api/gemelo/config.
- */
-export async function GET() {
+export async function GET({ request }) {
+  if (!(await limitar(`health:${ipDePeticion(request)}`, 120, 60_000))) {
+    return new Response(JSON.stringify({ ok: false }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+    });
+  }
+
   return new Response(JSON.stringify({ ok: true }), {
     status: 200,
     headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },

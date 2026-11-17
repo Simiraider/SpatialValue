@@ -1,7 +1,8 @@
 export const prerender = false;
 import sqlConfig, { asegurarEsquemaConfig } from '../../Backend/carga-config.js';
 import sqlIdentidad from '../../Backend/carga.js';
-import { resolverUsuarioId } from '../../Backend/sesion.js';
+import { resolverUsuarioId, ipDePeticion, esMismoOrigen } from '../../Backend/sesion.js';
+import { permitirFrecuencia } from '../../Backend/limite.js';
 
 function getCookieUsuarioId(request) {
   return resolverUsuarioId(request);
@@ -85,6 +86,15 @@ export async function GET({ request }) {
 export async function POST({ request }) {
   try {
     await asegurarEsquemaConfig();
+
+    if (!esMismoOrigen(request)) {
+      return respuestaError('Origen no permitido.', 403);
+    }
+
+    if (!(await permitirFrecuencia(`notificaciones:${ipDePeticion(request)}`, 60, 60_000))) {
+      return respuestaError('Demasiadas acciones. Esperá un momento.', 429);
+    }
+
     const usuarioId = getCookieUsuarioId(request);
     if (!usuarioId) {
       return respuestaError('Sesión no válida', 401);

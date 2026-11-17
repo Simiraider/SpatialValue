@@ -212,6 +212,7 @@ export interface DatosSubida {
   idPublicacion?: string | null;
   archivos: File[];
   calidad: 'rapida' | 'equilibrada' | 'alta' | 'auto';
+  pagoId?: string | null;
   onProgreso?: (fraccion: number) => void;
 }
 
@@ -230,6 +231,7 @@ export function subirTrabajo(config: ConfigGemelo, datos: DatosSubida): Promise<
       n_fotos: String(fotos.length),
     });
     if (datos.idUsuario) q.set('id_usuario', datos.idUsuario);
+    if (datos.pagoId) q.set('pago_id', datos.pagoId);
     if (datos.idPublicacion) q.set('id_publicacion', String(datos.idPublicacion));
 
     // Los archivos usan los nombres de campo que espera el proveedor (KIRI).
@@ -243,7 +245,7 @@ export function subirTrabajo(config: ConfigGemelo, datos: DatosSubida): Promise<
       datos.calidad === 'alta' ? '0' : datos.calidad === 'rapida' ? '2' : '1'
     );
     fd.append('textureQuality', '1');
-    fd.append('isMask', '1');
+    fd.append('isMask', '0');
     fd.append('textureSmoothing', '0');
 
     const xhr = new XMLHttpRequest();

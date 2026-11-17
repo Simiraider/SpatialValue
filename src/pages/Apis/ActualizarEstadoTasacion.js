@@ -1,11 +1,26 @@
 export const prerender = false;
 import sql from '../../Backend/carga.js';
-import { resolverUsuarioId } from '../../Backend/sesion.js';
+import { resolverUsuarioId, ipDePeticion, esMismoOrigen } from '../../Backend/sesion.js';
+import { permitirFrecuencia } from '../../Backend/limite.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST({ request }) {
   try {
+    if (!esMismoOrigen(request)) {
+      return new Response(
+        JSON.stringify({ error: "Origen no permitido." }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!(await permitirFrecuencia(`estado-tasacion:${ipDePeticion(request)}`, 60, 3_600_000))) {
+      return new Response(
+        JSON.stringify({ error: "Demasiadas actualizaciones seguidas. Probá más tarde." }),
+        { status: 429, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     const data = await request.json();
 
     const id_publicacion = data.id_publicacion || data.id;

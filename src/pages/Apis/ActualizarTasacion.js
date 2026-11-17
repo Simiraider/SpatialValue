@@ -182,6 +182,20 @@ export async function POST({ request }) {
       WHERE id_publicacion = ${id}::uuid
       RETURNING id_publicacion;
     `;
+
+    const modelo3dJobId = textoLimpio(raw.modelo3d_job_id, 80);
+    if (modelo3dJobId) {
+      try {
+        const { vincularTrabajoAUsuario } = await import('../../Backend/visor-vinculo.js');
+        await vincularTrabajoAUsuario({
+          trabajoId: modelo3dJobId,
+          publicacionId: id,
+          usuarioId: idUsuarioFinal,
+        });
+      } catch (vinculoError) {
+        console.warn('No se pudo vincular el gemelo 3D:', vinculoError.message);
+      }
+    }
     if (actualizar.length === 0) {
       return new Response(
         JSON.stringify({ error: "No se pudo actualizar la tasación" }),

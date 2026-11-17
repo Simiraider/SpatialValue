@@ -11,6 +11,12 @@ import {
   subirObjeto,
   visorOperativo,
 } from '../../../../../Backend/visor-supabase.js';
+import {
+  descargarRemoto,
+  exigirSesion,
+  limitar,
+  puedeAccederTrabajo,
+} from '../../../../../Backend/seguridad.js';
 
 export const prerender = false;
 
@@ -36,8 +42,26 @@ async function marcarListo(fila, bytes) {
   return estadoDesdeFila(actualizada);
 }
 
+async function trabajoAutorizado(id, usuarioId) {
+  const fila = await leerFila(id);
+  if (!fila) {
+    return { error: responderJson(404, { error: 'Trabajo no encontrado.' }) };
+  }
+  if (!(await puedeAccederTrabajo(fila, usuarioId))) {
+    return { error: responderJson(403, { error: 'No tenés permiso para acceder a este trabajo.' }) };
+  }
+  return { fila };
+}
+
 export async function POST({ params, request }) {
   if (!visorOperativo()) return noConfigurado();
+
+  const sesion = exigirSesion(request);
+  if (sesion.error) return sesion.error;
+
+  if (!(await limitar(`visor-modelo:${sesion.usuarioId}`, 20, 3_600_000))) {
+    return responderJson(429, { error: 'Demasiados intentos. Probá más tarde.' });
+  }
 
   let cuerpo = null;
   try {
@@ -47,8 +71,9 @@ export async function POST({ params, request }) {
   }
 
   try {
-    const fila = await leerFila(params.id);
-    if (!fila) return responderJson(404, { error: 'Trabajo no encontrado.' });
+    const autorizado = await trabajoAutorizado(params.id, sesion.usuarioId);
+    if (autorizado.error) return autorizado.error;
+    const fila = autorizado.fila;
 
     if (cuerpo?.firmar) {
       const ruta = rutaModelo(fila.id);
@@ -57,32 +82,23 @@ export async function POST({ params, request }) {
     }
 
     const glbUrl = String(cuerpo?.glb_url || '').trim();
-    if (!/^https?:\/\//i.test(glbUrl)) {
+    if (!glbUrl) {
       return responderJson(400, {
-        error: 'Pasá una URL http(s) del .glb o subí el archivo con el modo de subida directa.',
+        error: 'Pasá una URL https del .glb o subí el archivo con el modo de subida directa.',
       });
     }
 
-    const remoto = await fetch(glbUrl, { signal: AbortSignal.timeout(120000) });
-    if (!remoto.ok) {
-      return responderJson(502, {
-        error: `No se pudo descargar el modelo (HTTP ${remoto.status}).`,
-      });
+    const descarga = await descargarRemoto(glbUrl, {
+      maxBytes: MAX_GLB_BYTES,
+      timeoutMs: 50_000,
+    });
+
+    if (!descarga.ok) {
+      return responderJson(descarga.status === 413 ? 413 : 502, { error: descarga.error });
     }
 
-    const declarado = Number(remoto.headers.get('content-length')) || 0;
-    if (declarado > MAX_GLB_BYTES) {
-      return responderJson(413, {
-        error: `El modelo supera el máximo de ${Math.round(MAX_GLB_BYTES / 1024 / 1024)} MB.`,
-      });
-    }
+    const bytes = descarga.bytes;
 
-    const bytes = new Uint8Array(await remoto.arrayBuffer());
-    if (bytes.length > MAX_GLB_BYTES) {
-      return responderJson(413, {
-        error: `El modelo supera el máximo de ${Math.round(MAX_GLB_BYTES / 1024 / 1024)} MB.`,
-      });
-    }
     if (!esGlb(bytes)) {
       return responderJson(400, { error: 'El enlace no apunta a un .glb válido.' });
     }
@@ -99,6 +115,13 @@ export async function POST({ params, request }) {
 export async function PUT({ params, request }) {
   if (!visorOperativo()) return noConfigurado();
 
+  const sesion = exigirSesion(request);
+  if (sesion.error) return sesion.error;
+
+  if (!(await limitar(`visor-confirmar-modelo:${sesion.usuarioId}`, 60, 3_600_000))) {
+    return responderJson(429, { error: 'Demasiados intentos. Probá más tarde.' });
+  }
+
   let cuerpo = null;
   try {
     cuerpo = await request.json();
@@ -107,8 +130,9 @@ export async function PUT({ params, request }) {
   }
 
   try {
-    const fila = await leerFila(params.id);
-    if (!fila) return responderJson(404, { error: 'Trabajo no encontrado.' });
+    const autorizado = await trabajoAutorizado(params.id, sesion.usuarioId);
+    if (autorizado.error) return autorizado.error;
+    const fila = autorizado.fila;
 
     const ruta = String(cuerpo?.path || '').trim() || rutaModelo(fila.id);
     if (ruta !== rutaModelo(fila.id)) {

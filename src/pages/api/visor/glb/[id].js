@@ -1,38 +1,34 @@
 import {
-  descargarObjeto,
+  crearLinkFirmado,
   errorConfiguracion,
   leerFila,
   visorOperativo,
 } from '../../../../Backend/visor-supabase.js';
+import { exigirSesion, limitar, puedeAccederTrabajo } from '../../../../Backend/seguridad.js';
+import { responderJson } from '../../../../Backend/visor-supabase.js';
 
 export const prerender = false;
 
-const texto = (mensaje, status) =>
-  new Response(mensaje, { status, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+export async function GET({ params, request }) {
+  if (!visorOperativo()) return responderJson(503, { error: errorConfiguracion() });
 
-export async function GET({ params, url }) {
-  if (!visorOperativo()) return texto(errorConfiguracion(), 503);
+  const sesion = exigirSesion(request);
+  if (sesion.error) return sesion.error;
+
+  if (!(await limitar(`visor-glb:${sesion.usuarioId}`, 120, 60_000))) {
+    return responderJson(429, { error: 'Demasiadas consultas. Esperá un momento.' });
+  }
 
   try {
     const fila = await leerFila(params.id);
-    if (!fila?.modelo_path) return texto('Este trabajo no tiene modelo.', 404);
-
-    const objeto = await descargarObjeto(fila.modelo_path);
-    if (!objeto.ok || !objeto.body) {
-      return texto(`No se pudo leer el modelo (HTTP ${objeto.status}).`, 502);
+    if (!fila?.modelo_path) return responderJson(404, { error: 'Este trabajo no tiene modelo.' });
+    if (!(await puedeAccederTrabajo(fila, sesion.usuarioId))) {
+      return responderJson(403, { error: 'No tenés permiso para ver este modelo.' });
     }
 
-    const descargar = url.searchParams.get('download') === '1';
-    const cabeceras = {
-      'Content-Type': 'model/gltf-binary',
-      'Cache-Control': 'public, max-age=3600',
-      'Content-Disposition': `${descargar ? 'attachment' : 'inline'}; filename="gemelo-digital.glb"`,
-    };
-    const tamano = objeto.headers.get('content-length');
-    if (tamano) cabeceras['Content-Length'] = tamano;
-
-    return new Response(objeto.body, { status: 200, headers: cabeceras });
+    const urlFirmada = await crearLinkFirmado(fila.modelo_path);
+    return responderJson(200, { url: urlFirmada });
   } catch (e) {
-    return texto(e instanceof Error ? e.message : 'Error sirviendo el modelo.', 500);
+    return responderJson(500, { error: e instanceof Error ? e.message : 'Error generando link del modelo.' });
   }
 }

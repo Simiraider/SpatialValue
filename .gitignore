@@ -19,6 +19,7 @@ pnpm-debug.log*
 .vercel
 .env*.local
 .env*
+!.env.example
 /src/pages/Apis/__pycache__
 
 __pycache__/
@@ -33,4 +34,3 @@ storage/
 ia_server*.log
 /chrome_scraper_data
 /supabase/.temp
-supabase/visor3d.sql

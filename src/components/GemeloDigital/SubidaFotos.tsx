@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Camera, Film, Loader2, Trash2, UploadCloud, Video } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { cn } from '../../lib/utils';
@@ -19,6 +19,7 @@ interface Props {
   tituloInicial?: string;
   propiedad?: string | null;
   denseRemoto?: boolean;
+  pagoId?: string | null;
   onTrabajoCreado: (id: string) => void;
 }
 
@@ -48,7 +49,7 @@ function metadatosVideo(file: File): Promise<{ duracion: number; ancho: number; 
   });
 }
 
-export const SubidaFotos = ({ config, tituloInicial = '', propiedad, denseRemoto = false, onTrabajoCreado }: Props) => {
+export const SubidaFotos = ({ config, tituloInicial = '', propiedad, denseRemoto = false, pagoId = null, onTrabajoCreado }: Props) => {
   const [archivos, setArchivos] = useState<File[]>([]);
   const [titulo, setTitulo] = useState(tituloInicial);
   const [calidad, setCalidad] = useState<'rapida' | 'equilibrada' | 'alta'>('equilibrada');
@@ -153,18 +154,68 @@ export const SubidaFotos = ({ config, tituloInicial = '', propiedad, denseRemoto
     [fotos, videoOk, config.modo]
   );
 
+  const extraerFrames = async (file: File): Promise<File[]> => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.src = URL.createObjectURL(file);
+      video.muted = true;
+
+      video.onloadedmetadata = async () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          if (!ctx) throw new Error('No se pudo crear el contexto del canvas');
+
+          // Optimización: 512p es más rápido para MASt3R y suficiente para el visor
+          canvas.width = 512;
+          canvas.height = Math.round((video.videoHeight / video.videoWidth) * 512);
+
+          const frames: File[] = [];
+          const cantidadFrames = 10; // Reducido de 15 a 10 para acelerar el proceso
+          const intervalo = video.duration / cantidadFrames;
+
+          for (let i = 0; i < cantidadFrames; i++) {
+            video.currentTime = i * intervalo;
+            await new Promise((r) => (video.onseeked = r));
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', 0.8));
+            if (blob) {
+              frames.push(new File([blob], `frame_${i}.jpg`, { type: 'image/jpeg' }));
+            }
+          }
+          resolve(frames);
+        } catch (e) {
+          reject(e);
+        }
+      };
+      video.onerror = () => reject(new Error('Error al cargar el video.'));
+    });
+  };
+
   const generar = async () => {
     if (!puedeGenerar || subiendo !== null) return;
     setError(null);
     setSubiendo(0);
     try {
       const usuarioId = getUsuarioId() || undefined;
+      
+      let archivosASubir = [...archivos];
+      
+      // Si hay un video, extraemos los frames antes de subir
+      if (esVideoSubido) {
+        const videoFile = archivos.find(esVideo)!;
+        const frames = await extraerFrames(videoFile);
+        archivosASubir = frames;
+      }
+
       const datos = {
         titulo: titulo.trim() || 'Gemelo digital',
         idUsuario: usuarioId,
         idPublicacion: propiedad || undefined,
-        archivos,
+        archivos: archivosASubir,
         calidad,
+        pagoId,
         onProgreso: (f: number) => setSubiendo(f),
       };
       const { id } = visorEnSupabase(config)
