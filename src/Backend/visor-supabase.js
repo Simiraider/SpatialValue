@@ -241,6 +241,11 @@ export async function crearLinkFirmado(ruta, segundos = 3600) {
   return `${limpiarUrl(process.env.SUPABASE_URL)}/storage/v1${relativa}`;
 }
 
+export async function firmarSubida(ruta) {
+  const url = await crearLinkFirmado(ruta);
+  return { url };
+}
+
 export async function subirObjeto(ruta, bytes, contentType) {
   exigirConfiguracion();
   await pedir(storage(`object/${BUCKET}/${codificarRuta(ruta)}`), {
