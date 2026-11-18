@@ -7,9 +7,6 @@ import {
   responderJson,
   visorOperativo,
 } from '../../../../../Backend/visor-supabase.js';
-import {
-  sincronizarConMASt3R,
-} from '../../../../../Backend/visor-kiri.js';
 import { procesarConMASt3R } from '../../../../../Backend/visor-mast3r.js';
 import { exigirSesion, limitar, puedeAccederTrabajo } from '../../../../../Backend/seguridad.js';
 
@@ -38,8 +35,10 @@ export async function POST({ params, request }) {
 
     // Si ya hay un proceso de MASt3R, sincronizamos
     if (fila.proveedor === 'mast3r' && fila.proveedor_ref) {
-      const actualizada = await sincronizarConMASt3R(fila).catch(() => fila);
-      return responderJson(200, estadoDesdeFila(actualizada));
+      return responderJson(200, { 
+        ...estadoDesdeFila(fila), 
+        mensaje: 'El modelo ya se está procesando en MASt3R. Por favor, espera.' 
+      });
     }
 
     // Procesamos los archivos directamente con MASt3R

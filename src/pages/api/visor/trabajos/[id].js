@@ -11,7 +11,6 @@ import {
   responderJson,
   visorOperativo,
 } from '../../../../Backend/visor-supabase.js';
-import { kiriConfigurado, sincronizarConKiri } from '../../../../Backend/visor-kiri.js';
 import { liberarOrden } from '../../../../Backend/pagos.js';
 import { exigirSesion, limitar, puedeAccederTrabajo } from '../../../../Backend/seguridad.js';
 
@@ -56,15 +55,8 @@ export async function GET({ params, request }) {
 
       if (tocaChequear) {
         await actualizarFila(fila.id, { chequeo_en: new Date().toISOString() }).catch(() => null);
-        try {
-          fila = await sincronizarConKiri(fila);
-        } catch (e) {
-          const mensaje = e instanceof Error ? e.message : 'error de red';
-          fila =
-            (await actualizarFila(fila.id, {
-              mensaje: `Reintentando con KIRI: ${mensaje}`,
-            }).catch(() => null)) || fila;
-        }
+        // El soporte de KIRI ha sido deprecado en favor de MASt3R.
+        // No sincronizamos más con KIRI.
       }
     }
 
