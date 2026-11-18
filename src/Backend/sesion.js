@@ -30,7 +30,6 @@ function firmar(valor) {
   return crypto.createHmac('sha256', CLAVE_FIRMA).update(valor).digest('base64url');
 }
 
-/** Comparación en tiempo constante de dos cadenas. */
 export function igualSeguro(a, b) {
   const bufA = Buffer.from(String(a ?? ''));
   const bufB = Buffer.from(String(b ?? ''));
@@ -42,11 +41,6 @@ export function verificarFirma(valor, mac) {
   if (!valor || !mac || !FIRMA_RE.test(mac)) return false;
   return igualSeguro(mac, firmar(valor));
 }
-
-/**
- * Cookie de sesión. `HttpOnly` para que ningún script del navegador pueda leerla:
- * el cliente usa `localStorage` sólo para mostrar datos, nunca para autenticar.
- */
 export function cookieSesion(usuarioId) {
   return [
     `usuario_id=${encodeURIComponent(usuarioId)}.${firmar(usuarioId)}`,
@@ -86,8 +80,6 @@ export function idFirmado(usuarioId) {
   return `${usuarioId}.${firmar(usuarioId)}`;
 }
 
-// ── Limitador en memoria (rápido, por instancia) ──────────────────────────────
-
 const ventana = new Map();
 
 export function permitirFrecuencia(clave, maximo, ventanaMs = 300_000) {
@@ -118,13 +110,9 @@ export function ipDePeticion(request) {
   );
 }
 
-/**
- * Rechaza peticiones de otro origen. Complementa a `SameSite=Lax` como defensa
- * en profundidad contra CSRF.
- */
 export function esMismoOrigen(request) {
   const origen = request.headers.get('origin');
-  if (!origen) return true; // navegaciones/formularios clásicos no mandan Origin
+  if (!origen) return true; 
 
   let host = '';
   try {
@@ -136,11 +124,9 @@ export function esMismoOrigen(request) {
   const hostPropio =
     request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
 
-  // Sin host no podemos comparar: no bloqueamos el login por un header ausente.
   if (!hostPropio) return true;
   if (host === hostPropio) return true;
 
-  // Dominio canónico configurado explícitamente (por ejemplo, detrás de un proxy).
   const origenCanonico = String(ENV.APP_ORIGIN || '').trim();
   if (origenCanonico) {
     try {

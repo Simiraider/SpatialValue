@@ -1,4 +1,3 @@
-// gui.js
 import http from 'http';
 import { spawn } from 'child_process';
 import path from 'path';
@@ -11,7 +10,6 @@ const PORT = 3000;
 let scraperProcess = null;
 let sseClients = [];
 
-// Transmitir logs a la interfaz web por Server-Sent Events (SSE)
 function broadcastLog(data) {
     const lines = data.toString().split('\n');
     lines.forEach(line => {
@@ -230,8 +228,6 @@ const server = http.createServer((req, res) => {
             if (scraperProcess) {
                 scraperProcess.kill();
             }
-
-            // Preparar variables de entorno para LicenciadoScraper.js
             const env = {
                 ...process.env,
                 URL_BASE: data.urlBase,
@@ -246,7 +242,6 @@ const server = http.createServer((req, res) => {
             broadcastLog(`[GUI] Lanzas de proceso: node LicenciadoScraper.js`);
             broadcastLog(`[GUI] URL_BASE: ${data.urlBase}`);
 
-            // Ejecutar el archivo script real
             scraperProcess = spawn('node', ['LicenciadoScraper.js'], { env, cwd: __dirname });
 
             scraperProcess.stdout.on('data', (chunk) => broadcastLog(chunk));
