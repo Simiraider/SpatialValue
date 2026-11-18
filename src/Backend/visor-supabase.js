@@ -191,6 +191,24 @@ export async function borrarFila(id) {
   });
 }
 
+export async function borrarObjetos(rutas) {
+  if (!Array.isArray(rutas)) return;
+  exigirConfiguracion();
+  
+  const promesas = rutas.map(async (ruta) => {
+    try {
+      await pedir(storage(`object/${BUCKET}/${codificarRuta(ruta)}`), {
+        method: 'DELETE',
+        headers: cabeceras(),
+      });
+    } catch (e) {
+      console.error(`Error borrando objeto ${ruta}:`, e);
+    }
+  });
+  
+  await Promise.all(promesas);
+}
+
 export function urlListarTrabajos({ publicacionId, usuarioId, limite = 5 } = {}) {
   if (!publicacionId && !usuarioId) {
     throw new Error('Filtrá por publicacion_id o usuario_id.');
