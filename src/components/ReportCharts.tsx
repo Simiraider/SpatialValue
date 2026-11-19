@@ -305,10 +305,6 @@ export const ComposicionPieChart = ({ valorUsd, supCub, barrio }: ComposicionPie
   );
 };
 
-/* ============================================================
-   Historial de precios del barrio (12 meses)
-   La serie vive en src/lib/historial.ts y se comparte con Indicadores.
-   ============================================================ */
 
 export const HistorialBarrioChart = ({ barrio, valorM2 }: { barrio?: string; valorM2: number }) => {
   const datos = useMemo(() => construirSerie(barrio, valorM2), [barrio, valorM2]);

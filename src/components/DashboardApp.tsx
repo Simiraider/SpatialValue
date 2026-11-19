@@ -131,8 +131,6 @@ export const DashboardApp = () => {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(true);
 
-  // En móvil el menú lateral es un panel superpuesto: arranca cerrado para que
-  // el contenido se vea completo.
   useEffect(() => {
     if (window.matchMedia('(max-width: 900px)').matches) setSidebarVisible(false);
   }, []);
@@ -145,9 +143,6 @@ export const DashboardApp = () => {
   const perfilRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-  // Si venimos del callback de /Apis/auth/google, la cookie de sesión ya está
-  // puesta por el servidor pero el localStorage (sv_user) todavía no — se
-  // hidrata acá una sola vez con los datos que vienen en la URL y se limpia.
   const params = new URLSearchParams(window.location.search);
   if (params.get('bienvenida') === '1') {
     const nombreParam = params.get('nombre');

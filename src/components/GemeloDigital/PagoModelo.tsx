@@ -61,7 +61,7 @@ export const PagoModelo = ({ onPagado, onCancelar }: Props) => {
         datosExistente?.id &&
         (datosExistente.estado === 'pagado' || datosExistente.initPoint)
       ) {
-        const ordenCompleta = {
+        const ordenCompleta: Orden = {
           id: datosExistente.id,
           montoUsd: 2,
           moneda: (datosExistente.moneda as any) || 'USD',
@@ -91,6 +91,7 @@ export const PagoModelo = ({ onPagado, onCancelar }: Props) => {
             modo: ModoPago;
             initPoint?: string;
             metodos?: MetodosHabilitados;
+            error?: string;
           }
         | null;
 
@@ -321,18 +322,18 @@ export const PagoModelo = ({ onPagado, onCancelar }: Props) => {
   );
 };
 
-function PaymentMethod({ 
-  label, 
-  icon, 
-  isActive, 
-  onClick, 
-  isLoading, 
-  showWarning,
-  isDisabled,
-  message,
-  // @ts-ignore
-  disabled: _disabled 
-}) {
+interface PaymentMethodProps {
+  label: string;
+  icon: string;
+  isActive?: boolean;
+  onClick?: () => void;
+  isLoading?: boolean;
+  showWarning?: boolean;
+  isDisabled?: boolean;
+  message?: string;
+}
+
+function PaymentMethod({ label, icon, isActive, onClick, isDisabled, message }: PaymentMethodProps) {
   const [hovered, setHovered] = useState(false);
 
   return (

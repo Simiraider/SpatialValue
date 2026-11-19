@@ -45,7 +45,6 @@
   margin: 0 0.15rem;
 }
 
-/* El estilo scoped del componente Logo usa display:block; acá va inline en la línea del copyright */
 .footer__pie .footer__logo-linea {
   display: inline-block;
   width: auto;

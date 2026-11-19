@@ -1,11 +1,3 @@
-/**
- * Serie histórica del valor USD/m² por barrio (12 meses).
- *
- * Hoy se genera de forma determinística a partir del valor de referencia del
- * barrio (misma semilla para el mismo nombre), para que el gráfico sea estable
- * entre renders. Queda preparado para reemplazarse por la serie real que
- * entregue el scraper o la fuente oficial, sin tocar los componentes.
- */
 
 export type PuntoHistorial = { mes: string; valor: number; variacion: number };
 
@@ -46,7 +38,6 @@ export function serieHistorialM2(barrio: string | undefined, valorM2: number, me
   return puntos;
 }
 
-/** Variación acumulada del rango, en porcentaje (ej. 7.4 = +7.4%). */
 export function variacionRango(puntos: PuntoHistorial[]): number {
   if (puntos.length < 2) return 0;
   const primero = puntos[0].valor || 1;

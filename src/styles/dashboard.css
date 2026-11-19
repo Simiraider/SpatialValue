@@ -355,7 +355,6 @@
   position: relative;
 }
 
-/* Velo del menú móvil: en desktop no existe */
 .dashboard__scrim {
   display: none;
 }
@@ -532,7 +531,6 @@
   min-height: 60vh;
 }
 
-/* ---------- Franja de bienvenida (degradé firma) ---------- */
 
 .dashboard__bienvenida {
   display: flex;
@@ -592,7 +590,6 @@
   height: 1.125rem;
 }
 
-/* ---------- Fila de KPIs ---------- */
 
 .dashboard__kpis {
   display: grid;
@@ -661,7 +658,6 @@
   white-space: nowrap;
 }
 
-/* ---------- Zona gráfico + actividad ---------- */
 
 .dashboard__zona-media {
   display: grid;
@@ -700,7 +696,6 @@
   color: var(--dash-texto-suave);
 }
 
-/* Gráfico */
 
 .grafico {
   position: relative;
@@ -717,7 +712,6 @@
   height: 100%;
 }
 
-/* Ícono grande en baja opacidad: el espacio vacío se ve diseñado, no roto */
 .grafico__vacio-icono {
   width: 3.25rem;
   height: 3.25rem;
@@ -789,7 +783,6 @@
   color: var(--dash-texto-suave);
 }
 
-/* Actividad reciente */
 
 .actividad__lista {
   list-style: none;
@@ -797,7 +790,6 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  /* Eje vertical del timeline */
   position: relative;
 }
 
@@ -812,7 +804,6 @@
   border-radius: 999px;
 }
 
-/* Timeline: el punto azul tapa el eje, sin bordes horizontales */
 .actividad__item + .actividad__item {
   border-top: none;
 }
@@ -844,7 +835,6 @@
   border-radius: 999px;
   margin-top: 0.3rem;
   flex-shrink: 0;
-  /* Punto del timeline */
   box-shadow: 0 0 0 3px #ffffff;
   position: relative;
   z-index: 1;
@@ -903,7 +893,6 @@
   max-width: 18rem;
 }
 
-/* ---------- Lista de tasaciones ---------- */
 
 .dashboard__lista-cabecera {
   display: flex;
@@ -1270,7 +1259,6 @@
 }
 
 @media (max-width: 900px) {
-  /* 100dvh evita que la barra del navegador móvil corte el layout */
   .dashboard {
     height: 100dvh;
   }
@@ -1316,8 +1304,6 @@
     display: none;
   }
 
-  /* El menú lateral pasa a ser un panel superpuesto: antes ocupaba 16rem
-     fijos y en un teléfono dejaba el contenido sin espacio. */
   .dashboard__sidebar {
     position: fixed;
     top: 0;
@@ -1331,15 +1317,12 @@
     box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
   }
 
-  /* translateX saca el panel de pantalla; sin `visibility` para que la
-     animación de cierre se vea. */
   .dashboard--sidebar-oculto .dashboard__sidebar {
     margin-left: 0;
     transform: translateX(-105%);
     pointer-events: none;
   }
 
-  /* Velo para cerrar el menú tocando afuera */
   .dashboard__scrim {
     display: block;
     position: fixed;
@@ -1369,7 +1352,6 @@
     left: 0.75rem;
   }
 
-  /* Franja superior reservada para el botón de menú */
   .dashboard__principal {
     padding: 3.5rem 1rem 5rem;
   }
@@ -1425,7 +1407,6 @@
     font-size: 0.9375rem;
   }
 
-  /* En pantalla chica las acciones no deben depender del hover */
   .dashboard__fila-acciones {
     opacity: 1;
   }

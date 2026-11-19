@@ -11,7 +11,6 @@ interface Props {
   compacto?: boolean;
 }
 
-// La declaración de 'model-viewer' vive en src/types/model-viewer.d.ts
 
 export const Visor3D = ({ config, job, onNuevo, compacto }: Props) => {
   const contenedorRef = useRef<HTMLDivElement>(null);
@@ -41,10 +40,6 @@ export const Visor3D = ({ config, job, onNuevo, compacto }: Props) => {
         visor.setAttribute('exposure', '1.1');
         visor.setAttribute('ar', '');
         visor.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
-        // reveal="auto" solo empieza a cargar cuando el elemento cruza el
-        // viewport (IntersectionObserver): si nace fuera de pantalla el spinner
-        // queda girando para siempre. Con "manual" cargamos ya y llamamos
-        // dismissPoster() apenas se monta.
         visor.setAttribute('reveal', 'manual');
         visor.style.width = '100%';
         visor.style.height = '100%';

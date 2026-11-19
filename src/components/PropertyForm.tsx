@@ -206,7 +206,6 @@ export const PropertyForm = () => {
   const [pagoId, setPagoId] = useState<string | null>(null);
   const esEdicion = Boolean(edicion);
 
-  // Validación en tiempo real de superficies (paso 2)
   const validarSuperficie = (campo: 'superficieTotal' | 'superficieCubierta', valor: string) => {
     const n = Number(valor);
     setErrors(prev => {
@@ -221,7 +220,6 @@ export const PropertyForm = () => {
     });
   };
 
-  // Paso 1: el botón "Siguiente" queda inactivo hasta que la dirección esté verificada
   const direccionValida =
     data.direccion.trim().length > 0 &&
     (verifDir.estado === 'ok' || verifDir.estado === 'sin-servicio');

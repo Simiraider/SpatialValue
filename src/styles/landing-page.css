@@ -7,7 +7,6 @@
   background: var(--color-bg);
 }
 
-/* Entrada suave de elementos al hacer scroll (solo con JS activo) */
 @media (prefers-reduced-motion: no-preference) {
   .reveal [data-reveal] {
     opacity: 0;

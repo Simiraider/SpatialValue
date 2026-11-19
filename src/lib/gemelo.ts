@@ -223,7 +223,6 @@ export function subirTrabajo(config: ConfigGemelo, datos: DatosSubida): Promise<
     const video = datos.archivos.some(esVideoArchivo);
     const fotos = datos.archivos.filter((f) => !esVideoArchivo(f));
 
-    // Los metadatos van por query: el cuerpo se reenvia crudo al proveedor 3D.
     const q = new URLSearchParams({
       titulo: datos.titulo || 'Gemelo digital',
       calidad: datos.calidad,
@@ -234,7 +233,6 @@ export function subirTrabajo(config: ConfigGemelo, datos: DatosSubida): Promise<
     if (datos.pagoId) q.set('pago_id', datos.pagoId);
     if (datos.idPublicacion) q.set('id_publicacion', String(datos.idPublicacion));
 
-    // Los archivos usan los nombres de campo que espera el proveedor (KIRI).
     const fd = new FormData();
     for (const f of datos.archivos) {
       fd.append(esVideoArchivo(f) ? 'videoFile' : 'imagesFiles', f, f.name);
@@ -289,7 +287,6 @@ export async function obtenerEstadoTrabajo(config: ConfigGemelo, id: string): Pr
 
 export const MODELO_FALLBACK_POR_DEFECTO = '/modelos/departamento-demo.glb';
 
-/** URL del .glb de demostración cuando no hay KIRI/MakeSplat (o el proveedor falla). */
 export function resolverUrlModeloFallback(crudo?: string | null): string {
   const v = (crudo ?? '').trim();
   if (!v) return MODELO_FALLBACK_POR_DEFECTO;

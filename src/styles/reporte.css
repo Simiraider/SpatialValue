@@ -1,6 +1,5 @@
 .reporte-pagina {
   min-height: 100vh;
-  /* Fondo azul de marca translúcido; las tarjetas de resultado siguen blancas */
   background:
     radial-gradient(1100px 560px at 8% -8%, rgba(0, 135, 192, 0.2), transparent 62%),
     radial-gradient(900px 480px at 95% 2%, rgba(56, 189, 248, 0.18), transparent 58%),
@@ -18,7 +17,6 @@
   z-index: 40;
 }
 
-/* Al quedar sticky, el header compacta un poco para no robar espacio */
 .reporte-pagina__cabecera .reporte-pagina__titulo {
   font-size: clamp(1.15rem, 2.6vw, 1.6rem);
 }
@@ -121,7 +119,6 @@
   color: #64748b;
 }
 
-/* Toggle de dos columnas: Datos de la propiedad / Gráficos */
 .reporte-pagina__vista {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -172,7 +169,6 @@
   color: #ffffff;
 }
 
-/* Dos gráficos lado a lado (historial + variación) */
 .reporte-pagina__dupla-graficos {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

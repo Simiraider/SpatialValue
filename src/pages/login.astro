@@ -21,7 +21,7 @@ import "../styles/auth.css";
         </header>
 
         <a href="/Apis/auth/google" class="auth-form__boton-social" rel="nofollow">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.35 11.1H12v2.98h5.35c-.23 1.4-1.66 4.1-5.35 4.1-3.22 0-5.85-2.67-5.85-5.95s2.63-5.95 5.85-5.95c1.83 0 3.06.78 3.76 1.45l2.56-2.47C16.66 3.9 14.6 3 12 3 6.98 3 3 6.98 3 12s3.98 9 9 9c5.2 0 8.64-3.65 8.64-8.79 0-.59-.06-1.04-.29-1.11Z"/></svg>
+          <img src="/google-favicon.png" alt="" width="18" height="18" class="auth-form__google" />
           Continuar con Google
         </a>
 
@@ -101,7 +101,6 @@ import "../styles/auth.css";
       resetAyuda?.removeAttribute('hidden');
     };
 
-    // Errores que llegan por redirect (por ejemplo, el callback de Google).
     const errorUrl = new URLSearchParams(window.location.search).get('error');
     if (errorUrl) {
       setMensaje(errorUrl, '#ef4444');

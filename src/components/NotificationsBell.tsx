@@ -93,7 +93,6 @@ export const NotificationsBell = ({
         );
       }
     } catch {
-      // Conservamos el último estado.
     }
   }, []);
 
@@ -155,7 +154,6 @@ export const NotificationsBell = ({
         );
 
       } catch {
-        // Se reintentará al volver a abrir.
       } finally {
         setCargando(false);
       }

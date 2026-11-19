@@ -68,7 +68,6 @@ export const SubidaFotos = ({ config, tituloInicial = '', propiedad, denseRemoto
     return () => {
       Object.values(previews).forEach((u) => URL.revokeObjectURL(u));
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const agregarArchivos = async (lista: FileList | File[]) => {
@@ -166,12 +165,11 @@ export const SubidaFotos = ({ config, tituloInicial = '', propiedad, denseRemoto
           const ctx = canvas.getContext('2d');
           if (!ctx) throw new Error('No se pudo crear el contexto del canvas');
 
-          // Optimización: 512p es más rápido para MASt3R y suficiente para el visor
           canvas.width = 512;
           canvas.height = Math.round((video.videoHeight / video.videoWidth) * 512);
 
           const frames: File[] = [];
-          const cantidadFrames = 10; // Reducido de 15 a 10 para acelerar el proceso
+          const cantidadFrames = 10; 
           const intervalo = video.duration / cantidadFrames;
 
           for (let i = 0; i < cantidadFrames; i++) {
@@ -202,7 +200,6 @@ export const SubidaFotos = ({ config, tituloInicial = '', propiedad, denseRemoto
       
       let archivosASubir = [...archivos];
       
-      // Si hay un video, extraemos los frames antes de subir
       if (esVideoSubido) {
         const videoFile = archivos.find(esVideo)!;
         const frames = await extraerFrames(videoFile);

@@ -9,6 +9,9 @@ export const MAX_GLB_BYTES = 50 * 1024 * 1024;
 export const MAX_TOTAL_BYTES = 300 * 1024 * 1024;
 export const MAX_ARCHIVOS = 120;
 
+export const MODELO_DEMO = '/modelos/departamento-demo.glb';
+export const LIMITE_PROCESO_MS = 10 * 60 * 1000;
+
 const URL_IMAGEN = /^image\//i;
 const URL_VIDEO = /^video\/(mp4|quicktime|webm|x-m4v)$/i;
 const EXT_IMAGEN = /\.(jpe?g|png|webp|heic|heif|avif)$/i;
@@ -176,11 +179,26 @@ export async function reclamarEnvio(id) {
     headers: cabeceras({ 'Content-Type': 'application/json', Prefer: 'return=representation' }),
     body: JSON.stringify({
       estado: 'enviando',
-      mensaje: 'Enviando el material a KIRI…',
+      mensaje: 'Enviando el material al motor 3D…',
       progreso: 15,
     }),
   });
   return Array.isArray(filas) && filas.length ? filas[0] : null;
+}
+
+export async function marcarDemo(trabajoId, motivo) {
+  return actualizarFila(trabajoId, {
+    estado: 'listo',
+    etapa: 'listo',
+    progreso: 100,
+    motor: 'demo',
+    modelo_path: null,
+    modelo_url: MODELO_DEMO,
+    modelo_bytes: null,
+    mensaje: `Mostramos el modelo de demostración. ${motivo}`,
+    error: null,
+    chequeo_en: null,
+  });
 }
 
 export async function borrarFila(id) {
@@ -357,9 +375,11 @@ const ETAPA_API = {
 
 export function estadoDesdeFila(fila) {
   if (!fila) return null;
+  const esDemo =
+    fila.motor === 'demo' || (fila.estado === 'listo' && !fila.modelo_path && !fila.modelo_url);
   const modeloUrl = fila.modelo_path
     ? `/api/visor/glb/${fila.id}`
-    : fila.modelo_url || null;
+    : fila.modelo_url || (esDemo ? MODELO_DEMO : null);
 
   return {
     id: fila.id,
@@ -379,7 +399,7 @@ export function estadoDesdeFila(fila) {
         ? null
         : Number(fila.modelo_bytes),
     error: fila.error,
-    motor: 'externo',
+    motor: esDemo ? 'simular' : 'externo',
     creadoEn: Date.parse(fila.creado_en) || Date.now(),
     expiraEn: fila.expira_en ? Date.parse(fila.expira_en) : null,
   };

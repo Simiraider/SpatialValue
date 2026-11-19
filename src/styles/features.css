@@ -1,4 +1,3 @@
-/* ============ Sección "Tres pasos" ============ */
 
 .steps {
   background: linear-gradient(180deg, #ffffff 0%, #eaf8ff 32%, #cdeefe 68%, #b7e5fd 100%);
@@ -101,7 +100,6 @@
   line-height: 1.6;
 }
 
-/* ============ Sección "Sobre las tasaciones inteligentes" ============ */
 
 .tasaciones {
   position: relative;
@@ -192,9 +190,7 @@
   height: 18px;
 }
 
-/* ============ Secciones a pantalla completa (desktop) ============ */
 
-/* ============ Quiénes somos ============ */
 
 .team-section {
   background: #ffffff;
@@ -282,7 +278,6 @@
   }
 }
 
-/* ============ Showcase: laptop con reporte ============ */
 
 .showcase {
   position: relative;

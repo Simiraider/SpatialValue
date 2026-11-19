@@ -1,8 +1,3 @@
-/* ============================================================
-   Configuración — panel de usuario (layout según mockup)
-   Bloques BEM: configuracion, datos-personales, tarjeta-verificacion,
-   tarjeta-perfil(-zona), redes, privacidad, seguridad, segmentado
-   ============================================================ */
 
 .configuracion {
   --config-acento: #0087c0;
@@ -20,13 +15,10 @@
   --config-panel: #f8fafc;
   --config-panel-radio: 1.5rem;
 
-  /* Sin caja gris envolvente: las secciones son tarjetas blancas
-     flotando directamente sobre el fondo de la página (#F8FAFC). */
   background: transparent;
   padding: 0;
 }
 
-/* Tarjeta blanca modular por temática (auditoría: sin contenedor gigante) */
 .configuracion__tarjeta,
 .datos-personales,
 .redes,
@@ -39,7 +31,6 @@
   margin-bottom: 1.25rem;
 }
 
-/* ---------------- Cabecera ---------------- */
 
 .configuracion__cabecera {
   display: flex;
@@ -99,7 +90,6 @@
   to { transform: rotate(360deg); }
 }
 
-/* ---------------- Cuerpo: menú + contenido ---------------- */
 
 .configuracion__cuerpo {
   display: flex;
@@ -155,7 +145,6 @@
   margin-top: 1.75rem;
 }
 
-/* ---------------- Entradas y etiquetas compartidas ---------------- */
 
 .configuracion__etiqueta {
   font-size: 0.875rem;
@@ -176,7 +165,6 @@
   transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
-/* Contraseña con ojito (mostrar/ocultar) */
 .configuracion__pwd {
   position: relative;
   display: flex;
@@ -293,7 +281,6 @@
   color: var(--config-exito);
 }
 
-/* ---------------- Segmentado Público / Privado ---------------- */
 
 .segmentado {
   display: inline-flex;
@@ -334,7 +321,6 @@
   cursor: not-allowed;
 }
 
-/* ---------------- Datos personales ---------------- */
 
 .datos-personales__titulo,
 .redes__titulo,
@@ -566,7 +552,6 @@
   box-shadow: var(--config-sombra-acento-fuerte);
 }
 
-/* ---------------- Tarjeta de verificación de contacto ---------------- */
 
 .tarjeta-verificacion {
   flex-shrink: 0;
@@ -656,7 +641,6 @@
   background: #f0fafd;
 }
 
-/* ---------------- Tarjeta de vista previa de perfil ---------------- */
 
 .tarjeta-perfil-zona {
   background: #ffffff;
@@ -667,7 +651,6 @@
   margin: 1.25rem 0;
 }
 
-/* El preview vive dentro de su propia tarjeta: se distingue con fondo claro */
 .tarjeta-perfil-zona .tarjeta-perfil {
   background: #f8fafc;
   box-shadow: none;
@@ -813,7 +796,6 @@
   color: #64748b;
 }
 
-/* ---------------- Redes y enlaces ---------------- */
 
 .redes__lista {
   display: flex;
@@ -865,7 +847,6 @@
   text-decoration: underline;
 }
 
-/* ---------------- Privacidad ---------------- */
 
 .privacidad__lista {
   display: flex;
@@ -897,7 +878,6 @@
   margin: 0;
 }
 
-/* ---------------- Seguridad ---------------- */
 
 .seguridad__lista {
   display: flex;
@@ -912,9 +892,7 @@
   gap: 0.375rem;
 }
 
-/* ---------------- Zona de peligro ---------------- */
 
-/* Zona de peligro: tarjeta roja independiente (bg-red-50 / border-red-200) */
 .configuracion__zona-peligro {
   margin: 1.25rem 0 0;
   border: 1px solid #fecaca;
@@ -973,7 +951,6 @@
   background: #b91c1c;
 }
 
-/* ---------------- Modales ---------------- */
 
 .configuracion__modal-fondo {
   position: fixed;
@@ -1036,7 +1013,6 @@
   background: #f1f5f9;
 }
 
-/* ---------------- Responsive ---------------- */
 
 @media (max-width: 768px) {
   .configuracion {

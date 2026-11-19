@@ -43,7 +43,6 @@ const PESTAÑAS: { id: Pestaña; label: string }[] = [
   { id: 'seguridad', label: 'Seguridad' },
 ];
 
-/** Input de contraseña con ojito para mostrar/ocultar el valor. */
 const CampoPassword = ({
   id,
   value,

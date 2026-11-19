@@ -173,8 +173,6 @@
   top: 0;
 }
 
-/* En móvil el menú lateral es un panel angosto: el desplegable no puede
-   abrirse hacia el costado o se va de pantalla. */
 @media (max-width: 900px) {
   .notificaciones--sidebar .notificaciones__desplegable {
     left: 0;

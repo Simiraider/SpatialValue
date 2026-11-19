@@ -1,8 +1,8 @@
 import {
-  actualizarFila,
   errorConfiguracion,
   estadoDesdeFila,
   leerFila,
+  marcarDemo,
   reclamarEnvio,
   responderJson,
   visorOperativo,
@@ -33,60 +33,28 @@ export async function POST({ params, request }) {
 
     if (fila.estado === 'listo') return responderJson(200, estadoDesdeFila(fila));
 
-    // Si ya hay un proceso de MASt3R, sincronizamos
-    if (fila.proveedor === 'mast3r' && fila.proveedor_ref) {
-      return responderJson(200, { 
-        ...estadoDesdeFila(fila), 
-        mensaje: 'El modelo ya se está procesando en MASt3R. Por favor, espera.' 
+    if (fila.estado === 'enviando' || fila.estado === 'procesando') {
+      return responderJson(200, {
+        ...estadoDesdeFila(fila),
+        mensaje: 'El modelo ya se está procesando. Esperá unos minutos.',
       });
     }
 
-    // Procesamos los archivos directamente con MASt3R
-    const formData = await request.formData();
-    const archivos = [];
-    
-    // Buscamos todos los archivos subidos (frames del video o fotos)
-    for (const [key, value] of formData.entries()) {
-      if (value instanceof File) {
-        archivos.push(value);
-      }
+    const rutas = Array.isArray(fila.media_paths) ? fila.media_paths.filter(Boolean) : [];
+    if (!rutas.length) {
+      return responderJson(409, { error: 'El trabajo no tiene fotos registradas para procesar.' });
     }
 
-    if (archivos.length === 0) {
-      return responderJson(400, { error: 'No se enviaron archivos para procesar.' });
-    }
-
-    // Marcamos como enviando para evitar duplicados
     const reclamada = await reclamarEnvio(fila.id);
     if (!reclamada) {
       return responderJson(409, { error: 'Este trabajo ya se está procesando.' });
     }
 
-    try {
-      // Actualizamos el estado para que el usuario vea que empezó la IA
-      await actualizarFila(fila.id, {
-        estado: 'procesando',
-        mensaje: 'Enviando datos a la IA y analizando escena...',
-        progreso: 30,
-      });
-
-      // Ejecutamos el proceso de reconstrucción 3D
-      await procesarConMASt3R(fila.id, archivos);
-      
-      const actualizada = await leerFila(params.id);
-      return responderJson(200, estadoDesdeFila(actualizada));
-    } catch (e) {
-      const mensaje = e instanceof Error ? e.message : 'Error en la reconstrucción 3D.';
-      await actualizarFila(fila.id, {
-        estado: 'subido',
-        mensaje: `MASt3R: ${mensaje}`,
-        progreso: 90,
-      }).catch(() => {});
-      return responderJson(502, { error: mensaje });
-    }
+    const actualizada = await procesarConMASt3R(fila.id, rutas);
+    return responderJson(200, estadoDesdeFila(actualizada));
   } catch (e) {
-    return responderJson(502, {
-      error: e instanceof Error ? e.message : 'No se pudo procesar el gemelo digital.',
-    });
+    const mensaje = e instanceof Error ? e.message : 'No se pudo procesar el gemelo digital.';
+    await marcarDemo(params.id, mensaje).catch(() => {});
+    return responderJson(502, { error: mensaje });
   }
 }

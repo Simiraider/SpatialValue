@@ -156,7 +156,6 @@ import "../styles/auth.css";
   pwd?.addEventListener('input', () => limpiarError(pwd, errorPassword));
   pwdConfirm?.addEventListener('input', () => limpiarError(pwdConfirm, errorPasswordConfirm));
 
-  // Medidor de fuerza de contraseña
   const zonaFuerza = document.getElementById('fuerza-pwd');
   const rellenoFuerza = document.getElementById('fuerza-relleno');
   const etiquetaFuerza = document.getElementById('fuerza-etiqueta');
@@ -167,7 +166,6 @@ import "../styles/auth.css";
     if (/[A-Z]/.test(v)) puntos++;
     if (/\d/.test(v)) puntos++;
     if (/[^A-Za-z0-9]/.test(v)) puntos++;
-    // Misma regla que el backend: hace falta cumplir las 4 para aceptar
     const etiquetas = ['Muy débil', 'Débil', 'Aceptable', 'Casi lista', 'Fuerte'];
     return { puntos, etiqueta: etiquetas[puntos] };
   };
@@ -262,7 +260,6 @@ import "../styles/auth.css";
       } else {
         const err = data?.error || 'No se pudo crear la cuenta. Revisá los datos.';
         setMensaje(err, "#ef4444");
-        // Mapear el error del API al campo correcto (antes todo iba al email)
         if (/contraseña/i.test(err)) {
           marcarError(pwd, errorPassword, err);
         } else if (/correo|email/i.test(err)) {

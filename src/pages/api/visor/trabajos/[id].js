@@ -1,4 +1,5 @@
 import {
+  LIMITE_PROCESO_MS,
   MAX_MEDIA_BYTES,
   MAX_TOTAL_BYTES,
   actualizarFila,
@@ -8,6 +9,7 @@ import {
   estadoDesdeFila,
   inspeccionarObjeto,
   leerFila,
+  marcarDemo,
   responderJson,
   visorOperativo,
 } from '../../../../Backend/visor-supabase.js';
@@ -15,8 +17,6 @@ import { liberarOrden } from '../../../../Backend/pagos.js';
 import { exigirSesion, limitar, puedeAccederTrabajo } from '../../../../Backend/seguridad.js';
 
 export const prerender = false;
-
-const ESPERA_CHEQUEO_MS = 10_000;
 
 const noConfigurado = () => responderJson(503, { error: errorConfiguracion() });
 
@@ -46,17 +46,11 @@ export async function GET({ params, request }) {
     if (autorizado.error) return autorizado.error;
     let fila = autorizado.fila;
 
-    const enKiri =
-      fila.estado === 'procesando' && fila.proveedor === 'kiri' && fila.proveedor_ref;
-
-    if (enKiri) {
-      const ultimo = fila.chequeo_en ? Date.parse(fila.chequeo_en) : 0;
-      const tocaChequear = !Number.isFinite(ultimo) || Date.now() - ultimo > ESPERA_CHEQUEO_MS;
-
-      if (tocaChequear) {
-        await actualizarFila(fila.id, { chequeo_en: new Date().toISOString() }).catch(() => null);
-        // El soporte de KIRI ha sido deprecado en favor de MASt3R.
-        // No sincronizamos más con KIRI.
+    const enProceso = fila.estado === 'procesando' || fila.estado === 'enviando';
+    if (enProceso) {
+      const inicio = Date.parse(fila.chequeo_en || fila.creado_en || '');
+      if (Number.isFinite(inicio) && Date.now() - inicio > LIMITE_PROCESO_MS) {
+        fila = await marcarDemo(fila.id, 'El procesamiento superó los 10 minutos.');
       }
     }
 
@@ -126,15 +120,14 @@ export async function POST({ params, request }) {
     const actualizada = await actualizarFila(params.id, {
       estado: 'subido',
       etapa: 'reconstruyendo',
-      progreso: 90,
-      mensaje:
-        'Material guardado en Supabase. Falta vincular el modelo .glb para verlo en 3D.',
+      progreso: 25,
+      mensaje: 'Material guardado. Iniciando la reconstrucción 3D…',
       error: null,
     });
 
     return responderJson(200, {
       ...estadoDesdeFila(actualizada),
-      enviar: kiriConfigurado(),
+      enviar: true,
     });
   } catch (e) {
     return responderJson(500, {

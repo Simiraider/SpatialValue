@@ -36,13 +36,6 @@ export function clearUser(): void {
   localStorage.removeItem(SV_USER_KEY);
 }
 
-/**
- * Id del usuario para mostrar datos en pantalla.
- *
- * NO es una credencial: la sesión real vive en una cookie `HttpOnly` que este
- * código nunca puede leer. Cualquier endpoint debe autenticar con
- * `resolverUsuarioId(request)` en el servidor.
- */
 export function getUsuarioId(): string | null {
   return getUser()?.id ?? null;
 }
@@ -58,7 +51,6 @@ export function setMoneda(moneda: 'USD' | 'ARS'): void {
 export function cerrarSesion(redirectTo = '/'): void {
   clearUser();
 
-  // La cookie es HttpOnly: sólo el servidor puede borrarla.
   try {
     void fetch('/Apis/logout', {
       method: 'POST',

@@ -6,7 +6,6 @@
   background: #dceef8 url("/hero/edificio.jpg") center right / cover no-repeat;
 }
 
-/* Fundido suave del hero hacia la sección blanca siguiente */
 .hero::after {
   content: "";
   position: absolute;
@@ -84,7 +83,6 @@
   height: 18px;
 }
 
-/* En desktop el hero ocupa casi toda la pantalla */
 @media (min-width: 901px) {
   .hero {
     min-height: clamp(520px, 40vw, 600px);
@@ -96,12 +94,9 @@
 }
 
 @media (max-width: 900px) {
-  /* Misma composición que en desktop: texto a la izquierda sobre el degradé
-     claro de marca y la foto del edificio al costado, no debajo. */
   .hero {
     grid-template-columns: minmax(0, 1fr) minmax(0, 0.6fr);
     min-height: clamp(340px, 58vw, 460px);
-    /* El degradé cubre TODO el hero: también el fondo del texto. */
     background: linear-gradient(135deg, #f4fbff 0%, #e4f3fb 38%, #d3ebf7 68%, #c3e3f3 100%);
   }
 
@@ -133,14 +128,10 @@
     height: 16px;
   }
 
-  /* El azul de marca puro no llega al contraste mínimo sobre fondo claro */
   .hero__titulo-destacado {
     color: #0079bd;
   }
 
-  /* La foto ocupa la columna derecha, pero se funde con el degradé del hero
-     por la izquierda: así no queda un corte seco y el fondo se lee continuo
-     detrás del texto y de la imagen. */
   .hero__media {
     display: block;
     background-color: #c3e3f3;
@@ -159,7 +150,6 @@
   }
 }
 
-/* Pantallas muy angostas: la foto pasa a ser una franja decorativa */
 @media (max-width: 420px) {
   .hero {
     grid-template-columns: minmax(0, 1fr) minmax(0, 0.42fr);

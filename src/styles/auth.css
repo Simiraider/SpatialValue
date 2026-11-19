@@ -1,15 +1,9 @@
-/* ============================================================
-   Auth (login / registro) — layout partido
-   Izquierda: formulario limpio sobre fondo claro.
-   Derecha: panel de marca con el degradé firma de SpatialValue.
-   ============================================================ */
 
 .auth-page {
   min-height: 100vh;
   background: #f8fafc;
 }
 
-/* Split a sangre: mitad formulario, mitad degradé */
 .auth-page__layout {
   min-height: 100vh;
   display: grid;
@@ -22,12 +16,10 @@
   margin: 0 auto;
   align-self: center;
   padding: 1.25rem clamp(1.25rem, 3vw, 2.5rem);
-  /* Si la ventana es muy chica, hace scroll acá y no corta nada */
   max-height: 100vh;
   overflow-y: auto;
 }
 
-/* ---------------- Columna del formulario ---------------- */
 
 .auth-form {
   display: flex;
@@ -70,7 +62,6 @@
   font-size: 0.875rem;
 }
 
-/* Botón social (acceso con Google) */
 .auth-form__boton-social {
   width: 100%;
   display: inline-flex;
@@ -94,12 +85,12 @@
   border-color: #cbd5e1;
 }
 
-.auth-form__boton-social svg {
+.auth-form__boton-social img {
   width: 1.1rem;
   height: 1.1rem;
+  object-fit: contain;
 }
 
-/* Divisor "o" */
 .auth-form__divisor {
   display: flex;
   align-items: center;
@@ -126,7 +117,6 @@
   gap: 0.7rem;
 }
 
-/* El atributo `hidden` pierde contra las reglas de display de arriba */
 .auth-form [hidden] {
   display: none !important;
 }
@@ -137,13 +127,11 @@
   gap: 0.7rem;
 }
 
-/* Inputs y botones más compactos para que todo quepa en pantalla */
 .auth-form input:not([type='checkbox']) {
   height: 2.6rem;
   font-size: 0.9rem;
 }
 
-/* Inputs con borde visible (no planos) */
 .auth-form input:not([type='checkbox']) {
   border: 1px solid #e2e8f0;
   background: #ffffff;
@@ -155,7 +143,6 @@
   box-shadow: 0 0 0 3px rgba(0, 135, 192, 0.18);
 }
 
-/* Botón principal: nuestra marca, no negro */
 .auth-form button[type='submit'] {
   width: 100%;
   min-height: 2.6rem;
@@ -180,7 +167,6 @@
   cursor: not-allowed;
 }
 
-/* Error de campo: inmediatamente debajo del input, en rojo */
 .auth-form__error {
   min-height: 0;
   margin: 0.25rem 0 0 0.25rem;
@@ -194,7 +180,6 @@
   box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.25) !important;
 }
 
-/* Ayuda de acceso: aparece cuando el login falla */
 .auth-form__reset {
   border: 1px solid #e2e8f0;
   background: #f8fafc;
@@ -241,7 +226,6 @@
   background: #ffffff;
 }
 
-/* Aviso de entorno sin SMTP (sólo desarrollo) */
 .auth-form__aviso-dev {
   margin: 0.5rem 0 0;
   font-size: 0.78rem;
@@ -258,7 +242,6 @@
   font-weight: 700;
 }
 
-/* Bloque de enlace inválido/incompleto */
 .auth-form__bloque-aviso {
   border: 1px solid #e2e8f0;
   background: #f8fafc;
@@ -315,7 +298,6 @@
   color: #94a3b8;
 }
 
-/* Medidor de fuerza de contraseña */
 .fuerza {
   margin-top: 0.5rem;
 }
@@ -343,7 +325,6 @@
   color: #64748b;
 }
 
-/* ---------------- Mitad de degradé (estilo mesh suave) ---------------- */
 
 .auth-page__marca {
   position: relative;
@@ -352,7 +333,6 @@
   background: linear-gradient(165deg, #f2fbff 0%, #7dd3fc 28%, #0087c0 62%, #005477 100%);
 }
 
-/* Blobs difuminados con blur pesado: el degradé se siente "fluido" */
 .auth-page__marca::before {
   content: '';
   position: absolute;
@@ -366,7 +346,6 @@
   pointer-events: none;
 }
 
-/* Eslogan discreto en una esquina */
 .auth-page__marca-esquina {
   position: absolute;
   left: clamp(1.5rem, 4vw, 3rem);
@@ -383,9 +362,7 @@
   text-shadow: 0 2px 14px rgba(0, 84, 119, 0.4);
 }
 
-/* ---------------- Responsive ---------------- */
 
-/* Pantallas bajas (laptops): compactar para que NO haya que hacer zoom out */
 @media (max-height: 700px) {
   .auth-form {
     gap: 0.5rem;

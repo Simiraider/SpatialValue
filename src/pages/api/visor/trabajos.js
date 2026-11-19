@@ -18,6 +18,7 @@ import {
 } from '../../../Backend/visor-supabase.js';
 import { liberarOrden, reservarOrden } from '../../../Backend/pagos.js';
 import { consultarSaldoKiri, kiriConfigurado } from '../../../Backend/visor-kiri.js';
+import { mast3rConfigurado } from '../../../Backend/visor-mast3r.js';
 import {
   esPublicacionDelUsuario,
   esUuid,
@@ -176,7 +177,7 @@ export async function POST({ request }) {
   let pagoReservado = false;
 
   if (tipo === 'media') {
-    if (!kiriConfigurado()) {
+    if (!kiriConfigurado() && !mast3rConfigurado()) {
       return responderJson(503, {
         error: 'El motor 3D no está configurado. No se te cobró nada.',
       });

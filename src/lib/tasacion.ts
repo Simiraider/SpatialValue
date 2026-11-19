@@ -45,10 +45,6 @@ export interface ValoresCalculados {
   rangoMax: number;
 }
 
-/**
- * Rango ±7% redondeado. Antes se redondeaba siempre a miles, lo que en
- * alquileres (ej. USD 450/mes) daba rangos absurdos como 0 – 1000.
- */
 function calcularRango(valorUsd: number, alquiler: boolean): { rangoMin: number; rangoMax: number } {
   const paso = alquiler ? 10 : 1000;
   const redondear = (n: number) => Math.round(n / paso) * paso;
@@ -60,7 +56,7 @@ function calcularRango(valorUsd: number, alquiler: boolean): { rangoMin: number;
 
 export function calcularValores(data: DatosTasacion, tasaArs: number = TASA_ARS_USD): ValoresCalculados {
   const alquiler = esAlquiler(data);
-  const precioIA = Number(data.precioEstimadoUsd) || 0; // evita NaN
+  const precioIA = Number(data.precioEstimadoUsd) || 0; 
   const supCub = Number(data.superficieCubierta) || 0;
   const supDesc = Number(data.superficieDescubierta) || 0;
   const supTotal = supCub + supDesc;
@@ -119,7 +115,6 @@ export function estadoConservacion(n: number, overrides: { antiguedad?: unknown 
   const antiguedad = Number(overrides.antiguedad);
   if (Number.isFinite(antiguedad) && antiguedad > 0) {
     if (antiguedad <= 5) return n >= 7 ? 'Muy bueno' : n >= 4 ? 'Bueno' : 'A refaccionar';
-    // Más de 5 años (el tramo 5–15 y el de >15 daban el mismo resultado)
     return n >= 7 ? 'Bueno' : n >= 4 ? 'Regular' : 'A refaccionar';
   }
   if (n >= 9) return 'Muy bueno';

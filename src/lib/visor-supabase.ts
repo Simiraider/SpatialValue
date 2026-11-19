@@ -79,17 +79,27 @@ function subirFirmado(
 
 export async function enviarAKiriSupabase(
   config: ConfigGemelo,
-  id: string
-): Promise<EstadoTrabajo> {
-  const respuesta = await fetch(url(config, `/api/visor/trabajos/${id}/enviar`), {
+  id: string,
+  opciones: { esperar?: boolean } = {}
+): Promise<EstadoTrabajo | null> {
+  const peticion = fetch(url(config, `/api/visor/trabajos/${id}/enviar`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({}),
-    signal: AbortSignal.timeout(150000),
+    signal: AbortSignal.timeout(11 * 60 * 1000),
   });
+
+  if (opciones.esperar === false) {
+    void peticion
+      .then((respuesta) => respuesta.arrayBuffer().catch(() => null))
+      .catch(() => null);
+    return null;
+  }
+
+  const respuesta = await peticion;
   const estado = await leerJson<EstadoTrabajo & { error?: string }>(respuesta);
   if (!respuesta.ok || !estado?.id) {
-    throw new Error(estado?.error || `No se pudo enviar a KIRI (HTTP ${respuesta.status}).`);
+    throw new Error(estado?.error || `No se pudo iniciar la reconstrucción (HTTP ${respuesta.status}).`);
   }
   return estado;
 }
@@ -142,7 +152,7 @@ export async function subirTrabajoSupabase(
   }
 
   if (estado?.enviar) {
-    await enviarAKiriSupabase(config, trabajo.id).catch(() => null);
+    await enviarAKiriSupabase(config, trabajo.id, { esperar: false }).catch(() => null);
   }
 
   return { id: trabajo.id };

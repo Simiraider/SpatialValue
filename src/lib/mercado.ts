@@ -2,10 +2,8 @@ export const TASA_ARS_USD = 1500;
 
 export const VALOR_M2_VENTA_DEFAULT = 2400;
 
-// Exportada para que tasacion.ts use la misma constante (antes estaba duplicada)
 export const RENTABILIDAD_ANUAL_ALQUILER = 0.045;
 
-// Proporción del valor del m² cubierto que se asigna a superficie descubierta
 const FACTOR_DESCUBIERTA = 0.4;
 
 const VENTA_M2_POR_BARRIO: Record<string, number> = {
@@ -20,7 +18,7 @@ const VENTA_M2_POR_BARRIO: Record<string, number> = {
   chacarita: 2200,
   'san telmo': 2200,
   almagro: 2100,
-  balvanera: 1800, // ESTIMADO: faltaba y caía al valor por defecto. Verificar con datos reales.
+  balvanera: 1800, 
   boedo: 1900,
   saavedra: 1900,
   'villa devoto': 1800,
@@ -80,13 +78,11 @@ function normalizarBarrio(barrio?: string | null): string {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, ' '); // "Villa  Crespo" (doble espacio) también matchea
+    .replace(/\s+/g, ' '); 
 }
 
 export function valorM2Venta(barrio?: string | null): number {
   const clave = normalizarBarrio(barrio);
-  // hasOwnProperty: evita que claves como "constructor" o "toString"
-  // devuelvan propiedades heredadas del objeto en vez de un número.
   if (clave && Object.prototype.hasOwnProperty.call(VENTA_M2_POR_BARRIO, clave)) {
     return VENTA_M2_POR_BARRIO[clave];
   }

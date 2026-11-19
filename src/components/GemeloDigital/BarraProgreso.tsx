@@ -39,6 +39,7 @@ const PASOS: Record<string, { titulo: string; detalle: string }> = {
 };
 
 const FALLOS_MAXIMOS = 5;
+export const LIMITE_DEMO_SEG = 10 * 60;
 
 export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCancelar }: Props) => {
   const [job, setJob] = useState<EstadoTrabajo | null>(null);
@@ -51,7 +52,13 @@ export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCanc
   const [errorVinculo, setErrorVinculo] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
+  const [ahora, setAhora] = useState(() => Date.now());
   const ejecutando = useRef(false);
+
+  useEffect(() => {
+    const id = setInterval(() => setAhora(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     let activo = true;
@@ -87,7 +94,6 @@ export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCanc
       activo = false;
       clearInterval(id);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config, jobId]);
 
   const etapa = job?.etapa || 'recibiendo';
@@ -96,6 +102,8 @@ export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCanc
   const restanteSeg = job?.tiempoEstimadoSeg
     ? Math.max(0, Math.round(job.tiempoEstimadoSeg * (1 - progreso / 100)))
     : null;
+  const transcurridoSeg = job?.creadoEn ? Math.max(0, Math.floor((ahora - job.creadoEn) / 1000)) : 0;
+  const pasadoElLimite = transcurridoSeg >= LIMITE_DEMO_SEG;
 
   const cancelar = async () => {
     setCancelando(true);
@@ -145,6 +153,7 @@ export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCanc
     setErrorEnvio(null);
     try {
       const estado = await enviarAKiriSupabase(config, jobId);
+      if (!estado) return;
       setJob(estado);
       if (estado.estado === 'listo') onListo(estado);
       if (estado.estado === 'error') setDetenido(true);
@@ -220,6 +229,19 @@ export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCanc
           </p>
         )}
       </div>
+
+      {job && etapa !== 'listo' && (
+        <p
+          className={cn(
+            'text-xs leading-relaxed',
+            pasadoElLimite ? 'font-medium text-amber-600' : 'text-slate-500'
+          )}
+        >
+          {pasadoElLimite
+            ? 'Pasaron más de 10 minutos de procesamiento: te mostramos el modelo de demostración.'
+            : `Tiempo transcurrido: ${formatearTiempo(transcurridoSeg)}. Si supera los 10 minutos, mostramos un modelo de demostración.`}
+        </p>
+      )}
 
       {esperandoModelo && (
         <div className="space-y-3 rounded-2xl border border-cyan-200 bg-cyan-50/70 px-4 py-4">
