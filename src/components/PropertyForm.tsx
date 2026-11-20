@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { Box, Building2, Check, Home, KeyRound, Loader2, TrendingUp, X } from 'lucide-react';
+import { Box, Building2, Camera, Check, Home, KeyRound, Loader2, TrendingUp, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
@@ -20,6 +20,7 @@ import { BarraProgreso } from './GemeloDigital/BarraProgreso';
 import { Visor3D } from './GemeloDigital/Visor3D';
 
 const TOTAL_STEPS = 4;
+const COSTO_VISOR_USD = 2;
 const PASOS = ['Ubicación', 'Características', 'Extras', 'Fotos'];
 const AMENITIES = ['Seguridad 24h', 'Ascensor', 'Cochera', 'Gimnasio', 'Baulera', 'Cámaras', 'Balcón', 'Lounge', 'Terraza', 'Pileta', 'Patio', 'Parrilla', 'Laundry'];
 const OPCIONES_LUZ = ['Abundante', 'Buena', 'Media', 'Poca'];
@@ -204,6 +205,8 @@ export const PropertyForm = () => {
   const [gemeloJobId, setGemeloJobId] = useState<string | null>(null);
   const [gemeloJob, setGemeloJob] = useState<EstadoTrabajo | null>(null);
   const [pagoId, setPagoId] = useState<string | null>(null);
+  const [modoFotos, setModoFotos] = useState<'fotos' | 'visor'>('fotos');
+  const [modalVisor, setModalVisor] = useState(false);
   const esEdicion = Boolean(edicion);
 
   const validarSuperficie = (campo: 'superficieTotal' | 'superficieCubierta', valor: string) => {
@@ -243,8 +246,19 @@ export const PropertyForm = () => {
   const update = <K extends keyof FormData>(field: K, value: FormData[K]) => setData(prev => ({ ...prev, [field]: value }));
   const toggleAmenity = (amenity: string) => update('comodidades', data.comodidades.includes(amenity) ? data.comodidades.filter(item => item !== amenity) : [...data.comodidades, amenity]);
 
-  const elegirModelo3d = () => {
-    setGemeloFase('precio');
+  const elegirVisor3d = () => {
+    setModoFotos('visor');
+    if (gemeloFase === 'sin-usar') setModalVisor(true);
+  };
+
+  const confirmarVisor3d = () => {
+    setModalVisor(false);
+    setGemeloFase('pago');
+  };
+
+  const cancelarVisor3d = () => {
+    setModalVisor(false);
+    desactivarModelo3d();
   };
 
   const iniciarGemelo = async (idPago: string) => {
@@ -266,6 +280,7 @@ export const PropertyForm = () => {
     setGemeloJobId(null);
     setGemeloJob(null);
     setPagoId(null);
+    setModoFotos('fotos');
   };
 
   const tituloGemelo = () => {
@@ -487,40 +502,15 @@ export const PropertyForm = () => {
         })}</div>
       </section>}
       {step === 4 && <section>
-        <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">{kicker}</p><h1 className="tasacion__encabezado-titulo">Fotos de la propiedad</h1><span className="tasacion__encabezado-sub">Podés sumar imágenes para complementar el análisis visual.</span></div>
+        <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">{kicker}</p><h1 className="tasacion__encabezado-titulo">Fotos o visor 3D</h1><span className="tasacion__encabezado-sub">Elegí cómo mostrar la propiedad: galería de fotos o un recorrido 3D interactivo.</span></div>
+        <div className="tasacion__eleccion">
+          <TarjetaEleccion icono={Camera} titulo="Fotos" activo={modoFotos === 'fotos'} onClick={() => setModoFotos('fotos')} />
+          <TarjetaEleccion icono={Box} titulo="Visor 3D" activo={modoFotos === 'visor'} onClick={elegirVisor3d} />
+        </div>
+
+        {modoFotos === 'visor' && (
         <div className="tasacion__gemelo">
-          {gemeloFase === 'sin-usar' && (
-            <div className="tasacion__gemelo-inicio">
-              <button type="button" className="tasacion__gemelo-activar" onClick={elegirModelo3d}>
-                <Box aria-hidden />
-                <span>
-                  <strong>¿Querés un modelo 3D del ambiente?</strong>
-                  <em>Subí fotos o un video de recorrido y armamos una réplica interactiva. Es opcional.</em>
-                </span>
-              </button>
-            </div>
-          )}
-
-          {gemeloFase !== 'sin-usar' && (
             <div className="tasacion__gemelo-modos">
-              {gemeloFase === 'precio' && (
-                <div className="tasacion__aviso-gemelo">
-                  <p>
-                    <strong>El modelo 3D tiene un costo de USD 2.</strong>{' '}
-                    Se cobra una sola vez por modelo. Si no querés pagarlo, seguí solo con fotos:
-                    no se genera nada.
-                  </p>
-                  <div className="tasacion__acciones-gemelo">
-                    <Button type="button" size="sm" onClick={() => setGemeloFase('pago')}>
-                      Sí, quiero el modelo 3D
-                    </Button>
-                    <Button type="button" variant="outline" size="sm" onClick={desactivarModelo3d}>
-                      No, solo fotos
-                    </Button>
-                  </div>
-                </div>
-              )}
-
               {gemeloFase === 'pago' && (
                 <PagoModelo onPagado={iniciarGemelo} onCancelar={desactivarModelo3d} />
               )}
@@ -586,8 +576,10 @@ export const PropertyForm = () => {
                 />
               )}
             </div>
-          )}
         </div>
+        )}
+
+        {modoFotos === 'fotos' && <>
         <label
           className={cn('tasacion__subida', arrastrando && 'tasacion__subida--activa')}
           onDragOver={e => { e.preventDefault(); setArrastrando(true); }}
@@ -610,6 +602,7 @@ export const PropertyForm = () => {
             ))}
           </div>
         )}
+        </>}
         <label className="tasacion__borrador"><input type="checkbox" checked={guardarComoBorrador} disabled={esEdicion} onChange={e => setGuardarComoBorrador(e.target.checked)} /><span>{esEdicion ? 'Esta tasación se actualiza como borrador; podés completarla cuando quieras.' : 'Guardar como borrador (podés completarla después desde el Dashboard)'}</span></label>
       </section>}
       <div className="tasacion__acciones">{step > 1 ? <Button type="button" variant="outline" disabled={submitting} onClick={() => setStep(current => current - 1)}>Atrás</Button> : <Button type="button" variant="outline" disabled={submitting} onClick={() => salir('/dashboard')}>Cancelar</Button>}<Button type="submit" variant="primary" isLoading={submitting} disabled={submitting || !puedeAvanzar}>{step === TOTAL_STEPS ? (esEdicion ? 'Guardar cambios y recalcular' : 'Finalizar y calcular') : 'Siguiente'}</Button></div>
@@ -617,6 +610,30 @@ export const PropertyForm = () => {
         <p className="tasacion__nota-validacion">Ingresá y verificá la dirección para continuar.</p>
       )}
     </form>
+    {modalVisor && (
+      <div className="tasacion__modal" role="dialog" aria-modal="true" aria-labelledby="costo-visor">
+        <div className="tasacion__modal-tarjeta">
+          <p className="tasacion__modal-kicker">Visor 3D</p>
+          <p className="tasacion__modal-precio" id="costo-visor">USD {COSTO_VISOR_USD}</p>
+          <p className="tasacion__modal-texto">
+            El visor 3D se reconstruye con fotogrametría en GPU: procesamos tus fotos para estimar
+            la geometría del ambiente y te devolvemos un modelo interactivo y descargable.
+          </p>
+          <p className="tasacion__modal-detalle">
+            Se cobra una sola vez por modelo. Si cancelás el pago, no se genera nada y la tasación
+            sigue con la galería de fotos.
+          </p>
+          <div className="tasacion__modal-acciones">
+            <Button type="button" size="lg" onClick={confirmarVisor3d}>
+              Confirmar y pagar USD {COSTO_VISOR_USD}
+            </Button>
+            <Button type="button" variant="ghost" onClick={cancelarVisor3d}>
+              Volver a fotos
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
     {submitting && (
       <div className="tasacion__bloqueo" role="status" aria-live="polite">
         <Loader2 className="tasacion__bloqueo-icono" aria-hidden />

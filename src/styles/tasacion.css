@@ -157,3 +157,13 @@
 .tasacion__aviso-gemelo { padding: 1rem 1.25rem; border: 1px solid #fcd34d; border-radius: 1rem; background: #fffbeb; color: #92400e; font-size: .875rem; }
 .tasacion__aviso-gemelo p { margin: 0; }
 .tasacion__acciones-gemelo { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
+
+
+.tasacion__modal { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; padding: 1.5rem; background: rgba(15, 23, 42, .45); backdrop-filter: blur(3px); }
+.tasacion__modal-tarjeta { width: 100%; max-width: 23rem; padding: 1.75rem 1.5rem; border-radius: 1.75rem; background: #fff; box-shadow: 0 25px 60px rgba(15, 23, 42, .35); text-align: center; }
+.tasacion__modal-kicker { margin: 0; font-size: .75rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--color-brand); }
+.tasacion__modal-precio { margin: .35rem 0 .85rem; font-size: 3.25rem; font-weight: 800; line-height: 1; color: #0f172a; }
+.tasacion__modal-texto { margin: 0; font-size: .9rem; line-height: 1.5; color: #334155; }
+.tasacion__modal-detalle { margin: .75rem 0 0; font-size: .8rem; line-height: 1.45; color: #64748b; }
+.tasacion__modal-acciones { display: grid; gap: .6rem; margin-top: 1.5rem; }
+.tasacion__modal-acciones button { width: 100%; }

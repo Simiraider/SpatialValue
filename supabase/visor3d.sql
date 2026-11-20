@@ -19,6 +19,7 @@ create table if not exists public.visor3d_trabajos (
   proveedor text,
   proveedor_ref text,
   chequeo_en timestamptz,
+  latido_en timestamptz,
   creado_en timestamptz not null default now(),
   expira_en timestamptz
 );
@@ -33,6 +34,7 @@ alter table public.visor3d_trabajos add column if not exists modelo_bytes bigint
 alter table public.visor3d_trabajos add column if not exists proveedor text;
 alter table public.visor3d_trabajos add column if not exists proveedor_ref text;
 alter table public.visor3d_trabajos add column if not exists chequeo_en timestamptz;
+alter table public.visor3d_trabajos add column if not exists latido_en timestamptz;
 alter table public.visor3d_trabajos add column if not exists expira_en timestamptz;
 
 create index if not exists visor3d_trabajos_publicacion_idx

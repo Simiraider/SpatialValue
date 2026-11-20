@@ -18,7 +18,7 @@ import {
 } from '../../../Backend/visor-supabase.js';
 import { liberarOrden, reservarOrden } from '../../../Backend/pagos.js';
 import { consultarSaldoKiri, kiriConfigurado } from '../../../Backend/visor-kiri.js';
-import { mast3rConfigurado } from '../../../Backend/visor-mast3r.js';
+import { MAX_FOTOS, MIN_FOTOS, mast3rConfigurado } from '../../../Backend/visor-mast3r.js';
 import {
   esPublicacionDelUsuario,
   esUuid,
@@ -160,17 +160,23 @@ export async function POST({ request }) {
   }
 
   if (tipo === 'media') {
-    const videos = objetivos.filter((objetivo) => objetivo.clase === 'video').length;
     const fotos = objetivos.filter((objetivo) => objetivo.clase === 'imagen').length;
+    const videos = objetivos.filter((objetivo) => objetivo.clase === 'video').length;
 
-    if (videos > 1) {
-      return responderJson(400, { error: 'Se sube un solo video por modelo.' });
+    if (videos > 0) {
+      return responderJson(400, {
+        error: 'El visor 3D se arma solo con fotos. Subí las fotos del ambiente.',
+      });
     }
-    if (videos === 1 && fotos > 0) {
-      return responderJson(400, { error: 'Elegí fotos o un video, no ambos.' });
+    if (fotos < MIN_FOTOS) {
+      return responderJson(400, {
+        error: `Se necesitan al menos ${MIN_FOTOS} fotos para el visor 3D.`,
+      });
     }
-    if (videos === 0 && fotos < 20) {
-      return responderJson(400, { error: 'Se necesitan al menos 20 fotos para el modelo 3D.' });
+    if (fotos > MAX_FOTOS) {
+      return responderJson(400, {
+        error: `El visor 3D procesa hasta ${MAX_FOTOS} fotos: subí ${MAX_FOTOS} como máximo.`,
+      });
     }
   }
 

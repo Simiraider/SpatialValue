@@ -59,6 +59,17 @@ export async function POST({ request, url }) {
     });
   }
 
+  if (proveedor === 'mast3r') {
+    // MASt3R solo corre desde el camino de Supabase (/api/visor/trabajos).
+    // En este backend viejo no hay quién procese la fila: antes se creaba el
+    // trabajo y quedaba clavado en 2 % "Subiendo fotos" para siempre.
+    return responder(503, {
+      error:
+        'El visor 3D no está configurado en este entorno (falta Supabase). No se te cobró nada.',
+      id: null,
+    });
+  }
+
   if (proveedor === 'makesplat' && !esVideo) {
     return responder(422, {
       error:

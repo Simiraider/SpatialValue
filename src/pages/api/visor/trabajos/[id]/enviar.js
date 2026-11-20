@@ -2,7 +2,7 @@ import {
   errorConfiguracion,
   estadoDesdeFila,
   leerFila,
-  marcarDemo,
+  marcarError,
   reclamarEnvio,
   responderJson,
   visorOperativo,
@@ -54,7 +54,7 @@ export async function POST({ params, request }) {
     return responderJson(200, estadoDesdeFila(actualizada));
   } catch (e) {
     const mensaje = e instanceof Error ? e.message : 'No se pudo procesar el gemelo digital.';
-    await marcarDemo(params.id, mensaje).catch(() => {});
+    await marcarError(params.id, mensaje).catch(() => {});
     return responderJson(502, { error: mensaje });
   }
 }

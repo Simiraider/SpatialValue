@@ -37,6 +37,7 @@ export interface EstadoTrabajo {
   error: string | null;
   motor: 'colmap' | 'simular' | 'externo' | null;
   creadoEn: number;
+  latidoEn?: number | null;
   expiraEn: number | null;
 }
 

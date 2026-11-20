@@ -6,7 +6,7 @@ import react from '@astrojs/react';
 import vercel from '@astrojs/vercel';
 
 export default defineConfig({
-  adapter: vercel({ maxDuration: 60 }),
+  adapter: vercel({ maxDuration: 300 }),
 
   vite: {
     plugins: [tailwindcss()]

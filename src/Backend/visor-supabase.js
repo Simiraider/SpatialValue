@@ -172,13 +172,15 @@ export async function reclamarEnvio(id) {
   const params = new URLSearchParams({
     id: `eq.${id}`,
     proveedor_ref: 'is.null',
-    estado: 'neq.enviando',
+    // La tabla remota solo admite subiendo/subido/procesando/listo/error.
+    estado: 'neq.procesando',
   });
   const filas = await pedir(`${rest()}?${params.toString()}`, {
     method: 'PATCH',
     headers: cabeceras({ 'Content-Type': 'application/json', Prefer: 'return=representation' }),
     body: JSON.stringify({
-      estado: 'enviando',
+      estado: 'procesando',
+      etapa: 'reconstruyendo',
       mensaje: 'Enviando el material al motor 3D…',
       progreso: 15,
     }),
@@ -197,6 +199,17 @@ export async function marcarDemo(trabajoId, motivo) {
     modelo_bytes: null,
     mensaje: `Mostramos el modelo de demostración. ${motivo}`,
     error: null,
+    chequeo_en: null,
+  });
+}
+
+export async function marcarError(trabajoId, motivo) {
+  return actualizarFila(trabajoId, {
+    estado: 'error',
+    etapa: 'error',
+    progreso: 100,
+    mensaje: motivo,
+    error: motivo,
     chequeo_en: null,
   });
 }
@@ -263,23 +276,24 @@ export async function vincularPublicacionTrabajo(trabajoId, publicacionId) {
 }
 
 export async function crearLinkFirmado(ruta, segundos = 3600) {
+  return firmarDescarga(ruta, segundos);
+}
+
+// URL de subida firmada: el navegador hace PUT contra ella con x-upsert.
+// Es un endpoint distinto del de descarga (`object/upload/sign` vs `object/sign`).
+export async function firmarSubida(ruta) {
   exigirConfiguracion();
   const respuesta = await pedir(
-    storage(`object/sign/${BUCKET}/${codificarRuta(ruta)}?expires=${segundos}`),
+    storage(`object/upload/sign/${BUCKET}/${codificarRuta(ruta)}`),
     {
       method: 'POST',
-      headers: cabeceras({ 'Content-Type': 'application/json' }),
+      headers: cabeceras({ 'Content-Type': 'application/json', 'x-upsert': 'true' }),
       body: '{}',
     }
   );
-  const relativa = respuesta?.signedUrl;
-  if (!relativa) throw new Error('Supabase no devolvió la URL firmada.');
-  return `${limpiarUrl(process.env.SUPABASE_URL)}/storage/v1${relativa}`;
-}
-
-export async function firmarSubida(ruta) {
-  const url = await crearLinkFirmado(ruta);
-  return { url };
+  const relativa = respuesta?.url;
+  if (!relativa) throw new Error('Supabase no devolvió la URL firmada de subida.');
+  return { url: `${limpiarUrl(process.env.SUPABASE_URL)}/storage/v1${relativa}` };
 }
 
 export async function subirObjeto(ruta, bytes, contentType) {
@@ -401,6 +415,7 @@ export function estadoDesdeFila(fila) {
     error: fila.error,
     motor: esDemo ? 'simular' : 'externo',
     creadoEn: Date.parse(fila.creado_en) || Date.now(),
+    latidoEn: fila.latido_en ? Date.parse(fila.latido_en) || null : null,
     expiraEn: fila.expira_en ? Date.parse(fila.expira_en) : null,
   };
 }

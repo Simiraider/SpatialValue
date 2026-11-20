@@ -1,3 +1,4 @@
+import { MAX_FOTOS, MIN_FOTOS } from '../../../Backend/visor-mast3r.js';
 import { visorOperativo } from '../../../Backend/visor-supabase.js';
 import { exigirSesion, limitar, respuestaJson } from '../../../Backend/seguridad.js';
 
@@ -19,8 +20,8 @@ export async function GET({ url, request }) {
   return new Response(
     JSON.stringify({
       workerUrl: url.origin,
-      minFotos: proveedor === 'kiri' ? 20 : 5,
-      maxFotos: 100,
+      minFotos: conSupabase ? MIN_FOTOS : proveedor === 'kiri' ? 20 : 5,
+      maxFotos: conSupabase ? MAX_FOTOS : 100,
       maxVideoMb: 50,
       modo: proveedor ? 'auto' : 'simular',
       almacenamiento: conSupabase ? 'supabase' : 'servidor',

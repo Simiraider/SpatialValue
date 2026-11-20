@@ -20,26 +20,29 @@ interface Props {
   onCancelar: () => void;
 }
 
-const ORDEN: EtapaTrabajo[] = [
-  'recibiendo',
-  'extrayendo_frames',
-  'reconstruyendo',
-  'densificando',
-  'convirtiendo',
-  'listo',
-];
+const ORDEN: EtapaTrabajo[] = ['recibiendo', 'reconstruyendo', 'convirtiendo', 'listo'];
 
 const PASOS: Record<string, { titulo: string; detalle: string }> = {
   recibiendo: { titulo: 'Subiendo fotos', detalle: 'Transfiriendo archivos al servicio de reconstrucción…' },
-  extrayendo_frames: { titulo: 'Extrayendo cuadros', detalle: 'Convirtiendo el video en fotos (1 por segundo)…' },
-  reconstruyendo: { titulo: 'Reconstruyendo en 3D', detalle: 'Estimando poses de cámara y generando la nube de puntos…' },
-  densificando: { titulo: 'Refinando en GPU', detalle: 'Calculando superficie densa y textura (puede tardar unos minutos)…' },
-  convirtiendo: { titulo: 'Generando modelo .glb', detalle: 'Optimizando y texturizando el modelo…' },
+  reconstruyendo: {
+    titulo: 'Reconstruyendo con MASt3R',
+    detalle: 'MASt3R estima las cámaras y arma la nube de puntos en una GPU pública: puede esperar en cola.',
+  },
+  convirtiendo: { titulo: 'Generando modelo .glb', detalle: 'Descargando y guardando el modelo generado…' },
   listo: { titulo: '¡Modelo listo!', detalle: 'Tu gemelo digital está disponible.' },
 };
 
 const FALLOS_MAXIMOS = 5;
+const SIN_SENAL_ALERTA_SEG = 45;
+const POLLS_PARA_REENVIAR = 3;
 export const LIMITE_DEMO_SEG = 10 * 60;
+
+function reloj(seg: number): string {
+  const total = Math.max(0, Math.round(seg || 0));
+  const min = Math.floor(total / 60);
+  const resto = total % 60;
+  return min ? `${min}:${String(resto).padStart(2, '0')}` : `${total} s`;
+}
 
 export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCancelar }: Props) => {
   const [job, setJob] = useState<EstadoTrabajo | null>(null);
@@ -53,12 +56,22 @@ export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCanc
   const [enviando, setEnviando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
   const [ahora, setAhora] = useState(() => Date.now());
+  const [senalLocal, setSenalLocal] = useState(() => Date.now());
+  const [consultaOk, setConsultaOk] = useState(true);
   const ejecutando = useRef(false);
+  const pendientes = useRef(0);
+  const autoEnviado = useRef(false);
 
   useEffect(() => {
     const id = setInterval(() => setAhora(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  const firma = job ? `${job.etapa}|${job.progreso}|${job.mensaje || ''}` : '';
+
+  useEffect(() => {
+    if (firma) setSenalLocal(Date.now());
+  }, [firma]);
 
   useEffect(() => {
     let activo = true;
@@ -72,13 +85,23 @@ export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCanc
         if (!activo) return;
         setJob(estado);
         setFallos(0);
+        setConsultaOk(true);
         if (estado.estado === 'listo') {
           onListo(estado);
         } else if (estado.estado === 'error') {
           setDetenido(true);
+        } else if (estado.estado === 'pendiente') {
+          pendientes.current += 1;
+          if (pendientes.current >= POLLS_PARA_REENVIAR && !autoEnviado.current) {
+            autoEnviado.current = true;
+            void enviarAKiri();
+          }
+        } else {
+          pendientes.current = 0;
         }
       } catch {
         if (!activo) return;
+        setConsultaOk(false);
         setFallos((f) => {
           const n = f + 1;
           if (n >= FALLOS_MAXIMOS) setDetenido(true);
@@ -104,6 +127,10 @@ export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCanc
     : null;
   const transcurridoSeg = job?.creadoEn ? Math.max(0, Math.floor((ahora - job.creadoEn) / 1000)) : 0;
   const pasadoElLimite = transcurridoSeg >= LIMITE_DEMO_SEG;
+
+  const ultimaSenal = Math.max(senalLocal, job?.latidoEn || 0);
+  const sinSenalSeg = Math.max(0, Math.floor((ahora - ultimaSenal) / 1000));
+  const sinSenal = Boolean(job) && etapa !== 'listo' && sinSenalSeg >= SIN_SENAL_ALERTA_SEG;
 
   const cancelar = async () => {
     setCancelando(true);
@@ -151,6 +178,8 @@ export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCanc
     if (enviando) return;
     setEnviando(true);
     setErrorEnvio(null);
+    setDetenido(false);
+    setFallos(0);
     try {
       const estado = await enviarAKiriSupabase(config, jobId);
       if (!estado) return;
@@ -158,10 +187,20 @@ export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCanc
       if (estado.estado === 'listo') onListo(estado);
       if (estado.estado === 'error') setDetenido(true);
     } catch (e) {
-      setErrorEnvio(e instanceof Error ? e.message : 'No se pudo enviar el material a KIRI.');
+      setErrorEnvio(
+        e instanceof Error ? e.message : 'No se pudo iniciar el procesamiento 3D.'
+      );
     } finally {
       setEnviando(false);
     }
+  };
+
+  const reintentar = () => {
+    setDetenido(false);
+    setFallos(0);
+    autoEnviado.current = false;
+    pendientes.current = 0;
+    if (job?.estado === 'error' || job?.estado === 'pendiente') void enviarAKiri();
   };
 
   const esperandoModelo = visorEnSupabase(config) && job?.estado === 'pendiente';
@@ -214,14 +253,20 @@ export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCanc
 
       <div>
         <div className="mb-1 flex items-center justify-between text-sm">
-          <span className="truncate font-medium text-slate-700">{job?.mensaje || 'Preparando…'}</span>
-          <span className="shrink-0 pl-3 text-slate-500">{Math.round(progreso)}%</span>
+          <span className="truncate font-medium text-slate-700">
+            {job?.mensaje || (job ? 'Preparando…' : 'Consultando el estado del trabajo…')}
+          </span>
+          <span className="shrink-0 pl-3 text-slate-500">{job ? `${Math.round(progreso)}%` : '—'}</span>
         </div>
         <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-teal-500 transition-all duration-500"
-            style={{ width: `${Math.max(2, progreso)}%` }}
-          />
+          {sinSenal ? (
+            <div className="h-full w-full animate-pulse bg-cyan-200" />
+          ) : (
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-teal-500 transition-all duration-500"
+              style={{ width: `${Math.max(2, progreso)}%` }}
+            />
+          )}
         </div>
         {restanteSeg !== null && etapa !== 'listo' && (
           <p className="mt-2 text-xs text-slate-500">
@@ -231,16 +276,50 @@ export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCanc
       </div>
 
       {job && etapa !== 'listo' && (
-        <p
-          className={cn(
-            'text-xs leading-relaxed',
-            pasadoElLimite ? 'font-medium text-amber-600' : 'text-slate-500'
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+            <span className="relative flex h-2 w-2">
+              <span
+                className={cn(
+                  'absolute inline-flex h-full w-full rounded-full opacity-75',
+                  sinSenal ? 'bg-amber-400' : 'animate-ping bg-emerald-400'
+                )}
+              />
+              <span
+                className={cn(
+                  'relative inline-flex h-2 w-2 rounded-full',
+                  sinSenal ? 'bg-amber-500' : 'bg-emerald-500'
+                )}
+              />
+            </span>
+            <span className="font-medium text-slate-700">
+              {sinSenal ? 'Sin novedades' : 'Trabajando'} hace {reloj(transcurridoSeg)}
+            </span>
+            <span className="text-slate-400">·</span>
+            <span className={sinSenal ? 'font-medium text-amber-600' : 'text-slate-500'}>
+              {sinSenal
+                ? `última señal hace ${reloj(sinSenalSeg)}`
+                : `última señal del servidor hace ${reloj(sinSenalSeg)}`}
+            </span>
+          </div>
+
+          {pasadoElLimite && !detenido && (
+            <p className="text-xs font-medium text-amber-600">
+              Pasaron más de 10 minutos de procesamiento: te mostramos el modelo de demostración.
+            </p>
           )}
-        >
-          {pasadoElLimite
-            ? 'Pasaron más de 10 minutos de procesamiento: te mostramos el modelo de demostración.'
-            : `Tiempo transcurrido: ${formatearTiempo(transcurridoSeg)}. Si supera los 10 minutos, mostramos un modelo de demostración.`}
-        </p>
+
+          {sinSenal && !detenido && (
+            <p className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-800">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                El servidor no reporta avances hace {reloj(sinSenalSeg)}. El trabajo puede seguir
+                esperando turno en la GPU de MASt3R; si se cumplen los 10 minutos te mostramos el
+                modelo de demostración.
+              </span>
+            </p>
+          )}
+        </div>
       )}
 
       {esperandoModelo && (
@@ -248,7 +327,7 @@ export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCanc
           <div>
             <p className="text-sm font-semibold text-cyan-900">El material ya está en Supabase</p>
             <p className="mt-1 text-xs leading-relaxed text-cyan-800">
-              Falta el modelo final para verlo en 3D. Mandá el material a KIRI o vinculá un
+              Falta el modelo final para verlo en 3D. Mandá el material al motor 3D o vinculá un
               .glb ya generado.
             </p>
           </div>
@@ -260,7 +339,7 @@ export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCanc
               disabled={enviando || vinculando}
               onClick={enviarAKiri}
             >
-              Enviar a KIRI
+              Enviar al motor 3D
             </Button>
             <span className="text-xs text-cyan-800">también podés vincularlo a mano:</span>
           </div>
@@ -320,15 +399,7 @@ export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCanc
             <Button type="button" variant="outline" size="sm" onClick={onCancelar}>
               Volver a subir
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setDetenido(false);
-                setFallos(0);
-              }}
-            >
+            <Button type="button" variant="ghost" size="sm" onClick={reintentar}>
               Reintentar
             </Button>
           </div>
@@ -349,7 +420,9 @@ export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCanc
       {fallos > 0 && !detenido && (
         <p className="flex items-center gap-2 text-xs text-amber-600">
           <AlertTriangle className="h-3.5 w-3.5" />
-          El servicio está tardando en responder ({fallos} reintentos)…
+          {consultaOk
+            ? 'El servicio está tardando en responder…'
+            : `No pudimos consultar el estado (${fallos} reintentos)…`}
         </p>
       )}
     </div>
@@ -358,9 +431,7 @@ export const BarraProgreso = ({ config, jobId, propiedad = null, onListo, onCanc
 
 const PASOS_LIST = [
   ['recibiendo', PASOS.recibiendo],
-  ['extrayendo_frames', PASOS.extrayendo_frames],
   ['reconstruyendo', PASOS.reconstruyendo],
-  ['densificando', PASOS.densificando],
   ['convirtiendo', PASOS.convirtiendo],
   ['listo', PASOS.listo],
 ] as const;

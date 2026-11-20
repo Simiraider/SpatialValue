@@ -1,7 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { unzipSync } from 'fflate';
 import { resolverUrlModeloFallback } from '../lib/gemelo.ts';
-import { procesarConMASt3R } from './visor-mast3r.js';
+import { LIMITE_PROCESO_MS } from './visor-supabase.js';
 
 const API_KIRI = 'https://api.kiriengine.app/api/v1/open';
 const API_MAKESPLAT = 'https://api.makesplat.com';
@@ -400,6 +400,21 @@ export async function consultarEstado(id) {
   if (cacheado) return cacheado;
   const fila = await leerFila(id);
   if (!fila) return null;
+  // En este backend viejo nadie procesa MASt3R: si la fila quedó esperando,
+  // hay que cerrarla en vez de dejar al usuario mirando un 2 % que no avanza.
+  if (
+    fila.proveedor === 'mast3r' &&
+    Number(fila.creado_en) > 0 &&
+    Date.now() - Number(fila.creado_en) > LIMITE_PROCESO_MS
+  ) {
+    const vencida = await fallar(
+      fila,
+      'La reconstrucción 3D no llegó a iniciarse y el trabajo se cerró. El visor 3D necesita Supabase configurado: no se generó ningún modelo y no se te cobró nada.'
+    );
+    const estado = armarEstado(vencida);
+    ponerEnCache(fila.id, estado);
+    return estado;
+  }
   if (fila.estado === 'listo' || fila.estado === 'error') {
     return armarEstado(fila);
   }
