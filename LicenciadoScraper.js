@@ -129,55 +129,55 @@ const generarAlertasParaPropiedad = async ({
         SELECT
             a.id_alerta,
             a.id_usuario,
-            $1,
-            $2,
-            $3,
-            $4,
-            $5,
-            $6,
-            $7,
-            $8
+            $1::varchar,
+            $2::varchar,
+            $3::varchar,
+            $4::varchar,
+            $5::integer,
+            $6::numeric,
+            $7::integer,
+            $8::text
         FROM alertas_busqueda a
         WHERE a.activa = TRUE
 
           AND (
             a.barrio IS NULL
-            OR LOWER(TRIM(a.barrio)) = LOWER(TRIM($3))
+            OR LOWER(TRIM(a.barrio)) = LOWER(TRIM($3::text))
           )
 
           AND (
             a.tipo_propiedad IS NULL
-            OR LOWER(TRIM(a.tipo_propiedad)) = LOWER(TRIM($4))
+            OR LOWER(TRIM(a.tipo_propiedad)) = LOWER(TRIM($4::text))
           )
 
           AND (
             a.precio_min_usd IS NULL
-            OR $5 >= a.precio_min_usd
+            OR ($5::integer IS NOT NULL AND $5::integer >= a.precio_min_usd)
           )
 
           AND (
             a.precio_max_usd IS NULL
-            OR $5 <= a.precio_max_usd
+            OR ($5::integer IS NOT NULL AND $5::integer <= a.precio_max_usd)
           )
 
           AND (
             a.superficie_min_m2 IS NULL
-            OR $6 >= a.superficie_min_m2
+            OR ($6::numeric IS NOT NULL AND $6::numeric >= a.superficie_min_m2)
           )
 
           AND (
             a.superficie_max_m2 IS NULL
-            OR $6 <= a.superficie_max_m2
+            OR ($6::numeric IS NOT NULL AND $6::numeric <= a.superficie_max_m2)
           )
 
           AND (
             a.ambientes_min IS NULL
-            OR $7 >= a.ambientes_min
+            OR ($7::integer IS NOT NULL AND $7::integer >= a.ambientes_min)
           )
 
           AND (
             a.ambientes_max IS NULL
-            OR $7 <= a.ambientes_max
+            OR ($7::integer IS NOT NULL AND $7::integer <= a.ambientes_max)
           )
 
         ON CONFLICT (id_alerta, id_propiedad)
@@ -1369,7 +1369,7 @@ const procesarPropiedad = async (context, link, id_propiedad, indice, total) => 
 };
 (async () => {
     console.log('Iniciando scraper...');
-
+    await asegurarTablasAlertas();
     let browser;
     let context;
     try {
