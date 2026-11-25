@@ -27,7 +27,7 @@ export async function GET({ request }) {
 
     const [soloMios, alertasProps] = await Promise.all([
       sqlConfig`
-        SELECT "id", "fecha", "id_emisor" FROM "usuario_likes"
+        SELECT "fecha", "id_emisor" FROM "usuario_likes"
         WHERE "id_receptor" = ${usuarioId}
         ORDER BY "fecha" DESC
         LIMIT 20
@@ -80,7 +80,7 @@ export async function GET({ request }) {
         const esPublico = pub ? pub.perfil_publico !== false : true;
         return {
           tipo: 'like',
-          id: `like-${l.id}`,
+          id: `like-${l.id_emisor}-${new Date(l.fecha).getTime()}`,
           emisor_id: String(l.id_emisor),
           emisor_nombre: nombres.get(String(l.id_emisor)) || 'Usuario',
           emisor_avatar: esPublico ? (pub?.avatar || '') : '',
