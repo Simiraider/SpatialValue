@@ -1,190 +1,35 @@
 import os
 import json
-import secrets
-import warnings
+import math
 from pathlib import Path
 
 import pandas as pd
-import psycopg2
-from psycopg2 import pool
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
-from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder
+from modelo_ia.modelo import (
+    cargar_dataset_csv, COLUMNAS_TEXTO, COLUMNAS_NUMERICAS,
+    limpiar_registros, _preparar_features, crear_modelo, evaluar_modelo, agrupar_inmuebles,
+)
 
 BASE_PATH = Path(__file__).resolve().parent.parent.parent.parent
 ENV_PATH = BASE_PATH / ".env.local"
 load_dotenv(dotenv_path=ENV_PATH)
 
-DATABASE_URL = os.environ.get("SpatialValueStorage_DATABASE_URL")
-if not DATABASE_URL:
-    raise ValueError(
-        "Error: No se encontró DATABASE_URL. Verificá que exista el archivo "
-        ".env.local en la raíz del proyecto o que la variable esté configurada "
-        "en el host (Render/Vercel)."
-    )
-COORDENADAS_DEFAULT = {"lat": -34.6037, "lng": -58.3816}
-
-COLUMNAS_TEXTO = [
-    "tipo_propiedad",
-    "barrio_zona",
-    "estado",
-    "orientacion",
-    "disposicion",
-    "seguridad_tipo",
-]
-
-COLUMNAS_NUMERICAS = [
-    "ambientes",
-    "dormitorios",
-    "banos",
-    "superficie_total_m2",
-    "superficie_cubierta_m2",
-    "anios_de_antiguedad",
-    "piso",
-    "cochera",
-    "balcon",
-    "terraza",
-    "patio",
-    "pileta",
-    "parrilla",
-    "seguridad_24hs",
-    "ascensor",
-    "expensas_ars",
-    "baulera",
-    "sum",
-    "camara",
-    "gym",
-    "lounge",
-    "laundry",
-    "latitud",
-    "longitud",
-]
-
 app = FastAPI(title="API IA Estimador")
 
-INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "").strip()
-EN_PRODUCCION = (
-    os.environ.get("RENDER") == "true"
-    or os.environ.get("ENVIRONMENT") == "production"
-    or os.environ.get("NODE_ENV") == "production"
-)
-
-if EN_PRODUCCION and not INTERNAL_API_KEY:
-    raise RuntimeError(
-        "INTERNAL_API_KEY es obligatoria en produccion. Definila en el panel de Render."
-    )
+INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
 
 def _verificar_api_key(x_api_key: str | None) -> None:
     if not INTERNAL_API_KEY:
         return
-    if not x_api_key or not secrets.compare_digest(x_api_key, INTERNAL_API_KEY):
+    if not x_api_key or x_api_key != INTERNAL_API_KEY:
         raise HTTPException(status_code=401, detail="API key inválida")
-db_pool = psycopg2.pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
 
 modelo_v4 = None
 
-def _extraer_coordenadas(row):
-    lat = pd.to_numeric(row.get("latitud"), errors="coerce")
-    lng = pd.to_numeric(row.get("longitud"), errors="coerce")
-    if pd.notna(lat) and pd.notna(lng) and lat != 0 and lng != 0:
-        return pd.Series([float(lat), float(lng)])
-
-    gps = row.get("coordenadas_gps")
-    try:
-        if gps:
-            coords = json.loads(gps) if isinstance(gps, str) else gps
-            return pd.Series([
-                float(coords.get("lat", COORDENADAS_DEFAULT["lat"])),
-                float(coords.get("lng", COORDENADAS_DEFAULT["lng"])),
-            ])
-    except (json.JSONDecodeError, TypeError, AttributeError, ValueError):
-        pass
-    return pd.Series([COORDENADAS_DEFAULT["lat"], COORDENADAS_DEFAULT["lng"]])
-
-
 def _cargar_datos_entrenamiento():
-    conn = db_pool.getconn()
-    try:
-        query = """
-            WITH datos_scraper AS (
-                SELECT
-                    tipo_propiedad, barrio_zona, estado, orientacion, disposicion, seguridad_tipo,
-                    ambientes, dormitorios, banos, superficie_total_m2, superficie_cubierta_m2,
-                    anios_de_antiguedad, piso, cochera, balcon, terraza, patio, pileta,
-                    parrilla, seguridad_24hs, ascensor, expensas_ars, baulera, sum,
-                    camara, gym, lounge, laundry, coordenadas_gps,
-                    NULL::numeric AS latitud, NULL::numeric AS longitud,
-                    precio_real_usd AS precio_usd
-                FROM propiedades
-                WHERE precio_real_usd IS NOT NULL
-            ),
-            datos_usuarios AS (
-                SELECT
-                    p.tipo_propiedad,
-                    p.barrio AS barrio_zona,
-                    COALESCE(p.estado, 'Usado') AS estado,
-                    COALESCE(d.datos->>'orientacion', 'No especificada') AS orientacion,
-                    COALESCE(d.datos->>'disposicion', 'No especificada') AS disposicion,
-                    CASE WHEN COALESCE(d.datos->'comodidades' ? 'Seguridad 24h', false) THEN '24hs' ELSE 'Ninguno' END AS seguridad_tipo,
-                    p.ambientes, p.dormitorios, p.banos,
-                    p.superficie_total AS superficie_total_m2,
-                    p.superficie_cubierta AS superficie_cubierta_m2,
-                    (CASE WHEN d.datos->>'antiguedad' ~ '^[0-9]+$' THEN (d.datos->>'antiguedad')::int END) AS anios_de_antiguedad,
-                    NULL::int AS piso,
-                    COALESCE(d.datos->'comodidades' ? 'Cochera', false) AS cochera,
-                    COALESCE(d.datos->'comodidades' ? 'Balcón', false) AS balcon,
-                    COALESCE(d.datos->'comodidades' ? 'Terraza', false) AS terraza,
-                    COALESCE(d.datos->'comodidades' ? 'Patio', false) AS patio,
-                    COALESCE(d.datos->'comodidades' ? 'Pileta', false) AS pileta,
-                    COALESCE(d.datos->'comodidades' ? 'Parrilla', false) AS parrilla,
-                    COALESCE(d.datos->'comodidades' ? 'Seguridad 24h', false) AS seguridad_24hs,
-                    COALESCE(d.datos->'comodidades' ? 'Ascensor', false) AS ascensor,
-                    p.expensas AS expensas_ars,
-                    COALESCE(d.datos->'comodidades' ? 'Baulera', false) AS baulera,
-                    COALESCE(d.datos->'comodidades' ? 'SUM', false) AS sum,
-                    COALESCE(d.datos->'comodidades' ? 'Cámaras', false) AS camara,
-                    COALESCE(d.datos->'comodidades' ? 'Gimnasio', false) AS gym,
-                    COALESCE(d.datos->'comodidades' ? 'Lounge', false) AS lounge,
-                    COALESCE(d.datos->'comodidades' ? 'Laundry', false) AS laundry,
-                    NULL::text AS coordenadas_gps,
-                    p.latitud, p.longitud,
-                    p.precio_estimado_ia AS precio_usd
-                FROM publicaciones p
-                LEFT JOIN tasacion_detalles d ON d.id_publicacion = p.id_publicacion::text
-                WHERE p.precio_estimado_ia IS NOT NULL
-                  AND p.tipo_operacion = 'venta'
-                  AND COALESCE(d.datos->>'fuente_precio', '') = 'ia'
-            )
-            SELECT * FROM datos_scraper
-            UNION ALL
-            SELECT * FROM datos_usuarios
-        """
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            return pd.read_sql(query, conn)
-    finally:
-        db_pool.putconn(conn)
-
-
-def _preparar_features(df: pd.DataFrame) -> pd.DataFrame:
-    df[["latitud", "longitud"]] = df.apply(_extraer_coordenadas, axis=1)
-
-    for col in COLUMNAS_TEXTO:
-        if col not in df.columns:
-            df[col] = "No especificada"
-        df[col] = df[col].fillna("No especificada")
-
-    for col in COLUMNAS_NUMERICAS:
-        if col not in df.columns:
-            df[col] = 0
-        df[col] = df[col].fillna(0)
-
-    return df
+    return cargar_dataset_csv()
 
 
 def entrenar_modelo():
@@ -192,48 +37,22 @@ def entrenar_modelo():
 
     df = _cargar_datos_entrenamiento()
 
-    if df.empty:
-        print("La base de datos de Neon está vacía")
-        modelo_v4 = None
-        return
-
-    df = _preparar_features(df)
-
-    precios = pd.to_numeric(df["precio_usd"], errors="coerce")
-    superficies = pd.to_numeric(df["superficie_cubierta_m2"], errors="coerce").clip(lower=1)
-    df = df.assign(precio_m2=precios / superficies)
-
-    antes = len(df)
-    q1 = df.groupby("barrio_zona")["precio_m2"].transform(lambda s: s.quantile(0.05) if len(s) >= 20 else s.min())
-    q3 = df.groupby("barrio_zona")["precio_m2"].transform(lambda s: s.quantile(0.95) if len(s) >= 20 else s.max())
-    df = df[(df["precio_m2"] >= q1) & (df["precio_m2"] <= q3)]
-    df = df.drop(columns=["precio_m2"])
-    print(f"Filtro de outliers por barrio: {antes - len(df)} filas descartadas de {antes}")
-
+    filas = sorted(df.to_dict(orient="records"), key=lambda r: str(r.get("id_propiedad") or ""))
+    registros, informe = limpiar_registros(filas)
+    print(f"Limpieza de entrenamiento: {informe}")
+    if len(registros) < 20:
+        raise ValueError("Se necesitan al menos 20 registros válidos de venta; se conserva el modelo anterior si existe. Este mínimo no garantiza calidad estadística.")
+    df = _preparar_features(pd.DataFrame(registros))
     X = df[COLUMNAS_TEXTO + COLUMNAS_NUMERICAS]
-    y = df["precio_usd"].fillna(df["precio_usd"].median())
+    y = df["precio_usd"]
 
-    preprocesador = ColumnTransformer(
-        transformers=[
-            ("texto", OneHotEncoder(handle_unknown="ignore"), COLUMNAS_TEXTO),
-            ("numeros", "passthrough", COLUMNAS_NUMERICAS),
-        ]
-    )
+    nuevo_modelo = crear_modelo()
 
-    nuevo_modelo = Pipeline(
-        steps=[
-            ("preprocesador", preprocesador),
-            ("modelo", RandomForestRegressor(n_estimators=100, random_state=42)),
-        ]
-    )
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
-    nuevo_modelo.fit(X_train, y_train)
+    nuevo_modelo, evaluacion, _ = evaluar_modelo(nuevo_modelo, X, y, grupos=agrupar_inmuebles(pd.DataFrame(registros)), random_state=20261028)
+    print("Evaluación del modelo: " + json.dumps(evaluacion, ensure_ascii=False))
 
     modelo_v4 = nuevo_modelo
-    print("Modelo entrenado con éxito con los datos actuales de Neon")
+    print("Modelo CatBoost entrenado con éxito con el dataset CSV configurado")
 
 
 try:
@@ -276,7 +95,7 @@ class PropiedadInput(BaseModel):
 @app.get("/")
 def health():
     return {
-        "status": "ok",
+        "status": "ok" if modelo_v4 is not None else "degradado",
         "servicio": "API IA Estimador SpatialValue",
         "modelo": "listo" if modelo_v4 is not None else "sin datos",
     }
@@ -285,14 +104,22 @@ def health():
 @app.post("/estimar-precio")
 def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(default=None)):
     _verificar_api_key(x_api_key)
-    latitud = propiedad.latitud if propiedad.latitud is not None else COORDENADAS_DEFAULT["lat"]
-    longitud = propiedad.longitud if propiedad.longitud is not None else COORDENADAS_DEFAULT["lng"]
+    total, cubierta = propiedad.superficie_total_m2, propiedad.superficie_cubierta_m2
+    if total is None or cubierta is None or total <= 0 or cubierta <= 0 or cubierta > total:
+        raise HTTPException(status_code=422, detail="Se requieren superficies positivas y cubierta menor o igual a total.")
+    for campo in ("ambientes", "dormitorios", "banos", "anios_de_antiguedad", "expensas_ars"):
+        valor = getattr(propiedad, campo)
+        if valor is not None and (valor < 0 or (campo == "ambientes" and valor == 0)):
+            raise HTTPException(status_code=422, detail=f"Valor inválido para {campo}.")
+    if propiedad.ambientes is not None and propiedad.dormitorios is not None and propiedad.dormitorios > propiedad.ambientes:
+        raise HTTPException(status_code=422, detail="Dormitorios no puede superar ambientes.")
+    latitud, longitud = propiedad.latitud, propiedad.longitud
+    for valor, limite in ((latitud, 90), (longitud, 180)):
+        if valor is not None and (not math.isfinite(valor) or abs(valor) > limite):
+            raise HTTPException(status_code=422, detail="Coordenadas inválidas.")
 
     if modelo_v4 is None:
-        raise HTTPException(
-            status_code=503,
-            detail="El modelo todavía no cuenta con datos suficientes para estimar un precio.",
-        )
+        raise HTTPException(status_code=503, detail="Modelo no disponible; no se puede producir una tasación.")
 
     datos_entrada = {
         "tipo_propiedad": [propiedad.tipo_propiedad],
@@ -301,13 +128,13 @@ def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(def
         "orientacion": [propiedad.orientacion or "No especificada"],
         "disposicion": [propiedad.disposicion or "No especificada"],
         "seguridad_tipo": [propiedad.seguridad_tipo or "Ninguno"],
-        "ambientes": [propiedad.ambientes or 1],
-        "dormitorios": [propiedad.dormitorios or 1],
-        "banos": [propiedad.banos or 1],
-        "superficie_total_m2": [propiedad.superficie_total_m2 or 45],
-        "superficie_cubierta_m2": [propiedad.superficie_cubierta_m2 or 40],
-        "anios_de_antiguedad": [propiedad.anios_de_antiguedad or 10],
-        "piso": [propiedad.piso or 1],
+        "ambientes": [propiedad.ambientes],
+        "dormitorios": [propiedad.dormitorios],
+        "banos": [propiedad.banos],
+        "superficie_total_m2": [propiedad.superficie_total_m2],
+        "superficie_cubierta_m2": [propiedad.superficie_cubierta_m2],
+        "anios_de_antiguedad": [propiedad.anios_de_antiguedad],
+        "piso": [propiedad.piso],
         "cochera": [int(propiedad.cochera)],
         "balcon": [int(propiedad.balcon)],
         "terraza": [int(propiedad.terraza)],
@@ -323,18 +150,20 @@ def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(def
         "gym": [int(propiedad.gym)],
         "lounge": [int(propiedad.lounge)],
         "laundry": [int(propiedad.laundry)],
-        "latitud": [latitud],
-        "longitud": [longitud],
+        "latitud": [propiedad.latitud],
+        "longitud": [propiedad.longitud],
     }
 
-    df_input = pd.DataFrame(datos_entrada)
+    df_input = _preparar_features(pd.DataFrame(datos_entrada))
     df_input = df_input[COLUMNAS_TEXTO + COLUMNAS_NUMERICAS]
 
     precio_predicho = modelo_v4.predict(df_input)[0]
+    if not math.isfinite(float(precio_predicho)) or precio_predicho <= 0:
+        raise HTTPException(status_code=503, detail="El modelo no produjo un precio válido.")
 
     return {
         "status": "success",
-        "coordenadas": {"lat": latitud, "lng": longitud},
+        "coordenadas": {"lat": latitud, "lng": longitud} if latitud is not None and longitud is not None else None,
         "precio_estimado_usd": float(precio_predicho),
     }
 
@@ -357,6 +186,4 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.environ.get("PORT", 8000)),
         reload=os.environ.get("RENDER") != "true",
-        reload_includes=["*.py"],
-        reload_dirs=[os.path.dirname(os.path.abspath(__file__))],
     )
