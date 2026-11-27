@@ -187,10 +187,50 @@ def _preparar_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def entrenar_modelo():
+def _huella_entrenamiento():
+    """Huella del código de entrenamiento, el dataset, la configuración y las republicaciones."""
+    dataset = Path(os.environ.get("MODELO_DATASET_CSV") or DATASET_CSV).expanduser()
+    huella = hashlib.sha256(f"v{VERSION_CACHE}".encode())
+    for ruta in (CODIGO_MODELO, dataset, CONFIGURACION_MODELO, REVISION_REPUBLICACIONES):
+        huella.update(str(ruta.resolve()).encode())
+        huella.update(ruta.read_bytes() if ruta.is_file() else b"")
+    return huella.hexdigest()
+
+
+def _cargar_modelo_cache(huella):
+    """Carga el modelo guardado solo si corresponde a la huella actual."""
+    global modelo_v4
+    if not RUTA_CACHE_MODELO.is_file():
+        return False
+    try:
+        with RUTA_CACHE_MODELO.open("rb") as archivo:
+            guardado = pickle.load(archivo)
+    except Exception as e:
+        print(f"Caché del modelo ilegible, se reentrena: {e}")
+        return False
+    if not isinstance(guardado, dict) or guardado.get("huella") != huella or guardado.get("modelo") is None:
+        return False
+    modelo_v4 = guardado["modelo"]
+    return True
+
+
+def _guardar_modelo_cache(huella):
+    RUTA_CACHE_MODELO.parent.mkdir(parents=True, exist_ok=True)
+    temporal = RUTA_CACHE_MODELO.with_suffix(".tmp")
+    with temporal.open("wb") as archivo:
+        pickle.dump({"huella": huella, "modelo": modelo_v4}, archivo, protocol=pickle.HIGHEST_PROTOCOL)
+    os.replace(temporal, RUTA_CACHE_MODELO)
+
+
+def entrenar_modelo(forzar=False):
     global modelo_v4
 
-    df = _cargar_datos_entrenamiento()
+    huella = _huella_entrenamiento()
+    if not forzar and _cargar_modelo_cache(huella):
+        print("Modelo cargado del caché en disco: el dataset no cambió desde el último entrenamiento")
+        return
+
+    df = cargar_dataset_csv()
 
     if df.empty:
         print("La base de datos de Neon está vacía")
@@ -236,10 +276,6 @@ def entrenar_modelo():
     print("Modelo entrenado con éxito con los datos actuales de Neon")
 
 
-try:
-    entrenar_modelo()
-except Exception as e:
-    print(f"Error al entrenar el modelo inicial: {e}")
 
 class PropiedadInput(BaseModel):
     tipo_propiedad: str
@@ -343,7 +379,7 @@ def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(def
 def reentrenar_api(x_api_key: str | None = Header(default=None)):
     _verificar_api_key(x_api_key)
     try:
-        entrenar_modelo()
+        entrenar_modelo(forzar=True)
         return {"status": "success", "message": "Modelo re-entrenado exitosamente."}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -352,10 +388,13 @@ def reentrenar_api(x_api_key: str | None = Header(default=None)):
 if __name__ == "__main__":
     import uvicorn
 
+    # PORT vacío o 0 haría que uvicorn elija un puerto al azar y el front no lo encuentre.
+    puerto = int(os.environ.get("PORT") or 0) or 8000
+
     uvicorn.run(
         "api_ia:app",
         host="0.0.0.0",
-        port=int(os.environ.get("PORT", 8000)),
+        port=puerto,
         reload=os.environ.get("RENDER") != "true",
         reload_includes=["*.py"],
         reload_dirs=[os.path.dirname(os.path.abspath(__file__))],

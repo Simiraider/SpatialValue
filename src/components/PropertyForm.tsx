@@ -25,6 +25,7 @@ const AMENITIES = ['Seguridad 24h', 'Ascensor', 'Cochera', 'Gimnasio', 'Baulera'
 const OPCIONES_LUZ = ['Abundante', 'Buena', 'Media', 'Poca'];
 const EDICION_KEY = 'tasacion-edicion';
 const DRAFT_KEY = 'tasacion-draft';
+const AVISO_KEY = 'tasacion-recien-creada';
 
 type FormData = {
   tipoTasacion: 'venta' | 'alquiler'; direccion: string; barrio: string;
@@ -195,7 +196,6 @@ export const PropertyForm = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [photos, setPhotos] = useState<File[]>([]);
-  const [showSlider, setShowSlider] = useState(false);
   const [guardarComoBorrador, setGuardarComoBorrador] = useState(false);
   const [verifDir, setVerifDir] = useState<VerificacionDireccion>({ estado: 'idle' });
   const [arrastrando, setArrastrando] = useState(false);
@@ -235,8 +235,7 @@ export const PropertyForm = () => {
   const quitarFoto = (index: number) => setPhotos(prev => prev.filter((_, i) => i !== index));
 
   useEffect(() => {
-    if (esEdicion) setGuardarComoBorrador(true);
-    else sessionStorage.removeItem(DRAFT_KEY);
+    if (!esEdicion) sessionStorage.removeItem(DRAFT_KEY);
   }, []);
 
   const previews = useMemo(() => photos.map(file => ({ file, url: URL.createObjectURL(file) })), [photos]);
@@ -349,7 +348,7 @@ export const PropertyForm = () => {
       orientacion: data.orientacion || null, disposicion: data.disposicion || null, estadoGeneral: data.estadoGeneral,
       luz_natural: data.luzNatural || null,
       expensas: Number(data.expensas) || 0, comodidades: data.comodidades, fotos: fotosGuardadas, usuario_id: getUsuarioId() ?? undefined,
-      es_borrador: esEdicion ? true : guardarComoBorrador,
+      es_borrador: esEdicion ? Boolean(edicion?.es_borrador) : guardarComoBorrador,
       ...(idPublicacion ? { id_publicacion: idPublicacion } : {}),
       ...(gemeloJob ? { modelo3d_job_id: gemeloJob.id } : {}),
     };
@@ -371,7 +370,7 @@ export const PropertyForm = () => {
             ...draft,
             id: payload.id,
             demo: false,
-            es_borrador: true,
+            es_borrador: Boolean(edicion?.es_borrador),
             precioEstimadoUsd: payload?.precio_estimado_usd ?? null,
             coordenadas: edicion?.coordenadas ?? null,
           }));
@@ -387,6 +386,14 @@ export const PropertyForm = () => {
             coordenadas: payload?.coordenadas ?? null,
           }));
         } catch {}
+        if (ok && payload?.saved && payload?.id) {
+          try {
+            sessionStorage.setItem(AVISO_KEY, JSON.stringify({
+              id: String(payload.id),
+              direccion: data.direccion,
+            }));
+          } catch {}
+        }
       }
     } catch (error) {
       console.error(error);
@@ -403,7 +410,7 @@ export const PropertyForm = () => {
 
   const next = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!validate()) return; if (step < TOTAL_STEPS) setStep(current => current + 1); else await submit(); };
 
-  const kicker = esEdicion ? `Editando borrador · Paso ${step} de ${TOTAL_STEPS}` : `Paso ${step} de ${TOTAL_STEPS}`;
+  const kicker = esEdicion ? `Editando tasación · Paso ${step} de ${TOTAL_STEPS}` : `Paso ${step} de ${TOTAL_STEPS}`;
 
   return <div className="tasacion">
     <div className="tasacion__progreso" aria-label={`Paso ${step} de ${TOTAL_STEPS}`}>
@@ -420,7 +427,7 @@ export const PropertyForm = () => {
     <form onSubmit={next} noValidate className="tasacion__tarjeta">
       {step === 1 && <section>
         <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">{kicker}</p><h1 className="tasacion__encabezado-titulo">Ubicación</h1><span className="tasacion__encabezado-sub">Contanos dónde está la propiedad y verificamos la dirección al instante.</span></div>
-        {esEdicion && <div className="tasacion__aviso-edicion">Estás modificando una tasación en borrador. Al finalizar se actualizan los datos y se recalcula el precio.</div>}
+        {esEdicion && <div className="tasacion__aviso-edicion">Estás modificando esta tasación. Al finalizar se actualizan los datos y se recalcula el precio.</div>}
         <div className="tasacion__toggle-pill" role="radiogroup" aria-label="Tipo de operación">
           <button type="button" role="radio" aria-checked={data.tipoTasacion === 'venta'} className={cn('tasacion__toggle-pill-opcion', data.tipoTasacion === 'venta' && 'tasacion__toggle-pill-opcion--activa')} onClick={() => update('tipoTasacion', 'venta')}>
             <TrendingUp className="tasacion__toggle-pill-icono" aria-hidden /> Venta
@@ -474,7 +481,7 @@ export const PropertyForm = () => {
           <Selector label="Luz natural" value={data.luzNatural} onChange={value => update('luzNatural', value)} placeholder="Seleccioná la luminosidad…" opciones={OPCIONES_LUZ} />
           {data.tipoTasacion === 'alquiler' && <Input label="Expensas mensuales (ARS)" type="number" min="0" placeholder="Ej. 150000" value={data.expensas} onChange={e => update('expensas', e.target.value)} />}
         </div>
-        <fieldset className="tasacion__estado"><legend>Estado percibido</legend><div className="tasacion__estado-botones"><button type="button" className={cn('tasacion__estado-btn', 'tasacion__estado-btn--optimo', data.estadoGeneral >= 8 && 'tasacion__estado-btn--seleccionado')} onClick={() => { update('estadoGeneral', 9); setShowSlider(false); }}>Óptimo</button><button type="button" className={cn('tasacion__estado-btn', 'tasacion__estado-btn--regular', data.estadoGeneral >= 5 && data.estadoGeneral < 8 && 'tasacion__estado-btn--seleccionado')} onClick={() => { update('estadoGeneral', 6); setShowSlider(false); }}>Regular</button><button type="button" className={cn('tasacion__estado-btn', 'tasacion__estado-btn--critico', data.estadoGeneral <= 4 && 'tasacion__estado-btn--seleccionado')} onClick={() => { update('estadoGeneral', 3); setShowSlider(false); }}>Crítico</button></div><button type="button" className="tasacion__estado-toggle" onClick={() => setShowSlider(prev => !prev)}>{showSlider ? 'Ocultar detalle' : '¿Más precisión?'}</button>{showSlider && <div className="tasacion__slider"><div className="tasacion__slider-valor" style={{ color: data.estadoGeneral >= 8 ? '#16a34a' : data.estadoGeneral >= 5 ? '#d97706' : '#dc2626' }}>{data.estadoGeneral}</div><input type="range" min="1" max="10" value={data.estadoGeneral} onChange={e => update('estadoGeneral', Number(e.target.value))} className="tasacion__slider-input" /><div className="tasacion__slider-labels"><span>1 — A refaccionar</span><span>10 — A estrenar</span></div></div>}</fieldset>
+        <fieldset className="tasacion__estado"><legend>Estado percibido</legend><div className="tasacion__slider"><div className="tasacion__slider-valor" style={{ color: data.estadoGeneral >= 8 ? '#16a34a' : data.estadoGeneral >= 5 ? '#d97706' : '#dc2626' }}>{data.estadoGeneral}</div><input type="range" min="1" max="10" value={data.estadoGeneral} onChange={e => update('estadoGeneral', Number(e.target.value))} className="tasacion__slider-input" aria-label="Estado percibido" /><div className="tasacion__slider-labels"><span>1 — A refaccionar</span><span>10 — A estrenar</span></div></div></fieldset>
       </section>}
       {step === 3 && <section>
         <div className="tasacion__encabezado"><p className="tasacion__encabezado-kicker">{kicker}</p><h1 className="tasacion__encabezado-titulo">Extras y amenities</h1><span className="tasacion__encabezado-sub">Seleccioná todo lo que tenga la propiedad.</span></div>
@@ -612,7 +619,8 @@ export const PropertyForm = () => {
             ))}
           </div>
         )}
-        <label className="tasacion__borrador"><input type="checkbox" checked={guardarComoBorrador} disabled={esEdicion} onChange={e => setGuardarComoBorrador(e.target.checked)} /><span>{esEdicion ? 'Esta tasación se actualiza como borrador; podés completarla cuando quieras.' : 'Guardar como borrador (podés completarla después desde el Dashboard)'}</span></label>
+        </>}
+        {!esEdicion && <label className="tasacion__borrador"><input type="checkbox" checked={guardarComoBorrador} onChange={e => setGuardarComoBorrador(e.target.checked)} /><span>Guardar como borrador (podés completarla después desde el Dashboard)</span></label>}
       </section>}
       <div className="tasacion__acciones">{step > 1 ? <Button type="button" variant="outline" disabled={submitting} onClick={() => setStep(current => current - 1)}>Atrás</Button> : <Button type="button" variant="outline" disabled={submitting} onClick={() => salir('/dashboard')}>Cancelar</Button>}<Button type="submit" variant="primary" isLoading={submitting} disabled={submitting || !puedeAvanzar}>{step === TOTAL_STEPS ? (esEdicion ? 'Guardar cambios y recalcular' : 'Finalizar y calcular') : 'Siguiente'}</Button></div>
       {step === 1 && !direccionValida && !errors.direccion && (

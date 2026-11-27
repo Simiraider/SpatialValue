@@ -6,10 +6,11 @@ import { Button } from './ui/Button';
 import { getUser, getUsuarioId } from '../lib/session';
 import { apiFetch } from '../lib/api';
 import { cargarDolar, dolarActual } from '../lib/dolar';
-import { calcularValores, esAlquiler, esBorrador } from '../lib/tasacion';
+import { calcularValores, esAlquiler } from '../lib/tasacion';
 import { MapaReporte } from './MapaReporte';
 import { normalizeData } from '../lib/normalizar-tasacion';
 import { navegarA } from '../lib/navigate';
+import { prepararEdicionDeTasacion } from '../lib/edicion-tasacion';
 import { Visor3D } from './GemeloDigital/Visor3D';
 import type { EstadoTrabajo } from '../lib/gemelo';
 import '../styles/reporte.css';
@@ -167,40 +168,11 @@ export const ReportPage = () => {
   if (!data) return <div className="reporte-pagina" style={{padding: '4rem 2rem', textAlign: 'center'}}><p style={{fontSize:'1.25rem',color:'#64748b'}}>Cargando reporte…</p></div>;
 
   const alquiler = esAlquiler(data);
-  const esBorradorTasacion = esBorrador(data);
 
   const modificar = () => {
-    try {
-      const supTotal = Number(data.superficieTotal ?? data.superficie_total) || 0;
-      const supCub = Number(data.superficieCubierta ?? data.superficie_cubierta) || 0;
-      sessionStorage.setItem('tasacion-edicion', JSON.stringify({
-        edicion: true,
-        id: data.id,
-        tipoTasacion: alquiler ? 'alquiler' : 'venta',
-        tipo_operacion: alquiler ? 'alquiler' : 'venta',
-        direccion: data.direccion ?? '',
-        barrio: data.barrio ?? '',
-        tipoUnidad: data.tipoUnidad ?? 'Departamento',
-        superficieTotal: supTotal || supCub,
-        superficieCubierta: supCub,
-        ambientes: data.ambientes ?? '',
-        antiguedad: data.antiguedad ?? '',
-        banos: data.banos ?? '',
-        dormitorios: data.dormitorios ?? '',
-        piso: data.piso ?? '',
-        orientacion: data.orientacion ?? '',
-        disposicion: data.disposicion ?? '',
-        luzNatural: data.luzNatural ?? '',
-        comodidades: Array.isArray(data.comodidades) ? data.comodidades : [],
-        estadoGeneral: Number(data.estadoGeneral) || 7,
-        expensas: data.expensas ?? '',
-        fotos: Array.isArray(data.fotos) ? data.fotos : [],
-        precioEstimadoUsd: data.precioEstimadoUsd ?? null,
-        coordenadas: data.coordenadas ?? (data.latitud != null && data.longitud != null ? { lat: data.latitud, lng: data.longitud } : null),
-      }));
-      sessionStorage.removeItem('tasacion-draft');
-    } catch (e) {
-      console.error('[ReportPage] no se pudo preparar la edición:', e);
+    if (!prepararEdicionDeTasacion(data)) {
+      console.error('[ReportPage] no se pudo preparar la edición');
+      return;
     }
     navegarA('/tasacion');
   };
@@ -323,14 +295,12 @@ export const ReportPage = () => {
           </button>
         </nav>
 
-        {esBorradorTasacion && (
-          <div className="reporte-pagina__editar-zona">
-            <Button type="button" variant="outline" className="reporte-pagina__editar-boton" onClick={modificar}>
-              <Pencil className="reporte-pagina__editar-icono" aria-hidden />
-              Modificar propiedad
-            </Button>
-          </div>
-        )}
+        <div className="reporte-pagina__editar-zona">
+          <Button type="button" variant="outline" className="reporte-pagina__editar-boton" onClick={modificar}>
+            <Pencil className="reporte-pagina__editar-icono" aria-hidden />
+            Modificar propiedad
+          </Button>
+        </div>
 
         {vista === 'datos' && (<>
         <section className="reporte-pagina__seccion">

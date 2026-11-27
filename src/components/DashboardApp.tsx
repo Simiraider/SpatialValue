@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Search, Loader2, RefreshCw, Trash2, Download, CheckCircle2, Undo2, SlidersHorizontal, PanelLeftClose, PanelLeftOpen, Settings, Home, Building2, ChevronDown, LogOut, UserRound, FolderOpen, ChartColumn, Users, Plus, TrendingUp, ArrowUpRight } from 'lucide-react';
+import { Search, Loader2, RefreshCw, Trash2, Download, CheckCircle2, Undo2, SlidersHorizontal, PanelLeftClose, PanelLeftOpen, Settings, Home, Building2, ChevronDown, LogOut, UserRound, FolderOpen, ChartColumn, Users, Plus, TrendingUp, ArrowUpRight, Pencil, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { type TasacionItem } from '../data/mock';
 import { Button } from './ui/Button';
@@ -10,6 +10,7 @@ import { cargarDolar, dolarActual } from '../lib/dolar';
 import { getUser, getUsuarioId, cerrarSesion, syncSessionAcrossTabs, actualizarSesion, setUser as guardarSesionCliente, type SesionUsuario } from '../lib/session';
 import { generarInformePdf } from '../lib/generar-pdf';
 import { normalizeData } from '../lib/normalizar-tasacion';
+import { prepararEdicionDeTasacion } from '../lib/edicion-tasacion';
 import { ConfigPanel } from './ConfigPanel';
 import { BuscarUsuarios } from './BuscarUsuarios';
 import { IndicadoresMercado } from './IndicadoresMercado';
@@ -40,6 +41,8 @@ const opcionesOrden: { id: Orden; label: string }[] = [
   { id: 'menor-precio', label: 'Menor precio' },
   { id: 'mas-antiguo', label: 'Más antiguo' },
 ];
+
+const AVISO_KEY = 'tasacion-recien-creada';
 
 const statusLabel: Record<TasacionItem['status'], string> = {
   completada: 'Lista para tasar',
@@ -127,6 +130,8 @@ export const DashboardApp = () => {
   const [checkingSession, setCheckingSession] = useState(true);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [avisoTasacion, setAvisoTasacion] = useState<{ id: string; direccion: string } | null>(null);
+  const [editandoAviso, setEditandoAviso] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(true);
@@ -256,6 +261,20 @@ export const DashboardApp = () => {
     fetchTasaciones();
   }, [fetchTasaciones, checkingSession]);
 
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(AVISO_KEY);
+      if (!raw) return;
+      const guardado = JSON.parse(raw) as { id?: unknown; direccion?: unknown };
+      const id = typeof guardado?.id === 'string' ? guardado.id.trim() : '';
+      if (!id) return;
+      const direccion = typeof guardado.direccion === 'string' && guardado.direccion.trim()
+        ? guardado.direccion.trim()
+        : 'tu propiedad';
+      setAvisoTasacion({ id, direccion });
+    } catch {}
+  }, []);
+
   useEffect(() => () => {
     if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
   }, []);
@@ -300,6 +319,37 @@ export const DashboardApp = () => {
       document.removeEventListener('keydown', onEscape);
     };
   }, [perfilAbierto]);
+
+  const descartarAviso = () => {
+    setAvisoTasacion(null);
+    try {
+      sessionStorage.removeItem(AVISO_KEY);
+    } catch {}
+  };
+
+  const editarDelAviso = async () => {
+    if (!avisoTasacion || editandoAviso) return;
+    setEditandoAviso(true);
+    let listo = false;
+    try {
+      const { ok, data } = await apiFetch(
+        `/Apis/ObtenerTasacion?id=${encodeURIComponent(avisoTasacion.id)}`,
+        {},
+        8000
+      );
+      const normalizada = ok ? normalizeData(data) : null;
+      listo = Boolean(normalizada && prepararEdicionDeTasacion(normalizada));
+    } catch (error) {
+      console.error('No se pudo abrir la edición de la tasación', error);
+    }
+    if (!listo) {
+      setEditandoAviso(false);
+      alert('No se pudo abrir la tasación para editar. Intentá de nuevo.');
+      return;
+    }
+    descartarAviso();
+    window.location.href = '/tasacion';
+  };
 
   const startConfirm = (id: string) => {
     setConfirmingId(id);
@@ -669,6 +719,46 @@ export const DashboardApp = () => {
 
           {(section === 'tasaciones' || section === 'borradores') && (
             <div className="dashboard__panel">
+              {avisoTasacion && section === 'tasaciones' && (
+                <section className="dashboard__aviso" role="status" aria-live="polite">
+                  <span className="dashboard__aviso-icono" aria-hidden>
+                    <CheckCircle2 />
+                  </span>
+                  <div className="dashboard__aviso-textos">
+                    <p className="dashboard__aviso-titulo">Tasación hecha en “{avisoTasacion.direccion}”</p>
+                    <p className="dashboard__aviso-detalle">
+                      ¿Querés cambiar algo? Editá los datos del formulario: el precio se recalcula solo.
+                    </p>
+                  </div>
+                  <div className="dashboard__aviso-acciones">
+                    <button
+                      type="button"
+                      onClick={editarDelAviso}
+                      disabled={editandoAviso}
+                      className="dashboard__aviso-boton dashboard__aviso-boton--principal"
+                    >
+                      <Pencil className="dashboard__aviso-boton-icono" aria-hidden />
+                      {editandoAviso ? 'Abriendo…' : 'Editar datos'}
+                    </button>
+                    <a
+                      className="dashboard__aviso-boton"
+                      href={`/reporte?id=${encodeURIComponent(avisoTasacion.id)}`}
+                    >
+                      Ver informe
+                    </a>
+                    <button
+                      type="button"
+                      onClick={descartarAviso}
+                      className="dashboard__aviso-cerrar"
+                      aria-label="Descartar aviso"
+                      title="Descartar aviso"
+                    >
+                      <X aria-hidden />
+                    </button>
+                  </div>
+                </section>
+              )}
+
               {status === 'ready' && (
                 <>
                   <section className="dashboard__bienvenida">

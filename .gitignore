@@ -24,6 +24,7 @@ pnpm-debug.log*
 
 __pycache__/
 *.pyc
+/src/pages/Apis/modelo_ia/cache/
 
 chrome_scraper_data/
 /chrome_scraper_data
