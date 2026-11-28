@@ -1,6 +1,9 @@
 import os
 import json
 import math
+import hashlib
+import pickle
+import secrets
 from pathlib import Path
 
 import pandas as pd
@@ -10,7 +13,9 @@ from pydantic import BaseModel
 from modelo_ia.modelo import (
     cargar_dataset_csv, COLUMNAS_TEXTO, COLUMNAS_NUMERICAS,
     limpiar_registros, _preparar_features, crear_modelo, evaluar_modelo, agrupar_inmuebles,
+    DATASET_CSV, CONFIGURACION_MODELO, REVISION_REPUBLICACIONES,
 )
+from modelo_ia import modelo as modelo_ia
 
 BASE_PATH = Path(__file__).resolve().parent.parent.parent.parent
 ENV_PATH = BASE_PATH / ".env.local"
@@ -18,22 +23,76 @@ load_dotenv(dotenv_path=ENV_PATH)
 
 app = FastAPI(title="API IA Estimador")
 
-INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
+INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "").strip()
+EN_PRODUCCION = (
+    os.environ.get("RENDER") == "true"
+    or os.environ.get("ENVIRONMENT", "").lower() == "production"
+    or os.environ.get("NODE_ENV", "").lower() == "production"
+)
+if EN_PRODUCCION and not INTERNAL_API_KEY:
+    raise RuntimeError(
+        "INTERNAL_API_KEY es obligatoria en produccion. Definila en el panel de Render."
+    )
 
 def _verificar_api_key(x_api_key: str | None) -> None:
     if not INTERNAL_API_KEY:
         return
-    if not x_api_key or x_api_key != INTERNAL_API_KEY:
+    if not x_api_key or not secrets.compare_digest(x_api_key, INTERNAL_API_KEY):
         raise HTTPException(status_code=401, detail="API key inválida")
 
 modelo_v4 = None
+
+CODIGO_API = Path(__file__).resolve()
+CODIGO_MODELO = Path(modelo_ia.__file__).resolve()
+RUTA_CACHE_MODELO = CODIGO_API.parent / ".cache" / "modelo_v4.pkl"
+VERSION_CACHE = "4"
 
 def _cargar_datos_entrenamiento():
     return cargar_dataset_csv()
 
 
-def entrenar_modelo():
+def _huella_entrenamiento():
+    """Huella del código de entrenamiento, el dataset, la configuración y las republicaciones."""
+    dataset = Path(os.environ.get("MODELO_DATASET_CSV") or DATASET_CSV).expanduser()
+    huella = hashlib.sha256(f"v{VERSION_CACHE}".encode())
+    for ruta in (CODIGO_API, CODIGO_MODELO, dataset, CONFIGURACION_MODELO, REVISION_REPUBLICACIONES):
+        huella.update(str(ruta.resolve()).encode())
+        huella.update(ruta.read_bytes() if ruta.is_file() else b"")
+    return huella.hexdigest()
+
+
+def _cargar_modelo_cache(huella):
+    """Carga el modelo guardado solo si corresponde a la huella actual."""
     global modelo_v4
+    if not RUTA_CACHE_MODELO.is_file():
+        return False
+    try:
+        with RUTA_CACHE_MODELO.open("rb") as archivo:
+            guardado = pickle.load(archivo)
+    except Exception as e:
+        print(f"Caché del modelo ilegible, se reentrena: {e}")
+        return False
+    if not isinstance(guardado, dict) or guardado.get("huella") != huella or guardado.get("modelo") is None:
+        return False
+    modelo_v4 = guardado["modelo"]
+    return True
+
+
+def _guardar_modelo_cache(huella):
+    RUTA_CACHE_MODELO.parent.mkdir(parents=True, exist_ok=True)
+    temporal = RUTA_CACHE_MODELO.with_suffix(".tmp")
+    with temporal.open("wb") as archivo:
+        pickle.dump({"huella": huella, "modelo": modelo_v4}, archivo, protocol=pickle.HIGHEST_PROTOCOL)
+    os.replace(temporal, RUTA_CACHE_MODELO)
+
+
+def entrenar_modelo(forzar=False):
+    global modelo_v4
+
+    huella = _huella_entrenamiento()
+    if not forzar and _cargar_modelo_cache(huella):
+        print("Modelo cargado del caché en disco: el dataset no cambió desde el último entrenamiento")
+        return
 
     df = _cargar_datos_entrenamiento()
 
@@ -53,6 +112,7 @@ def entrenar_modelo():
 
     modelo_v4 = nuevo_modelo
     print("Modelo CatBoost entrenado con éxito con el dataset CSV configurado")
+    _guardar_modelo_cache(huella)
 
 
 try:
@@ -172,7 +232,7 @@ def estimar_precio(propiedad: PropiedadInput, x_api_key: str | None = Header(def
 def reentrenar_api(x_api_key: str | None = Header(default=None)):
     _verificar_api_key(x_api_key)
     try:
-        entrenar_modelo()
+        entrenar_modelo(forzar=True)
         return {"status": "success", "message": "Modelo re-entrenado exitosamente."}
     except Exception as e:
         return {"status": "error", "message": str(e)}

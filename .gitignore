@@ -21,6 +21,7 @@ pnpm-debug.log*
 .env*
 !.env.example
 /src/pages/Apis/__pycache__
+/src/pages/Apis/.cache
 
 __pycache__/
 *.pyc
